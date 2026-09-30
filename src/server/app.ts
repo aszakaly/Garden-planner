@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { ZodError } from 'zod';
 import type { DB } from './db/index.ts';
 import { settingsRoutes } from './routes/settings.ts';
+import { masterRoutes } from './routes/master.ts';
 
 export interface AppOptions {
   db: DB;
@@ -31,6 +32,7 @@ export function buildApp({ db, clientDir, logger = false }: AppOptions): Fastify
     async (api) => {
       api.get('/health', async () => ({ ok: true }));
       await api.register(settingsRoutes(db));
+      await api.register(masterRoutes(db));
     },
     { prefix: '/api' },
   );

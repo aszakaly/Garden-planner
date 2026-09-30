@@ -15,6 +15,9 @@
 .scrolled {
   box-shadow: 0 var(--hairline) 0 var(--separator);
 }
+.grouped {
+  background: rgba(242, 242, 247, 0.82);
+}
 
 .leading {
   display: flex;
@@ -24,9 +27,15 @@
 .back {
   display: inline-flex;
   align-items: center;
-  margin-left: -8px;
-  font-size: 17px;
+  margin-left: -4px;
+  font-size: 15px;
   color: var(--tint);
+}
+@media (max-width: 760px) {
+  .back {
+    margin-left: -8px;
+    font-size: 17px;
+  }
 }
 
 .compactTitle {

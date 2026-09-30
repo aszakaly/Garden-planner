@@ -1,0 +1,711 @@
+[
+  {
+    "code": "paradicsom", "name_hu": "Paradicsom", "name_latin": "Solanum lycopersicum",
+    "family": "solanaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 50, "row_spacing_cm": 80,
+    "days_to_harvest": 65, "harvest_duration_days": 90, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["tomato", "tomatoes", "cherry tomato", "cherry tomatoes"],
+    "latin_patterns": ["^Solanum lycopersicum"],
+    "notes": "Kiültetés a fagyosszentek után. Támrendszert igényel (a bokor típusok kivételével).",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-20", "03-31"], "seedling_weeks": 8, "transplant": ["05-10", "05-31"], "harvest": ["07-10", "10-15"] }
+    ]
+  },
+  {
+    "code": "paprika", "name_hu": "Paprika", "name_latin": "Capsicum annuum",
+    "family": "solanaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 35, "row_spacing_cm": 50,
+    "days_to_harvest": 70, "harvest_duration_days": 80, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["pepper", "peppers", "bell pepper", "bell peppers", "hot pepper", "hot peppers", "chili", "chili pepper", "chili peppers", "chilies"],
+    "latin_patterns": ["^Capsicum"],
+    "notes": "Hosszú palántanevelés (8–10 hét), meleg talajba ültessük. A csípős fajták is ide tartoznak.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-01", "03-15"], "seedling_weeks": 10, "transplant": ["05-10", "05-31"], "harvest": ["07-15", "10-15"] }
+    ]
+  },
+  {
+    "code": "padlizsan", "name_hu": "Padlizsán", "name_latin": "Solanum melongena",
+    "family": "solanaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 50, "row_spacing_cm": 70,
+    "days_to_harvest": 75, "harvest_duration_days": 70, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["eggplant", "eggplants", "aubergine", "aubergines"],
+    "latin_patterns": ["^Solanum melongena"],
+    "notes": "A legmelegigényesebb burgonyaféle; hűvös tavasszal csak május végén ültessük ki.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-01", "03-10"], "seedling_weeks": 10, "transplant": ["05-15", "06-05"], "harvest": ["07-20", "10-10"] }
+    ]
+  },
+  {
+    "code": "burgonya", "name_hu": "Burgonya", "name_latin": "Solanum tuberosum",
+    "family": "solanaceae", "crop_group": "gyoker", "nutrient_group": 1,
+    "frost_sensitive": false, "in_row_spacing_cm": 35, "row_spacing_cm": 65,
+    "days_to_harvest": 100, "harvest_duration_days": 30, "seed_viability_years": null, "sun": "napos",
+    "aliases_en": ["potato", "potatoes"],
+    "latin_patterns": ["^Solanum tuberosum"],
+    "notes": "Vetőgumóval ültetjük; a kikelt lombot a késői fagy ellen takarjuk. Korai fajta június végétől szedhető.",
+    "windows": [
+      { "season": "tavaszi", "method": "ultetes", "sow": ["03-25", "04-25"], "harvest": ["06-20", "09-30"] }
+    ]
+  },
+  {
+    "code": "uborka", "name_hu": "Uborka", "name_latin": "Cucumis sativus",
+    "family": "cucurbitaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 30, "row_spacing_cm": 100,
+    "days_to_harvest": 55, "harvest_duration_days": 60, "seed_viability_years": 5, "sun": "napos",
+    "aliases_en": ["cucumber", "cucumbers"],
+    "latin_patterns": ["^Cucumis sativus"],
+    "notes": "Meleg talajba vessük; nyári utóvetéssel ősszel is szedhető.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-25", "06-10"], "harvest": ["07-01", "09-15"] },
+      { "season": "tavaszi", "method": "palanta", "sow": ["04-01", "04-30"], "seedling_weeks": 4, "transplant": ["05-10", "05-31"], "harvest": ["06-25", "09-15"] },
+      { "season": "nyari", "method": "helyrevetes", "sow": ["06-15", "07-05"], "harvest": ["08-10", "09-30"], "notes": "Utóvetés korai kultúra (pl. borsó, saláta) után." }
+    ]
+  },
+  {
+    "code": "cukkini", "name_hu": "Cukkini", "name_latin": "Cucurbita pepo",
+    "family": "cucurbitaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 80, "row_spacing_cm": 100,
+    "days_to_harvest": 50, "harvest_duration_days": 80, "seed_viability_years": 5, "sun": "napos",
+    "aliases_en": ["zucchini", "courgette", "courgettes", "summer squash"],
+    "latin_patterns": ["^Cucurbita pepo(?! var\\. (clypeata|turbinata))"],
+    "notes": "Nagy helyigényű; 1–2 tő bőven elég egy családnak.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-25", "06-10"], "harvest": ["06-20", "09-30"] },
+      { "season": "tavaszi", "method": "palanta", "sow": ["04-01", "04-25"], "seedling_weeks": 4, "transplant": ["05-10", "05-31"], "harvest": ["06-15", "09-30"] }
+    ]
+  },
+  {
+    "code": "patisszon", "name_hu": "Patisszon", "name_latin": "Cucurbita pepo var. patisonina",
+    "family": "cucurbitaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 80, "row_spacing_cm": 100,
+    "days_to_harvest": 55, "harvest_duration_days": 75, "seed_viability_years": 5, "sun": "napos",
+    "aliases_en": ["pattypan", "pattypan squash", "scallop squash"],
+    "latin_patterns": ["^Cucurbita pepo var\\. clypeata"],
+    "notes": null,
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-25", "06-05"], "harvest": ["06-25", "09-30"] },
+      { "season": "tavaszi", "method": "palanta", "sow": ["04-01", "04-25"], "seedling_weeks": 4, "transplant": ["05-10", "05-31"], "harvest": ["06-20", "09-30"] }
+    ]
+  },
+  {
+    "code": "sutotok", "name_hu": "Sütőtök", "name_latin": "Cucurbita maxima / C. moschata",
+    "family": "cucurbitaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 100, "row_spacing_cm": 150,
+    "days_to_harvest": 100, "harvest_duration_days": 45, "seed_viability_years": 5, "sun": "napos",
+    "aliases_en": ["pumpkin", "pumpkins", "winter squash", "butternut squash"],
+    "latin_patterns": ["^Cucurbita (maxima|moschata)", "^Cucurbita pepo var\\. turbinata"],
+    "notes": "Az első őszi fagy előtt szedjük be, érlelve tárolható.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-25", "05-31"], "harvest": ["09-01", "10-15"] },
+      { "season": "tavaszi", "method": "palanta", "sow": ["04-01", "04-25"], "seedling_weeks": 4, "transplant": ["05-10", "05-31"], "harvest": ["08-25", "10-15"] }
+    ]
+  },
+  {
+    "code": "gorogdinnye", "name_hu": "Görögdinnye", "name_latin": "Citrullus lanatus",
+    "family": "cucurbitaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 100, "row_spacing_cm": 200,
+    "days_to_harvest": 85, "harvest_duration_days": 40, "seed_viability_years": 5, "sun": "napos",
+    "aliases_en": ["watermelon", "watermelons", "melon", "melons"],
+    "latin_patterns": ["^Citrullus lanatus"],
+    "notes": "Laza, gyorsan melegedő talajt szeret; az Alföldön kiválóan terem.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["04-01", "04-25"], "seedling_weeks": 4, "transplant": ["05-15", "06-05"], "harvest": ["07-25", "09-10"] },
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["05-01", "05-31"], "harvest": ["08-01", "09-15"] }
+    ]
+  },
+  {
+    "code": "sargadinnye", "name_hu": "Sárgadinnye", "name_latin": "Cucumis melo",
+    "family": "cucurbitaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 80, "row_spacing_cm": 150,
+    "days_to_harvest": 80, "harvest_duration_days": 40, "seed_viability_years": 5, "sun": "napos",
+    "aliases_en": ["cantaloupe", "cantaloupes", "muskmelon", "melon", "melons"],
+    "latin_patterns": ["^Cucumis melo(?! var\\. flexuosus)"],
+    "notes": null,
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["04-01", "04-25"], "seedling_weeks": 4, "transplant": ["05-15", "06-05"], "harvest": ["07-20", "09-10"] },
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["05-01", "05-31"], "harvest": ["08-01", "09-15"] }
+    ]
+  },
+  {
+    "code": "fejes_kaposzta", "name_hu": "Fejes káposzta", "name_latin": "Brassica oleracea var. capitata",
+    "family": "brassicaceae", "crop_group": "level", "nutrient_group": 1,
+    "frost_sensitive": false, "in_row_spacing_cm": 45, "row_spacing_cm": 60,
+    "days_to_harvest": 80, "harvest_duration_days": 30, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["cabbage", "cabbages", "red cabbage"],
+    "latin_patterns": ["^Brassica oleracea var\\. capitata"],
+    "notes": "Korai (tavaszi) és kései (őszi, tárolásra) fajták; a vöröskáposzta fajtaként vehető fel.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["01-25", "02-25"], "seedling_weeks": 7, "transplant": ["03-25", "04-20"], "harvest": ["06-01", "07-15"], "notes": "Korai fajták." },
+      { "season": "nyari", "method": "palanta", "sow": ["04-10", "05-15"], "seedling_weeks": 6, "transplant": ["05-25", "06-30"], "harvest": ["09-15", "11-15"], "notes": "Kései, tárolható fajták." }
+    ]
+  },
+  {
+    "code": "kelkaposzta", "name_hu": "Kelkáposzta", "name_latin": "Brassica oleracea var. sabauda",
+    "family": "brassicaceae", "crop_group": "level", "nutrient_group": 1,
+    "frost_sensitive": false, "in_row_spacing_cm": 45, "row_spacing_cm": 60,
+    "days_to_harvest": 80, "harvest_duration_days": 40, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["savoy cabbage", "savoy"],
+    "latin_patterns": ["^Brassica oleracea var\\. sabauda"],
+    "notes": "A téli fajták jól bírják a fagyot, decemberig a helyükön maradhatnak.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-01", "03-01"], "seedling_weeks": 7, "transplant": ["04-01", "04-25"], "harvest": ["06-10", "07-20"] },
+      { "season": "nyari", "method": "palanta", "sow": ["04-20", "05-31"], "seedling_weeks": 6, "transplant": ["06-01", "07-10"], "harvest": ["10-01", "12-15"] }
+    ]
+  },
+  {
+    "code": "karfiol", "name_hu": "Karfiol", "name_latin": "Brassica oleracea var. botrytis",
+    "family": "brassicaceae", "crop_group": "szar_virag", "nutrient_group": 1,
+    "frost_sensitive": false, "in_row_spacing_cm": 50, "row_spacing_cm": 60,
+    "days_to_harvest": 70, "harvest_duration_days": 20, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["cauliflower", "cauliflowers"],
+    "latin_patterns": ["^Brassica oleracea var\\. botrytis"],
+    "notes": "Egyenletes vízellátást igényel; a rózsát a levelekkel takarva fehéren marad.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-01", "03-01"], "seedling_weeks": 7, "transplant": ["03-25", "04-25"], "harvest": ["06-01", "07-10"] },
+      { "season": "oszi", "method": "palanta", "sow": ["05-15", "06-15"], "seedling_weeks": 5, "transplant": ["06-25", "07-25"], "harvest": ["09-15", "11-10"] }
+    ]
+  },
+  {
+    "code": "brokkoli", "name_hu": "Brokkoli", "name_latin": "Brassica oleracea var. italica",
+    "family": "brassicaceae", "crop_group": "szar_virag", "nutrient_group": 1,
+    "frost_sensitive": false, "in_row_spacing_cm": 45, "row_spacing_cm": 60,
+    "days_to_harvest": 65, "harvest_duration_days": 30, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["broccoli"],
+    "latin_patterns": ["^Brassica oleracea var\\. italica"],
+    "notes": "A főrózsa levágása után oldalhajtásokat is hoz.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-10", "03-15"], "seedling_weeks": 6, "transplant": ["04-01", "04-30"], "harvest": ["06-01", "07-15"] },
+      { "season": "oszi", "method": "palanta", "sow": ["05-20", "06-25"], "seedling_weeks": 5, "transplant": ["07-01", "07-31"], "harvest": ["09-10", "11-15"] }
+    ]
+  },
+  {
+    "code": "karalabe", "name_hu": "Karalábé", "name_latin": "Brassica oleracea var. gongylodes",
+    "family": "brassicaceae", "crop_group": "szar_virag", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 25, "row_spacing_cm": 30,
+    "days_to_harvest": 50, "harvest_duration_days": 20, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["kohlrabi"],
+    "latin_patterns": ["^Brassica oleracea var\\. gongylodes"],
+    "notes": "Gyors kultúra, jó elő- és utóvetemény. Nyáron hamar fásodik.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-01", "03-15"], "seedling_weeks": 5, "transplant": ["03-20", "04-25"], "harvest": ["05-10", "06-30"] },
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-01", "05-10"], "harvest": ["06-01", "07-15"] },
+      { "season": "oszi", "method": "helyrevetes", "sow": ["07-01", "08-10"], "harvest": ["09-01", "11-10"] }
+    ]
+  },
+  {
+    "code": "kelbimbo", "name_hu": "Kelbimbó", "name_latin": "Brassica oleracea var. gemmifera",
+    "family": "brassicaceae", "crop_group": "szar_virag", "nutrient_group": 1,
+    "frost_sensitive": false, "in_row_spacing_cm": 60, "row_spacing_cm": 70,
+    "days_to_harvest": 130, "harvest_duration_days": 70, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["brussels sprouts", "brussels sprout"],
+    "latin_patterns": ["^Brassica oleracea var\\. gemmifera"],
+    "notes": "A fagy után édesebb; alulról felfelé szedjük a bimbókat.",
+    "windows": [
+      { "season": "nyari", "method": "palanta", "sow": ["04-01", "05-10"], "seedling_weeks": 6, "transplant": ["05-20", "06-25"], "harvest": ["10-01", "12-20"] }
+    ]
+  },
+  {
+    "code": "fodros_kel", "name_hu": "Fodros kel", "name_latin": "Brassica oleracea var. sabellica",
+    "family": "brassicaceae", "crop_group": "level", "nutrient_group": 1,
+    "frost_sensitive": false, "in_row_spacing_cm": 40, "row_spacing_cm": 60,
+    "days_to_harvest": 70, "harvest_duration_days": 120, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["kale", "curly kale", "lacinato kale"],
+    "latin_patterns": ["^Brassica oleracea var\\. (acephala|sabellica)"],
+    "notes": "Télálló, a leveleit folyamatosan szedhetjük akár februárig.",
+    "windows": [
+      { "season": "nyari", "method": "palanta", "sow": ["04-15", "06-15"], "seedling_weeks": 5, "transplant": ["06-01", "07-20"], "harvest": ["09-15", "02-28"] }
+    ]
+  },
+  {
+    "code": "pak_choi", "name_hu": "Pak choi (bordás kel)", "name_latin": "Brassica rapa subsp. chinensis",
+    "family": "brassicaceae", "crop_group": "level", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 25, "row_spacing_cm": 35,
+    "days_to_harvest": 45, "harvest_duration_days": 20, "seed_viability_years": 4, "sun": "felarnyek",
+    "aliases_en": ["pak choi", "pak choy", "bok choy", "bok choi", "chinese cabbage"],
+    "latin_patterns": ["^Brassica rapa (var\\.|subsp\\.) chinensis", "^Brassica rapa (var\\.|subsp\\.) pekinensis"],
+    "notes": "Hosszú nappalon hajlamos felmagzani, ezért az őszi vetés a legbiztosabb.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-20", "04-30"], "harvest": ["05-01", "06-15"] },
+      { "season": "oszi", "method": "helyrevetes", "sow": ["07-20", "08-31"], "harvest": ["09-01", "10-31"] }
+    ]
+  },
+  {
+    "code": "retek", "name_hu": "Retek", "name_latin": "Raphanus sativus",
+    "family": "brassicaceae", "crop_group": "gyoker", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 3, "row_spacing_cm": 15,
+    "days_to_harvest": 28, "harvest_duration_days": 12, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["radish", "radishes", "daikon"],
+    "latin_patterns": ["^Raphanus sativus"],
+    "notes": "Hónapos retek: 2 hetente újravetve folyamatosan szedhető. Nyári melegben felmagzik.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-01", "04-30"], "harvest": ["04-01", "06-10"], "succession_days": 14 },
+      { "season": "oszi", "method": "helyrevetes", "sow": ["08-10", "09-20"], "harvest": ["09-10", "11-05"], "succession_days": 14 }
+    ]
+  },
+  {
+    "code": "rukkola", "name_hu": "Rukkola", "name_latin": "Eruca vesicaria subsp. sativa",
+    "family": "brassicaceae", "crop_group": "level", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 5, "row_spacing_cm": 20,
+    "days_to_harvest": 30, "harvest_duration_days": 30, "seed_viability_years": 4, "sun": "felarnyek",
+    "aliases_en": ["arugula", "rocket", "roquette"],
+    "latin_patterns": ["^Eruca", "^Diplotaxis"],
+    "notes": null,
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-10", "05-10"], "harvest": ["04-15", "06-20"], "succession_days": 21 },
+      { "season": "oszi", "method": "helyrevetes", "sow": ["08-10", "09-25"], "harvest": ["09-10", "11-15"], "succession_days": 21 }
+    ]
+  },
+  {
+    "code": "torma", "name_hu": "Torma", "name_latin": "Armoracia rusticana",
+    "family": "brassicaceae", "crop_group": "evelo", "nutrient_group": 1, "perennial": true,
+    "frost_sensitive": false, "in_row_spacing_cm": 40, "row_spacing_cm": 70,
+    "days_to_harvest": 200, "harvest_duration_days": 45, "seed_viability_years": null, "sun": "napos",
+    "aliases_en": ["horseradish"],
+    "latin_patterns": ["^Armoracia"],
+    "notes": "Gyökérdugvánnyal szaporítjuk; terjeszkedő, érdemes határolt helyre ültetni.",
+    "windows": [
+      { "season": "tavaszi", "method": "ultetes", "sow": ["03-15", "04-20"], "harvest": ["10-15", "11-30"] }
+    ]
+  },
+  {
+    "code": "sargarepa", "name_hu": "Sárgarépa", "name_latin": "Daucus carota subsp. sativus",
+    "family": "apiaceae", "crop_group": "gyoker", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 4, "row_spacing_cm": 25,
+    "days_to_harvest": 90, "harvest_duration_days": 60, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["carrot", "carrots"],
+    "latin_patterns": ["^Daucus carota"],
+    "notes": "Friss szerves trágyát nem kíván (villás gyökér). Lassan csírázik, a vetést tartsuk nedvesen.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-01", "04-20"], "harvest": ["06-15", "10-31"] },
+      { "season": "nyari", "method": "helyrevetes", "sow": ["05-15", "06-30"], "harvest": ["09-01", "11-15"], "notes": "Téli tárolásra." }
+    ]
+  },
+  {
+    "code": "petrezselyem", "name_hu": "Petrezselyem", "name_latin": "Petroselinum crispum",
+    "family": "apiaceae", "crop_group": "gyoker", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 5, "row_spacing_cm": 25,
+    "days_to_harvest": 110, "harvest_duration_days": 60, "seed_viability_years": 2, "sun": "napos",
+    "aliases_en": ["parsley", "parsley root"],
+    "latin_patterns": ["^Petroselinum"],
+    "notes": "Gyökér- és levélpetrezselyem fajtaként vehető fel. Nagyon lassan csírázik (3–4 hét).",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-01", "04-15"], "harvest": ["07-15", "11-15"] },
+      { "season": "nyari", "method": "helyrevetes", "sow": ["06-01", "07-15"], "harvest": ["09-01", "11-30"], "notes": "Levélpetrezselyem, áttelelhet." }
+    ]
+  },
+  {
+    "code": "zeller", "name_hu": "Zeller", "name_latin": "Apium graveolens",
+    "family": "apiaceae", "crop_group": "gyoker", "nutrient_group": 1,
+    "frost_sensitive": false, "in_row_spacing_cm": 40, "row_spacing_cm": 50,
+    "days_to_harvest": 130, "harvest_duration_days": 50, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["celery", "celeriac"],
+    "latin_patterns": ["^Apium graveolens"],
+    "notes": "Gumós és szárzeller. A palántát ne érje tartós hideg, mert felmagzik.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-01", "03-10"], "seedling_weeks": 10, "transplant": ["05-01", "05-31"], "harvest": ["09-15", "11-10"] }
+    ]
+  },
+  {
+    "code": "paszternak", "name_hu": "Paszternák", "name_latin": "Pastinaca sativa",
+    "family": "apiaceae", "crop_group": "gyoker", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 10, "row_spacing_cm": 40,
+    "days_to_harvest": 150, "harvest_duration_days": 90, "seed_viability_years": 1, "sun": "napos",
+    "aliases_en": ["parsnip", "parsnips"],
+    "latin_patterns": ["^Pastinaca"],
+    "notes": "Mindig friss magot vessünk. A fagy után édesebb, a helyén áttelelhet.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-01", "04-15"], "harvest": ["10-01", "12-15"] }
+    ]
+  },
+  {
+    "code": "kapor", "name_hu": "Kapor", "name_latin": "Anethum graveolens",
+    "family": "apiaceae", "crop_group": "fuszer", "nutrient_group": 3,
+    "frost_sensitive": false, "in_row_spacing_cm": 5, "row_spacing_cm": 25,
+    "days_to_harvest": 45, "harvest_duration_days": 45, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["dill"],
+    "latin_patterns": ["^Anethum"],
+    "notes": "Háromhetente vetve folyamatosan szedhető zöldje.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-20", "07-31"], "harvest": ["05-10", "10-15"], "succession_days": 21 }
+    ]
+  },
+  {
+    "code": "edeskomeny", "name_hu": "Gumós édeskömény", "name_latin": "Foeniculum vulgare var. azoricum",
+    "family": "apiaceae", "crop_group": "szar_virag", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 25, "row_spacing_cm": 40,
+    "days_to_harvest": 80, "harvest_duration_days": 30, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["fennel", "florence fennel", "bronze fennel"],
+    "latin_patterns": ["^Foeniculum"],
+    "notes": "Tavaszi vetésnél hajlamos felmagzani – a nyári vetés biztosabb. A legtöbb zöldséggel rossz szomszéd.",
+    "windows": [
+      { "season": "nyari", "method": "helyrevetes", "sow": ["06-15", "07-20"], "harvest": ["09-01", "10-31"] },
+      { "season": "tavaszi", "method": "palanta", "sow": ["03-15", "04-15"], "seedling_weeks": 5, "transplant": ["04-25", "05-20"], "harvest": ["06-20", "07-31"] }
+    ]
+  },
+  {
+    "code": "koriander", "name_hu": "Koriander", "name_latin": "Coriandrum sativum",
+    "family": "apiaceae", "crop_group": "fuszer", "nutrient_group": 3,
+    "frost_sensitive": false, "in_row_spacing_cm": 5, "row_spacing_cm": 25,
+    "days_to_harvest": 40, "harvest_duration_days": 30, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["cilantro", "coriander"],
+    "latin_patterns": ["^Coriandrum"],
+    "notes": "Melegben gyorsan felmagzik; tavasszal és ősszel a legjobb.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-20", "05-15"], "harvest": ["05-01", "07-01"], "succession_days": 21 },
+      { "season": "oszi", "method": "helyrevetes", "sow": ["08-15", "09-15"], "harvest": ["09-20", "11-10"] }
+    ]
+  },
+  {
+    "code": "voroshagyma", "name_hu": "Vöröshagyma", "name_latin": "Allium cepa",
+    "family": "amaryllidaceae", "crop_group": "hagymas", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 8, "row_spacing_cm": 25,
+    "days_to_harvest": 110, "harvest_duration_days": 30, "seed_viability_years": 1, "sun": "napos",
+    "aliases_en": ["onion", "onions", "red onion", "yellow onion", "scallion", "scallions", "green onion", "green onions", "spring onion", "spring onions"],
+    "latin_patterns": ["^Allium cepa(?! var\\. aggregatum)", "^Allium fistulosum"],
+    "notes": "Dughagymáról a legbiztosabb. A magja csak 1 évig csírázik jól.",
+    "windows": [
+      { "season": "tavaszi", "method": "ultetes", "sow": ["03-01", "04-10"], "harvest": ["07-01", "08-15"], "notes": "Dughagyma." },
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["02-25", "04-05"], "harvest": ["08-01", "09-10"], "notes": "Magról." },
+      { "season": "attelelo", "method": "ultetes", "sow": ["09-20", "10-20"], "harvest": ["06-01", "07-10"], "harvest_year_offset": 1, "notes": "Áttelelő (téli) dughagyma." }
+    ]
+  },
+  {
+    "code": "fokhagyma", "name_hu": "Fokhagyma", "name_latin": "Allium sativum",
+    "family": "amaryllidaceae", "crop_group": "hagymas", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 10, "row_spacing_cm": 25,
+    "days_to_harvest": 250, "harvest_duration_days": 30, "seed_viability_years": null, "sun": "napos",
+    "aliases_en": ["garlic"],
+    "latin_patterns": ["^Allium sativum"],
+    "notes": "Az őszi ültetés adja a nagyobb fejeket; gerezdeket 4–5 cm mélyre ültessük.",
+    "windows": [
+      { "season": "attelelo", "method": "ultetes", "sow": ["10-01", "11-10"], "harvest": ["06-20", "07-20"], "harvest_year_offset": 1 },
+      { "season": "tavaszi", "method": "ultetes", "sow": ["02-25", "03-31"], "harvest": ["07-10", "08-10"] }
+    ]
+  },
+  {
+    "code": "porehagyma", "name_hu": "Póréhagyma", "name_latin": "Allium porrum",
+    "family": "amaryllidaceae", "crop_group": "hagymas", "nutrient_group": 1,
+    "frost_sensitive": false, "in_row_spacing_cm": 12, "row_spacing_cm": 35,
+    "days_to_harvest": 120, "harvest_duration_days": 100, "seed_viability_years": 2, "sun": "napos",
+    "aliases_en": ["leek", "leeks"],
+    "latin_patterns": ["^Allium (porrum|ampeloprasum)"],
+    "notes": "Töltögetéssel hosszabb fehér szár nevelhető. Télen is a helyén maradhat.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-15", "04-15"], "seedling_weeks": 10, "transplant": ["05-01", "06-30"], "harvest": ["09-01", "01-31"] }
+    ]
+  },
+  {
+    "code": "metelohagyma", "name_hu": "Metélőhagyma", "name_latin": "Allium schoenoprasum",
+    "family": "amaryllidaceae", "crop_group": "fuszer", "nutrient_group": 3, "perennial": true,
+    "frost_sensitive": false, "in_row_spacing_cm": 20, "row_spacing_cm": 30,
+    "days_to_harvest": 60, "harvest_duration_days": 180, "seed_viability_years": 2, "sun": "napos",
+    "aliases_en": ["chives", "chive", "garlic chives"],
+    "latin_patterns": ["^Allium (schoenoprasum|tuberosum)"],
+    "notes": "Évelő; 3–4 évente tőosztással fiatalítsuk.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-15", "04-30"], "harvest": ["04-15", "10-15"] },
+      { "season": "tavaszi", "method": "ultetes", "sow": ["03-15", "04-30"], "harvest": ["04-15", "10-15"], "notes": "Tőosztással." }
+    ]
+  },
+  {
+    "code": "mogyorohagyma", "name_hu": "Mogyoróhagyma", "name_latin": "Allium cepa var. aggregatum",
+    "family": "amaryllidaceae", "crop_group": "hagymas", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 15, "row_spacing_cm": 25,
+    "days_to_harvest": 110, "harvest_duration_days": 30, "seed_viability_years": 1, "sun": "napos",
+    "aliases_en": ["shallot", "shallots"],
+    "latin_patterns": ["^Allium cepa var\\. aggregatum"],
+    "notes": null,
+    "windows": [
+      { "season": "tavaszi", "method": "ultetes", "sow": ["03-01", "04-10"], "harvest": ["07-01", "08-15"] },
+      { "season": "attelelo", "method": "ultetes", "sow": ["10-01", "10-31"], "harvest": ["06-15", "07-15"], "harvest_year_offset": 1 }
+    ]
+  },
+  {
+    "code": "bokorbab", "name_hu": "Bokorbab", "name_latin": "Phaseolus vulgaris var. nanus",
+    "family": "fabaceae", "crop_group": "huvelyes", "nutrient_group": 3,
+    "frost_sensitive": true, "in_row_spacing_cm": 8, "row_spacing_cm": 40,
+    "days_to_harvest": 60, "harvest_duration_days": 30, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["bush bean", "bush beans", "bean", "beans", "green bean", "green beans", "snap beans", "string beans"],
+    "latin_patterns": ["^Phaseolus vulgaris", "^Phaseolus lunatus"],
+    "notes": "Csak fagymentes, meleg talajba vessük. 3 hetente vetve folyamatosan szedhető.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["05-01", "07-10"], "harvest": ["07-01", "09-30"], "succession_days": 21 }
+    ]
+  },
+  {
+    "code": "futobab", "name_hu": "Futóbab", "name_latin": "Phaseolus vulgaris / P. coccineus",
+    "family": "fabaceae", "crop_group": "huvelyes", "nutrient_group": 3,
+    "frost_sensitive": true, "in_row_spacing_cm": 15, "row_spacing_cm": 80,
+    "days_to_harvest": 70, "harvest_duration_days": 60, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["pole bean", "pole beans", "runner bean", "runner beans", "bean", "beans", "green beans"],
+    "latin_patterns": ["^Phaseolus vulgaris", "^Phaseolus coccineus"],
+    "notes": "Karót vagy hálót igényel; a tűzbab (P. coccineus) is ide sorolható.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["05-05", "06-10"], "harvest": ["07-15", "10-10"] }
+    ]
+  },
+  {
+    "code": "zoldborso", "name_hu": "Zöldborsó", "name_latin": "Pisum sativum",
+    "family": "fabaceae", "crop_group": "huvelyes", "nutrient_group": 3,
+    "frost_sensitive": false, "in_row_spacing_cm": 4, "row_spacing_cm": 30,
+    "days_to_harvest": 70, "harvest_duration_days": 25, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["pea", "peas", "snap pea", "snap peas", "sugar snap peas", "snow peas", "english peas"],
+    "latin_patterns": ["^Pisum"],
+    "notes": "Korán vethető, a hűvös időt szereti. Utána nyári kultúra (uborka, bab, káposzta) következhet.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-01", "04-15"], "harvest": ["05-25", "07-10"] }
+    ]
+  },
+  {
+    "code": "cekla", "name_hu": "Cékla", "name_latin": "Beta vulgaris subsp. vulgaris",
+    "family": "amaranthaceae", "crop_group": "gyoker", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 8, "row_spacing_cm": 30,
+    "days_to_harvest": 70, "harvest_duration_days": 60, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["beet", "beets", "beetroot", "beetroots"],
+    "latin_patterns": ["^Beta vulgaris(?! (subsp\\.|var\\.) cicla)"],
+    "notes": "A „mag” valójában csomó, több csíra kel belőle – egyeljük.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-01", "05-20"], "harvest": ["06-20", "10-31"] },
+      { "season": "nyari", "method": "helyrevetes", "sow": ["06-01", "07-10"], "harvest": ["09-01", "11-10"], "notes": "Téli tárolásra." }
+    ]
+  },
+  {
+    "code": "spenot", "name_hu": "Spenót", "name_latin": "Spinacia oleracea",
+    "family": "amaranthaceae", "crop_group": "level", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 5, "row_spacing_cm": 25,
+    "days_to_harvest": 45, "harvest_duration_days": 25, "seed_viability_years": 3, "sun": "felarnyek",
+    "aliases_en": ["spinach"],
+    "latin_patterns": ["^Spinacia"],
+    "notes": "Hosszú nappalon felmagzik – tavasszal korán, illetve ősszel vessük. Az áttelelő vetés kora tavasszal ad termést.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-01", "04-10"], "harvest": ["04-20", "06-05"] },
+      { "season": "oszi", "method": "helyrevetes", "sow": ["08-15", "09-15"], "harvest": ["09-25", "11-20"] },
+      { "season": "attelelo", "method": "helyrevetes", "sow": ["09-15", "10-10"], "harvest": ["03-15", "05-15"], "harvest_year_offset": 1 }
+    ]
+  },
+  {
+    "code": "mangold", "name_hu": "Mángold", "name_latin": "Beta vulgaris subsp. cicla",
+    "family": "amaranthaceae", "crop_group": "level", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 25, "row_spacing_cm": 40,
+    "days_to_harvest": 60, "harvest_duration_days": 150, "seed_viability_years": 4, "sun": "felarnyek",
+    "aliases_en": ["swiss chard", "chard", "rainbow chard"],
+    "latin_patterns": ["^Beta vulgaris (subsp\\.|var\\.) cicla"],
+    "notes": "A külső leveleket folyamatosan szedhetjük késő őszig.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-01", "05-31"], "harvest": ["06-01", "11-15"] }
+    ]
+  },
+  {
+    "code": "salata", "name_hu": "Saláta", "name_latin": "Lactuca sativa",
+    "family": "asteraceae", "crop_group": "level", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 25, "row_spacing_cm": 30,
+    "days_to_harvest": 50, "harvest_duration_days": 20, "seed_viability_years": 3, "sun": "felarnyek",
+    "aliases_en": ["lettuce", "lettuces", "romaine", "leaf lettuce"],
+    "latin_patterns": ["^Lactuca sativa"],
+    "notes": "Fejes, tépő, római és jégsaláta fajtaként vehető fel. Nyárra hőtűrő (nyári) fajtát válasszunk.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["02-01", "03-10"], "seedling_weeks": 5, "transplant": ["03-20", "04-20"], "harvest": ["05-01", "06-10"] },
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-15", "04-30"], "harvest": ["05-15", "06-30"], "succession_days": 21 },
+      { "season": "nyari", "method": "helyrevetes", "sow": ["05-01", "07-15"], "harvest": ["06-20", "09-15"], "succession_days": 21, "notes": "Nyári, hőtűrő fajták." },
+      { "season": "oszi", "method": "palanta", "sow": ["07-15", "08-15"], "seedling_weeks": 4, "transplant": ["08-15", "09-15"], "harvest": ["09-25", "11-15"] },
+      { "season": "attelelo", "method": "helyrevetes", "sow": ["09-01", "09-30"], "harvest": ["04-15", "05-20"], "harvest_year_offset": 1, "notes": "Téli saláta fajták." }
+    ]
+  },
+  {
+    "code": "endivia", "name_hu": "Endívia", "name_latin": "Cichorium endivia",
+    "family": "asteraceae", "crop_group": "level", "nutrient_group": 2,
+    "frost_sensitive": false, "in_row_spacing_cm": 30, "row_spacing_cm": 35,
+    "days_to_harvest": 80, "harvest_duration_days": 40, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["endive", "escarole", "chicory", "radicchio"],
+    "latin_patterns": ["^Cichorium"],
+    "notes": "Őszi saláta; szedés előtt 2 héttel összekötve halványítható.",
+    "windows": [
+      { "season": "nyari", "method": "palanta", "sow": ["06-01", "07-10"], "seedling_weeks": 5, "transplant": ["07-10", "08-15"], "harvest": ["09-01", "11-15"] },
+      { "season": "nyari", "method": "helyrevetes", "sow": ["06-15", "07-15"], "harvest": ["09-15", "11-15"] }
+    ]
+  },
+  {
+    "code": "napraforgo", "name_hu": "Napraforgó", "name_latin": "Helianthus annuus",
+    "family": "asteraceae", "crop_group": "kisero", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 40, "row_spacing_cm": 70,
+    "days_to_harvest": 100, "harvest_duration_days": 40, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["sunflower", "sunflowers"],
+    "latin_patterns": ["^Helianthus annuus"],
+    "notes": "Beporzókat és madarakat vonz; magas, árnyékot vet – az ágyás északi szélére.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-15", "05-31"], "harvest": ["08-10", "09-30"] }
+    ]
+  },
+  {
+    "code": "koromvirag", "name_hu": "Körömvirág", "name_latin": "Calendula officinalis",
+    "family": "asteraceae", "crop_group": "kisero", "nutrient_group": 3,
+    "frost_sensitive": false, "in_row_spacing_cm": 25, "row_spacing_cm": 30,
+    "days_to_harvest": 60, "harvest_duration_days": 120, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["calendula", "calendulas", "pot marigold"],
+    "latin_patterns": ["^Calendula"],
+    "notes": "Hasznos rovarokat vonz, gyógynövény. Magról könnyen elszóródik.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["03-20", "05-15"], "harvest": ["06-01", "10-31"] }
+    ]
+  },
+  {
+    "code": "budoske", "name_hu": "Büdöske", "name_latin": "Tagetes patula / T. erecta",
+    "family": "asteraceae", "crop_group": "kisero", "nutrient_group": 3,
+    "frost_sensitive": true, "in_row_spacing_cm": 20, "row_spacing_cm": 25,
+    "days_to_harvest": 60, "harvest_duration_days": 120, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["marigold", "marigolds", "french marigold", "french marigolds", "african marigold", "tagetes"],
+    "latin_patterns": ["^Tagetes (patula|erecta|tenuifolia)"],
+    "notes": "Klasszikus kísérőnövény: gyökere a fonálférgeket riasztja, virága a hasznos rovarokat vonzza.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["03-15", "04-15"], "seedling_weeks": 6, "transplant": ["05-10", "05-31"], "harvest": ["06-15", "10-15"] },
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["05-01", "05-31"], "harvest": ["07-01", "10-15"] }
+    ]
+  },
+  {
+    "code": "csemegekukorica", "name_hu": "Csemegekukorica", "name_latin": "Zea mays convar. saccharata",
+    "family": "poaceae", "crop_group": "termes", "nutrient_group": 1,
+    "frost_sensitive": true, "in_row_spacing_cm": 25, "row_spacing_cm": 70,
+    "days_to_harvest": 85, "harvest_duration_days": 14, "seed_viability_years": 2, "sun": "napos",
+    "aliases_en": ["corn", "sweet corn", "maize"],
+    "latin_patterns": ["^Zea mays"],
+    "notes": "Tömbben (több rövid sorban) vessük a jobb beporzásért. Kéthetente vetve hosszabb a szedés.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-25", "06-10"], "harvest": ["07-15", "09-15"], "succession_days": 14 }
+    ]
+  },
+  {
+    "code": "bazsalikom", "name_hu": "Bazsalikom", "name_latin": "Ocimum basilicum",
+    "family": "lamiaceae", "crop_group": "fuszer", "nutrient_group": 3,
+    "frost_sensitive": true, "in_row_spacing_cm": 25, "row_spacing_cm": 30,
+    "days_to_harvest": 40, "harvest_duration_days": 90, "seed_viability_years": 5, "sun": "napos",
+    "aliases_en": ["basil", "sweet basil", "thai basil"],
+    "latin_patterns": ["^Ocimum"],
+    "notes": "Nagyon fagyérzékeny; a paradicsom klasszikus társa.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["03-15", "04-20"], "seedling_weeks": 6, "transplant": ["05-15", "06-10"], "harvest": ["06-15", "09-30"] },
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["05-15", "06-15"], "harvest": ["07-01", "09-30"] }
+    ]
+  },
+  {
+    "code": "kakukkfu", "name_hu": "Kakukkfű", "name_latin": "Thymus vulgaris",
+    "family": "lamiaceae", "crop_group": "fuszer", "nutrient_group": 3, "perennial": true,
+    "frost_sensitive": false, "in_row_spacing_cm": 25, "row_spacing_cm": 35,
+    "days_to_harvest": 90, "harvest_duration_days": 150, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["thyme", "common thyme"],
+    "latin_patterns": ["^Thymus vulgaris"],
+    "notes": "Évelő, száraz, meszes talajt kedvel.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["03-01", "04-10"], "seedling_weeks": 8, "transplant": ["04-25", "05-31"], "harvest": ["05-15", "10-15"] }
+    ]
+  },
+  {
+    "code": "rozmaring", "name_hu": "Rozmaring", "name_latin": "Salvia rosmarinus",
+    "family": "lamiaceae", "crop_group": "fuszer", "nutrient_group": 3, "perennial": true,
+    "frost_sensitive": true, "in_row_spacing_cm": 40, "row_spacing_cm": 50,
+    "days_to_harvest": 60, "harvest_duration_days": 150, "seed_viability_years": 2, "sun": "napos",
+    "aliases_en": ["rosemary"],
+    "latin_patterns": ["^(Rosmarinus|Salvia rosmarinus)"],
+    "notes": "Nálunk nem mindig telel át – cserépben, védett helyen biztosabb.",
+    "windows": [
+      { "season": "tavaszi", "method": "ultetes", "sow": ["05-01", "05-31"], "harvest": ["06-01", "10-31"], "notes": "Vásárolt vagy dugványozott tő." }
+    ]
+  },
+  {
+    "code": "zsalya", "name_hu": "Zsálya", "name_latin": "Salvia officinalis",
+    "family": "lamiaceae", "crop_group": "fuszer", "nutrient_group": 3, "perennial": true,
+    "frost_sensitive": false, "in_row_spacing_cm": 35, "row_spacing_cm": 45,
+    "days_to_harvest": 90, "harvest_duration_days": 120, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["sage", "common sage"],
+    "latin_patterns": ["^Salvia officinalis"],
+    "notes": "Évelő; tavasszal visszametszve bokros marad.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["03-01", "04-10"], "seedling_weeks": 8, "transplant": ["04-25", "05-31"], "harvest": ["06-01", "10-15"] }
+    ]
+  },
+  {
+    "code": "borsikafu", "name_hu": "Borsikafű", "name_latin": "Satureja hortensis",
+    "family": "lamiaceae", "crop_group": "fuszer", "nutrient_group": 3,
+    "frost_sensitive": false, "in_row_spacing_cm": 20, "row_spacing_cm": 30,
+    "days_to_harvest": 60, "harvest_duration_days": 60, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["summer savory", "savory", "winter savory"],
+    "latin_patterns": ["^Satureja"],
+    "notes": "A bab klasszikus társa (babfű).",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-20", "05-31"], "harvest": ["07-01", "09-15"] }
+    ]
+  },
+  {
+    "code": "oregano", "name_hu": "Oregánó (szurokfű)", "name_latin": "Origanum vulgare",
+    "family": "lamiaceae", "crop_group": "fuszer", "nutrient_group": 3, "perennial": true,
+    "frost_sensitive": false, "in_row_spacing_cm": 30, "row_spacing_cm": 40,
+    "days_to_harvest": 90, "harvest_duration_days": 100, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["oregano", "marjoram"],
+    "latin_patterns": ["^Origanum"],
+    "notes": null,
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["03-01", "04-10"], "seedling_weeks": 8, "transplant": ["04-25", "05-31"], "harvest": ["06-15", "09-30"] }
+    ]
+  },
+  {
+    "code": "menta", "name_hu": "Menta", "name_latin": "Mentha spp.",
+    "family": "lamiaceae", "crop_group": "fuszer", "nutrient_group": 3, "perennial": true,
+    "frost_sensitive": false, "in_row_spacing_cm": 40, "row_spacing_cm": 50,
+    "days_to_harvest": 60, "harvest_duration_days": 150, "seed_viability_years": null, "sun": "felarnyek",
+    "aliases_en": ["mint", "peppermint", "spearmint"],
+    "latin_patterns": ["^Mentha"],
+    "notes": "Erősen terjed – földbe süllyesztett edénybe vagy külön helyre ültessük.",
+    "windows": [
+      { "season": "tavaszi", "method": "ultetes", "sow": ["03-15", "05-15"], "harvest": ["05-15", "10-15"] },
+      { "season": "oszi", "method": "ultetes", "sow": ["09-01", "09-30"], "harvest": ["05-01", "10-15"], "harvest_year_offset": 1 }
+    ]
+  },
+  {
+    "code": "citromfu", "name_hu": "Citromfű", "name_latin": "Melissa officinalis",
+    "family": "lamiaceae", "crop_group": "fuszer", "nutrient_group": 3, "perennial": true,
+    "frost_sensitive": false, "in_row_spacing_cm": 40, "row_spacing_cm": 50,
+    "days_to_harvest": 70, "harvest_duration_days": 150, "seed_viability_years": 3, "sun": "felarnyek",
+    "aliases_en": ["lemon balm"],
+    "latin_patterns": ["^Melissa"],
+    "notes": "Méhcsalogató évelő.",
+    "windows": [
+      { "season": "tavaszi", "method": "palanta", "sow": ["03-15", "04-15"], "seedling_weeks": 8, "transplant": ["05-01", "05-31"], "harvest": ["05-15", "10-15"] }
+    ]
+  },
+  {
+    "code": "sarkantyuka", "name_hu": "Sarkantyúka", "name_latin": "Tropaeolum majus",
+    "family": "tropaeolaceae", "crop_group": "kisero", "nutrient_group": 3,
+    "frost_sensitive": true, "in_row_spacing_cm": 25, "row_spacing_cm": 30,
+    "days_to_harvest": 50, "harvest_duration_days": 120, "seed_viability_years": 4, "sun": "napos",
+    "aliases_en": ["nasturtium", "nasturtiums"],
+    "latin_patterns": ["^Tropaeolum"],
+    "notes": "Csapdanövény: magára vonzza a levéltetveket. Virága és levele ehető.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["05-01", "05-31"], "harvest": ["06-15", "10-15"] }
+    ]
+  },
+  {
+    "code": "borago", "name_hu": "Borágó", "name_latin": "Borago officinalis",
+    "family": "boraginaceae", "crop_group": "kisero", "nutrient_group": 3,
+    "frost_sensitive": false, "in_row_spacing_cm": 30, "row_spacing_cm": 40,
+    "days_to_harvest": 55, "harvest_duration_days": 90, "seed_viability_years": 3, "sun": "napos",
+    "aliases_en": ["borage"],
+    "latin_patterns": ["^Borago"],
+    "notes": "Kiváló méhlegelő; magról szívesen elszóródik.",
+    "windows": [
+      { "season": "tavaszi", "method": "helyrevetes", "sow": ["04-01", "05-31"], "harvest": ["06-01", "09-30"] }
+    ]
+  },
+  {
+    "code": "eper", "name_hu": "Eper (szamóca)", "name_latin": "Fragaria × ananassa",
+    "family": "rosaceae", "crop_group": "evelo", "nutrient_group": 1, "perennial": true,
+    "frost_sensitive": false, "in_row_spacing_cm": 30, "row_spacing_cm": 60,
+    "days_to_harvest": 270, "harvest_duration_days": 45, "seed_viability_years": null, "sun": "napos",
+    "aliases_en": ["strawberry", "strawberries"],
+    "latin_patterns": ["^Fragaria ×? ?ananassa"],
+    "notes": "3–4 évig termeszthető egy helyen, utána új helyre telepítsük.",
+    "windows": [
+      { "season": "nyari", "method": "ultetes", "sow": ["08-01", "09-15"], "harvest": ["05-15", "06-30"], "harvest_year_offset": 1, "notes": "Nyár végi telepítés – jövőre terem." },
+      { "season": "tavaszi", "method": "ultetes", "sow": ["03-15", "04-30"], "harvest": ["05-20", "06-30"] }
+    ]
+  }
+]

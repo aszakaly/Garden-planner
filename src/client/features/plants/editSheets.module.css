@@ -1,0 +1,11 @@
+.segments {
+  display: grid;
+  gap: 10px;
+  margin: 18px 16px 0;
+}
+
+.hint {
+  margin: 14px 32px 0;
+  font-size: 13px;
+  color: var(--label-2);
+}

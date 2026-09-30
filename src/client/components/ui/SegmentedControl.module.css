@@ -1,0 +1,42 @@
+.control {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--fill-3);
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px) / var(--count));
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  transform: translateX(calc(100% * var(--index)));
+  transition: transform 0.3s var(--ease-out);
+}
+
+.option {
+  position: relative;
+  z-index: 1;
+  min-height: 28px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--label);
+}
+.selected {
+  font-weight: 600;
+}
+
+.small .option {
+  min-height: 24px;
+  font-size: 12px;
+}

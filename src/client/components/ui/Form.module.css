@@ -1,0 +1,191 @@
+.group {
+  margin: 22px 16px 0;
+}
+
+.groupTitle {
+  margin: 0 0 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--label-2);
+}
+
+.card {
+  border-radius: 10px;
+  background: var(--bg-grouped-2);
+  overflow: hidden;
+}
+
+.footer {
+  margin: 6px 16px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--label-2);
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 16px;
+}
+.row + .row::before,
+.row + .button::before,
+.button + .row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: var(--hairline);
+  background: var(--separator);
+}
+.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 10px 16px;
+}
+
+.label {
+  flex: none;
+  max-width: 55%;
+  font-size: 15px;
+}
+
+.control {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.stacked .control {
+  justify-content: stretch;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 15px;
+  text-align: right;
+  color: var(--label-2);
+}
+.input:focus,
+.textarea:focus {
+  color: var(--label);
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--label-3);
+}
+.stacked .input,
+.textarea {
+  text-align: left;
+  color: var(--label);
+}
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.4;
+}
+
+.numberWrap {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 140px;
+}
+.numberWrap .input {
+  -moz-appearance: textfield;
+}
+.numberWrap .input::-webkit-inner-spin-button {
+  display: none;
+}
+.unit {
+  font-size: 15px;
+  color: var(--label-3);
+}
+
+.select {
+  appearance: none;
+  max-width: 100%;
+  border: 0;
+  padding: 4px 22px 4px 10px;
+  border-radius: 7px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%238e8e93' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      no-repeat right 7px center,
+    var(--fill-4);
+  font-size: 15px;
+  color: var(--label);
+  text-overflow: ellipsis;
+}
+.select:disabled {
+  color: var(--label-3);
+}
+
+.monthDay {
+  display: flex;
+  gap: 6px;
+}
+
+.toggle {
+  position: relative;
+  flex: none;
+  width: 51px;
+  height: 31px;
+  border-radius: 16px;
+  background: var(--fill-1);
+  transition: background 0.2s;
+}
+.on {
+  background: var(--c-green);
+}
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
+  transition: transform 0.25s var(--ease-spring);
+}
+.on .knob {
+  transform: translateX(20px);
+}
+
+.button {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  text-align: left;
+  font-size: 15px;
+  color: var(--tint);
+}
+.button:active {
+  background: var(--fill-4);
+}
+.destructive {
+  color: var(--c-red);
+}
+
+@media (max-width: 760px) {
+  .label,
+  .input,
+  .select,
+  .textarea,
+  .unit,
+  .button {
+    font-size: 17px;
+  }
+}

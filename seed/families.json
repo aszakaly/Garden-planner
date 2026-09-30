@@ -1,0 +1,15 @@
+[
+  { "code": "solanaceae", "name_hu": "Burgonyafélék", "name_latin": "Solanaceae", "rotation_gap_years": 3, "notes": "Közös kórokozók (fitoftóra, fuzárium) – ugyanoda legalább 3 év múlva." },
+  { "code": "cucurbitaceae", "name_hu": "Tökfélék", "name_latin": "Cucurbitaceae", "rotation_gap_years": 3, "notes": "Lisztharmat, fuzáriumos hervadás halmozódik." },
+  { "code": "brassicaceae", "name_hu": "Káposztafélék", "name_latin": "Brassicaceae", "rotation_gap_years": 4, "notes": "Gyökérgolyva miatt 4 év szünet javasolt, a retek és rukkola is ide tartozik." },
+  { "code": "apiaceae", "name_hu": "Ernyősvirágzatúak", "name_latin": "Apiaceae", "rotation_gap_years": 3, "notes": "Répalegy, levélfoltosság; önmaga után nem." },
+  { "code": "amaryllidaceae", "name_hu": "Hagymafélék", "name_latin": "Amaryllidaceae (Allioideae)", "rotation_gap_years": 3, "notes": "Hagymalegy, fehérrothadás – ugyanoda 3–4 év múlva." },
+  { "code": "fabaceae", "name_hu": "Pillangósvirágúak (hüvelyesek)", "name_latin": "Fabaceae", "rotation_gap_years": 4, "notes": "Nitrogéngyűjtők, jó elővetemények; a borsó önmaga után 4–5 évig nem." },
+  { "code": "amaranthaceae", "name_hu": "Libatopfélék", "name_latin": "Amaranthaceae (Chenopodioideae)", "rotation_gap_years": 3, "notes": "Cékla, spenót, mángold – közös kártevők (répabolha, levélaknázó)." },
+  { "code": "asteraceae", "name_hu": "Fészkesvirágzatúak", "name_latin": "Asteraceae", "rotation_gap_years": 2, "notes": "Saláta, endívia, virágok – kisebb vetésforgó-igény." },
+  { "code": "poaceae", "name_hu": "Pázsitfűfélék", "name_latin": "Poaceae", "rotation_gap_years": 2, "notes": "Csemegekukorica – kukoricamoly miatt ne egymás után." },
+  { "code": "lamiaceae", "name_hu": "Árvacsalánfélék (ajakosak)", "name_latin": "Lamiaceae", "rotation_gap_years": 2, "notes": "Fűszernövények, sokuk évelő." },
+  { "code": "rosaceae", "name_hu": "Rózsafélék", "name_latin": "Rosaceae", "rotation_gap_years": 4, "notes": "Eper: ugyanoda csak 4 év múlva (talajuntság)." },
+  { "code": "boraginaceae", "name_hu": "Borágófélék", "name_latin": "Boraginaceae", "rotation_gap_years": 1, "notes": null },
+  { "code": "tropaeolaceae", "name_hu": "Sarkantyúkafélék", "name_latin": "Tropaeolaceae", "rotation_gap_years": 1, "notes": null }
+]

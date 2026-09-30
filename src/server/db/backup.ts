@@ -7,7 +7,10 @@ const KEEP = 30;
 /** Konzisztens másolat az adatbázisról (WAL mellett is biztonságos), az utolsó 30 marad meg. */
 export function backupDatabase(db: DB, backupDir: string, now = new Date()): string {
   mkdirSync(backupDir, { recursive: true });
-  const stamp = now.toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const stamp =
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-` +
+    `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   const target = join(backupDir, `garden-${stamp}.db`);
   if (!existsSync(target)) db.exec(`VACUUM INTO '${target.replaceAll("'", "''")}'`);
 

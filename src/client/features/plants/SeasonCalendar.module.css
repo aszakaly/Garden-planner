@@ -1,0 +1,174 @@
+.calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.grid {
+  display: grid;
+  gap: 4px;
+}
+
+.months {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--label-2);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.months span {
+  padding-left: 4px;
+}
+
+.rows {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.monthLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--hairline);
+  background: var(--separator);
+}
+.frost {
+  position: absolute;
+  top: -6px;
+  bottom: -2px;
+  border-left: 1.5px dashed var(--c-cyan);
+}
+.today {
+  position: absolute;
+  top: -8px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--c-red);
+}
+.today::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-red);
+}
+
+.row {
+  display: grid;
+  gap: 3px;
+  padding: 6px 0 8px;
+  text-align: left;
+  border-radius: 6px;
+}
+.row:not(:disabled):hover .track {
+  background: var(--fill-3);
+}
+
+.rowLabel {
+  position: relative;
+  z-index: 2;
+  padding-left: 4px;
+  font-size: 12px;
+  color: var(--label-2);
+}
+.rowLabel strong {
+  font-weight: 600;
+  color: var(--label);
+}
+
+.track {
+  position: relative;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--fill-4);
+  transition: background 0.15s;
+}
+
+.segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 3px;
+  border-radius: 4px;
+  background: var(--c);
+}
+
+.nextYear {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--c) 0 3px,
+    color-mix(in srgb, var(--c) 35%, white) 3px 6px
+  );
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 12px;
+  color: var(--label-2);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.swatch {
+  width: 14px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--c);
+}
+.frostSwatch {
+  width: 0;
+  height: 12px;
+  border-left: 1.5px dashed var(--c-cyan);
+}
+
+/* Mini naptár */
+.mini {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  width: 132px;
+  padding: 2px 0;
+}
+.miniLane {
+  position: relative;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--fill-4);
+}
+.miniSeg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  border-radius: 3px;
+  background: var(--c);
+}
+
+.miniHeader {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  width: 132px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--label-3);
+  text-align: center;
+}

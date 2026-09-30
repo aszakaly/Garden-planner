@@ -10,13 +10,17 @@ interface Props {
   count?: number | string;
   subtitle?: ReactNode;
   actions?: ReactNode;
+  /** Szürke (csoportos) háttérű oldalakhoz */
+  grouped?: boolean;
+  /** Aloldalaknál a szülő lista (asztalon is megjelenik); egyébként telefonon a „Listák” */
+  back?: { to: string; label: string };
 }
 
 /**
  * Eszköztár + nagy cím. Ha a nagy cím kigördül, a kis cím megjelenik az eszköztárban
  * (mint az Apple alkalmazásokban). Telefonon vissza gomb a listákhoz.
  */
-export function PageHeader({ title, color = 'var(--label)', count, subtitle, actions }: Props) {
+export function PageHeader({ title, color = 'var(--label)', count, subtitle, actions, grouped, back }: Props) {
   const isMobile = useIsMobile();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [compact, setCompact] = useState(false);
@@ -33,12 +37,12 @@ export function PageHeader({ title, color = 'var(--label)', count, subtitle, act
 
   return (
     <>
-      <div className={`${s.toolbar} ${compact ? s.scrolled : ''}`}>
+      <div className={`${s.toolbar} ${compact ? s.scrolled : ''} ${grouped ? s.grouped : ''}`}>
         <div className={s.leading}>
-          {isMobile && (
-            <Link to="/" className={s.back}>
-              <ChevronLeft size={24} strokeWidth={2.4} />
-              Listák
+          {(back || isMobile) && (
+            <Link to={back?.to ?? '/'} className={s.back}>
+              <ChevronLeft size={isMobile ? 24 : 20} strokeWidth={2.4} />
+              {back?.label ?? 'Listák'}
             </Link>
           )}
         </div>

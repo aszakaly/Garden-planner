@@ -1,0 +1,53 @@
+.page {
+  max-width: 920px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px var(--page-pad) 0;
+}
+.controls > :first-child {
+  flex: 1 1 420px;
+  max-width: 540px;
+}
+
+.search {
+  flex: 1 1 180px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: var(--fill-3);
+  color: var(--label-2);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 14px;
+}
+
+.calendarHeader {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px calc(var(--page-pad) + 16px) 0 0;
+  margin-bottom: -10px;
+}
+
+.groupDetail {
+  margin: 6px var(--page-pad) 2px;
+  font-size: 12px;
+  color: var(--label-2);
+}
+
+.muted {
+  padding: 24px var(--page-pad);
+  color: var(--label-2);
+}

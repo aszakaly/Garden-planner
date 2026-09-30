@@ -3,6 +3,9 @@ import { AppLayout } from './layout/AppLayout.tsx';
 import { useIsMobile } from './lib/useIsMobile.ts';
 import { PlaceholderPage } from './pages/PlaceholderPage.tsx';
 import { ThisWeekPage } from './pages/ThisWeekPage.tsx';
+import { PlantsPage } from './features/plants/PlantsPage.tsx';
+import { PlantDetailPage } from './features/plants/PlantDetailPage.tsx';
+import { SettingsPage } from './features/settings/SettingsPage.tsx';
 
 function Home() {
   // Asztalon a „Ez a hét” nyílik; telefonon az elrendezés a listákat mutatja.
@@ -25,10 +28,11 @@ const router = createBrowserRouter([
       },
       { path: 'naplo', element: <PlaceholderPage title="Napló" color="var(--c-brown)" step="7. lépésében" /> },
       { path: 'agyas/:id', element: <PlaceholderPage title="Ágyás" color="var(--c-green)" step="3–4. lépésében" /> },
-      { path: 'novenyek', element: <PlaceholderPage title="Növények" color="var(--c-mint)" step="1. lépésében" /> },
+      { path: 'novenyek', element: <PlantsPage /> },
+      { path: 'novenyek/:id', element: <PlantDetailPage /> },
       { path: 'vetomag', element: <PlaceholderPage title="Vetőmagkészlet" color="var(--c-purple)" step="2. lépésében" /> },
       { path: 'kert', element: <PlaceholderPage title="Kert és ágyások" color="var(--c-teal)" step="3. lépésében" /> },
-      { path: 'beallitasok', element: <PlaceholderPage title="Beállítások" step="1. és 8. lépésében" /> },
+      { path: 'beallitasok', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

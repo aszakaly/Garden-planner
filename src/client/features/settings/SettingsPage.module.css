@@ -1,0 +1,79 @@
+.page {
+  min-height: 100%;
+  padding-bottom: 40px;
+  background: var(--bg-grouped);
+}
+.page > section {
+  max-width: 720px;
+  margin-left: var(--page-pad);
+  margin-right: var(--page-pad);
+}
+
+.error {
+  margin: 12px var(--page-pad) 0;
+  color: var(--c-red);
+  font-size: 13px;
+}
+
+.listButton {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px 0 16px;
+  text-align: left;
+  font-size: 15px;
+}
+.listButton + .listButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: var(--hairline);
+  background: var(--separator);
+}
+.listButton:active {
+  background: var(--fill-4);
+}
+.listTitle {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.listDetail {
+  font-size: 14px;
+  color: var(--label-2);
+}
+.chevron {
+  color: var(--label-3);
+}
+.add {
+  color: var(--tint);
+}
+
+.sources {
+  display: grid;
+  gap: 14px;
+  padding: 14px 16px;
+}
+.source strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.source p {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--label-2);
+}
+
+@media (max-width: 760px) {
+  .listButton {
+    font-size: 17px;
+  }
+}
