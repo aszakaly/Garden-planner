@@ -41,7 +41,7 @@ if (production) {
   console.log(`                   az API itt fut: http://localhost:${PORT}/api`);
 }
 console.log(`   Adatbázis:      ${DB_PATH}`);
-console.log(`   Mentés:         ${backup}`);
+console.log(`   Mentés:         ${backup ?? 'a legutóbbi mentés 6 óránál frissebb, most nem készült új'}`);
 if (seeded) console.log('   Kezdő törzsadatok betöltve (növények, családok, társítások).');
 console.log('');
 

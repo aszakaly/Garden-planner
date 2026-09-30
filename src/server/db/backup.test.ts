@@ -1,27 +1,43 @@
-import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { openDatabase } from './index.ts';
 import { backupDatabase } from './backup.ts';
 
+const NOW = new Date(2026, 8, 30, 12, 0, 0);
+const old = new Date(2026, 0, 1);
+
+function fakeBackups(dir: string, name: string, count: number) {
+  for (let i = 0; i < count; i++) {
+    const file = join(dir, `${name}-202601${String((i % 28) + 1).padStart(2, '0')}-0000${String(i).padStart(2, '0')}.db`);
+    writeFileSync(file, '');
+    utimesSync(file, old, old);
+  }
+}
+
 describe('backupDatabase', () => {
   it('adatbázisonként 30 mentést tart meg, más nevűeket nem töröl', () => {
     const dir = mkdtempSync(join(tmpdir(), 'kert-backup-'));
-    for (let i = 0; i < 35; i++) {
-      writeFileSync(join(dir, `garden-202601${String(i % 28 + 1).padStart(2, '0')}-0000${String(i).padStart(2, '0')}.db`), '');
-    }
-    writeFileSync(join(dir, 'sandbox-20260101-000000.db'), '');
-
+    fakeBackups(dir, 'garden', 35);
+    fakeBackups(dir, 'sandbox', 1);
     const db = openDatabase(':memory:');
-    const target = backupDatabase(db, dir, 'sandbox', new Date(2026, 8, 30, 12, 0, 0));
-    expect(target).toMatch(/sandbox-20260930-120000\.db$/);
 
+    expect(backupDatabase(db, dir, 'sandbox', NOW)).toMatch(/sandbox-20260930-120000\.db$/);
     const files = readdirSync(dir);
     expect(files.filter((f) => f.startsWith('garden-'))).toHaveLength(35);
     expect(files.filter((f) => f.startsWith('sandbox-'))).toHaveLength(2);
 
-    backupDatabase(db, dir, 'garden', new Date(2026, 8, 30, 12, 0, 0));
+    backupDatabase(db, dir, 'garden', NOW);
     expect(readdirSync(dir).filter((f) => f.startsWith('garden-'))).toHaveLength(30);
+  });
+
+  it('6 órán belül nem készít újabb mentést (gyakori újraindításnál)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kert-backup-'));
+    const db = openDatabase(':memory:');
+    expect(backupDatabase(db, dir, 'garden', new Date())).not.toBeNull();
+    expect(backupDatabase(db, dir, 'garden', new Date(Date.now() + 60_000))).toBeNull();
+    expect(backupDatabase(db, dir, 'garden', new Date(Date.now() + 7 * 3600_000))).not.toBeNull();
+    expect(readdirSync(dir)).toHaveLength(2);
   });
 });

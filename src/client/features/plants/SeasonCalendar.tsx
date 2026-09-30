@@ -3,15 +3,8 @@ import { MONTHS_SHORT_HU, SEASON_LABEL, WINDOW_METHOD_LABEL } from '@shared/labe
 import { dayOfYear, SEGMENT_LABEL, windowSegments, type SegmentKind } from '@shared/domain/calendar.ts';
 import type { GrowingWindow } from '@shared/types.ts';
 import { todayISO } from '../../lib/format.ts';
+import { SEGMENT_COLOR } from './segmentColors.ts';
 import s from './SeasonCalendar.module.css';
-
-export const SEGMENT_COLOR: Record<SegmentKind, string> = {
-  vetes_talcaba: 'var(--c-purple)',
-  helyrevetes: 'var(--c-green)',
-  ultetes: 'var(--c-brown)',
-  kiultetes: 'var(--c-teal)',
-  betakaritas: 'var(--c-orange)',
-};
 
 interface Props {
   windows: GrowingWindow[];
