@@ -1,0 +1,37 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c);
+}
+.neutral {
+  background: var(--fill-4);
+  color: var(--label-2);
+}
+.good {
+  background: color-mix(in srgb, var(--c-green) 14%, transparent);
+  color: #1f7a36;
+}
+.bad {
+  background: color-mix(in srgb, var(--c-red) 12%, transparent);
+  color: #c4271d;
+}
+.warn {
+  background: color-mix(in srgb, var(--c-orange) 16%, transparent);
+  color: #b25f00;
+}
+.info {
+  background: color-mix(in srgb, var(--c-blue) 11%, transparent);
+  color: #0060d0;
+}

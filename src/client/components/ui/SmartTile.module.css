@@ -1,0 +1,73 @@
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 8px 8px;
+  border-radius: var(--radius-m);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
+  color: var(--label);
+  transition: background 0.15s, transform 0.2s var(--ease-out);
+  user-select: none;
+}
+.tile:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+.tile:active {
+  transform: scale(0.97);
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.count {
+  font-family: var(--font-rounded);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--label-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Kijelölve: a csempe felveszi a saját színét, mint az Emlékeztetőkben */
+.active {
+  background: var(--c);
+  color: #fff;
+  box-shadow: none;
+}
+.active:hover {
+  background: var(--c);
+}
+.active .label {
+  color: rgba(255, 255, 255, 0.92);
+}
+.active .icon > span {
+  background: #fff;
+  color: var(--c);
+}
+
+@media (max-width: 760px) {
+  .tile {
+    background: var(--bg-grouped-2);
+    padding: 10px 12px 10px 10px;
+    box-shadow: none;
+  }
+  .count {
+    font-size: 26px;
+    line-height: 30px;
+  }
+  .label {
+    font-size: 15px;
+  }
+}

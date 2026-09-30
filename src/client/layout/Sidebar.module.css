@@ -1,0 +1,174 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 16px);
+  margin: 8px 0 8px 8px;
+  padding: 12px 10px 10px;
+  overflow-y: auto;
+  border-radius: var(--radius-l);
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: var(--shadow-panel);
+  scrollbar-width: thin;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 10px;
+}
+
+.appIcon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  color: #fff;
+  background: linear-gradient(180deg, #4cd964, var(--tint));
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+}
+
+.appName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.year {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--tint);
+}
+.year select {
+  appearance: none;
+  border: 0;
+  padding: 3px 22px 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tint-fill) 16%, transparent);
+  color: var(--tint);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.year svg {
+  position: absolute;
+  right: 8px;
+  pointer-events: none;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  margin: 0 2px 12px;
+  padding: 0 8px;
+  border-radius: var(--radius-s);
+  background: var(--fill-3);
+  color: var(--label-2);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+}
+.search input::placeholder {
+  color: var(--label-2);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.heading {
+  margin: 18px 0 4px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--label-2);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding: 14px 10px 4px;
+  font-size: 13px;
+  color: var(--label-2);
+}
+.add:hover {
+  color: var(--label);
+}
+
+/* Telefonon a sáv maga a gyökérképernyő (mint az iPhone-os Emlékeztetők) */
+@media (max-width: 760px) {
+  .sidebar {
+    height: auto;
+    min-height: 100dvh;
+    margin: 0;
+    padding: max(12px, env(safe-area-inset-top)) 16px 32px;
+    border-radius: 0;
+    background: var(--bg-grouped);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+  }
+  .brand {
+    padding: 4px 0 12px;
+  }
+  .appName {
+    font-size: 17px;
+  }
+  .year select {
+    font-size: 15px;
+    padding: 5px 26px 5px 12px;
+  }
+  .search {
+    height: 36px;
+    margin: 0 0 16px;
+    border-radius: 10px;
+  }
+  .search input {
+    font-size: 17px;
+  }
+  .tiles {
+    gap: 12px;
+    padding: 0;
+  }
+  .heading {
+    margin: 26px 0 8px;
+    padding: 0 4px;
+    font-size: 22px;
+    color: var(--label);
+    letter-spacing: -0.01em;
+  }
+  .group {
+    gap: 0;
+    border-radius: var(--radius-m);
+    overflow: hidden;
+  }
+  .add {
+    margin-top: 20px;
+    padding: 0 4px;
+    font-size: 17px;
+    color: var(--tint);
+  }
+}

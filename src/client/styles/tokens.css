@@ -1,0 +1,67 @@
+/*
+ * Dizájntokenek – az Apple rendszerszíneit és tipográfiáját követik (világos téma).
+ * Sötét módhoz később elég ezeket a változókat felüldefiniálni.
+ */
+:root {
+  /* Rendszerszínek */
+  --c-red: #ff3b30;
+  --c-orange: #ff9500;
+  --c-yellow: #ffcc00;
+  --c-green: #34c759;
+  --c-mint: #00c7be;
+  --c-teal: #30b0c7;
+  --c-cyan: #32ade6;
+  --c-blue: #007aff;
+  --c-indigo: #5856d6;
+  --c-purple: #af52de;
+  --c-pink: #ff2d55;
+  --c-brown: #a2845e;
+  --c-gray: #8e8e93;
+
+  /* Alkalmazás-árnyalat: akadálymentes kertzöld szövegre, élénk zöld kitöltésre */
+  --tint: #248a3d;
+  --tint-fill: #34c759;
+
+  /* Címkék */
+  --label: #000000;
+  --label-2: rgba(60, 60, 67, 0.6);
+  --label-3: rgba(60, 60, 67, 0.3);
+  --label-4: rgba(60, 60, 67, 0.18);
+  --separator: rgba(60, 60, 67, 0.2);
+
+  /* Kitöltések */
+  --fill-1: rgba(120, 120, 128, 0.2);
+  --fill-2: rgba(120, 120, 128, 0.16);
+  --fill-3: rgba(118, 118, 128, 0.12);
+  --fill-4: rgba(116, 116, 128, 0.08);
+
+  /* Hátterek */
+  --bg: #ffffff;
+  --bg-grouped: #f2f2f7;
+  --bg-grouped-2: #ffffff;
+  --sidebar-bg: rgba(242, 242, 245, 0.82);
+
+  /* Formák */
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 18px;
+  --hairline: 0.5px;
+  --shadow-panel: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 10px 30px -12px rgba(0, 0, 0, 0.12);
+  --shadow-sheet: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 30px 80px -20px rgba(0, 0, 0, 0.35);
+
+  /* Tipográfia */
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Helvetica Neue', system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro', 'Helvetica Neue', system-ui, sans-serif;
+  --font-rounded: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --page-pad: 28px;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --page-pad: 16px;
+  }
+}

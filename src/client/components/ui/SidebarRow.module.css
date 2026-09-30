@@ -1,0 +1,78 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 4px 10px 4px 7px;
+  border-radius: var(--radius-s);
+  color: var(--label);
+  user-select: none;
+}
+.row:hover {
+  background: var(--fill-4);
+}
+.active,
+.active:hover {
+  background: var(--fill-2);
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.count {
+  font-size: 13px;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.chevron {
+  display: none;
+}
+
+/* Telefonon: inset grouped cella elválasztóval */
+@media (max-width: 760px) {
+  .row {
+    min-height: 48px;
+    padding: 0 16px 0 14px;
+    gap: 12px;
+    border-radius: 0;
+    background: var(--bg-grouped-2);
+    position: relative;
+  }
+  .row:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 54px;
+    right: 0;
+    bottom: 0;
+    height: var(--hairline);
+    background: var(--separator);
+  }
+  .row:hover,
+  .active,
+  .active:hover {
+    background: var(--bg-grouped-2);
+  }
+  .row:active {
+    background: var(--fill-3);
+  }
+  .label {
+    font-size: 17px;
+  }
+  .count {
+    font-size: 17px;
+  }
+  .chevron {
+    display: block;
+    margin-left: -2px;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--label-3);
+  }
+}

@@ -1,0 +1,20 @@
+.app {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  height: 100dvh;
+}
+
+.main {
+  height: 100dvh;
+  overflow-y: auto;
+  padding-bottom: 48px;
+  background: var(--bg);
+}
+
+@media (max-width: 760px) {
+  .main {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+}

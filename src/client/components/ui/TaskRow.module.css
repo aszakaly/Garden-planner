@@ -1,0 +1,66 @@
+.row {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding-left: var(--page-pad);
+}
+.row:hover .info {
+  opacity: 1;
+}
+
+.check {
+  padding-top: 10px;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  padding: 11px var(--page-pad) 10px 0;
+  border-bottom: var(--hairline) solid var(--separator);
+}
+
+.hasInfo .body {
+  padding-right: calc(var(--page-pad) + 28px);
+}
+
+.title {
+  font-size: 15px;
+  line-height: 20px;
+  transition: color 0.25s;
+}
+.done .title {
+  color: var(--label-2);
+}
+
+.meta {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--label-2);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.info {
+  position: absolute;
+  right: calc(var(--page-pad) - 6px);
+  top: 9px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--c-blue);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+@media (hover: none) {
+  .info {
+    opacity: 1;
+  }
+}

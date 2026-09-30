@@ -1,0 +1,10 @@
+node_modules/
+dist/
+data/*.db
+data/*.db-*
+data/backups/
+.DS_Store
+*.log
+test-results/
+playwright-report/
+.vite/

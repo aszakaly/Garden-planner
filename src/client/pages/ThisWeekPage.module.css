@@ -1,0 +1,11 @@
+.page {
+  max-width: 920px;
+}
+
+.overdue {
+  color: var(--c-red);
+}
+
+.bed {
+  font-weight: 500;
+}
