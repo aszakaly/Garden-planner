@@ -1,0 +1,14 @@
+.page {
+  max-width: 920px;
+  padding-bottom: 32px;
+}
+.muted {
+  padding: 16px var(--page-pad);
+  color: var(--label-2);
+}
+.notes {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

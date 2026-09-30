@@ -48,3 +48,9 @@ export function relativeDayLabel(iso: string, today = todayISO()): string {
   const w = formatWeekday(iso);
   return w.charAt(0).toUpperCase() + w.slice(1);
 }
+
+/** Határozott névelő a szó elé: „a paradicsom”, „az uborka”. */
+export function withArticle(word: string, capitalize = false): string {
+  const article = /^[aáeéiíoóöőuúüű]/i.test(word.trim()) ? 'az' : 'a';
+  return `${capitalize ? article.charAt(0).toUpperCase() + article.slice(1) : article} ${word}`;
+}

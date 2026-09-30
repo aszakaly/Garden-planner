@@ -8,7 +8,6 @@ import {
   Leaf,
   ListTodo,
   Plus,
-  Rows3,
   Search,
   Settings,
   Sprout,
@@ -17,13 +16,16 @@ import {
 import { Link } from 'react-router';
 import { SmartTile } from '../components/ui/SmartTile.tsx';
 import { SidebarRow } from '../components/ui/SidebarRow.tsx';
+import { BED_ICON } from '../lib/beds.ts';
 import { colorVar } from '../lib/colors.ts';
+import { useBeds } from '../lib/queries.ts';
 import { useYear } from '../lib/year.tsx';
-import { MOCK_BEDS, MOCK_COUNTS } from '../mock/checkpoint.ts';
+import { MOCK_COUNTS } from '../mock/checkpoint.ts';
 import s from './Sidebar.module.css';
 
 export function Sidebar() {
   const { year, setYear } = useYear();
+  const { data: beds = [] } = useBeds(year, true);
   const thisYear = new Date().getFullYear();
   const years = Array.from({ length: 9 }, (_, i) => thisYear - 6 + i);
 
@@ -81,16 +83,17 @@ export function Sidebar() {
 
       <h2 className={s.heading}>Kertem</h2>
       <div className={s.group}>
-        {MOCK_BEDS.map((bed) => (
+        {beds.map((bed) => (
           <SidebarRow
             key={bed.id}
             to={`/agyas/${bed.id}`}
-            icon={Rows3}
+            icon={BED_ICON[bed.bed_type]}
             color={colorVar(bed.color)}
             label={bed.name}
-            count={bed.plantings}
+            count={bed.planting_count}
           />
         ))}
+        {beds.length === 0 && <p className={s.empty}>A kiválasztott évben nincs használt ágyás.</p>}
       </div>
 
       <h2 className={s.heading}>Adatok</h2>

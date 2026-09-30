@@ -1,5 +1,15 @@
 import { z } from 'zod';
-import { DATA_STATUS, ROTATION_STAGES, SEASONS, SUN_VALUES, WINDOW_METHODS } from './labels.ts';
+import {
+  BED_TYPES,
+  DATA_STATUS,
+  LIST_COLOR_NAMES,
+  ROTATION_STAGES,
+  ROW_DIRECTIONS,
+  SEASONS,
+  SEED_ORIGINS,
+  SUN_VALUES,
+  WINDOW_METHODS,
+} from './labels.ts';
 
 export const monthDay = z
   .string()
@@ -110,3 +120,58 @@ export const companionInput = z
   })
   .refine((c) => c.plant_a_id !== c.plant_b_id, { message: 'Két különböző növény kell', path: ['plant_b_id'] });
 export type CompanionInput = z.infer<typeof companionInput>;
+
+const year = z.number().int().min(1950, 'Érvénytelen év').max(2200, 'Érvénytelen év');
+
+export const seedStockInput = z
+  .object({
+    /** Meglévő fajta … */
+    variety_id: z.number().int().nullish(),
+    /** … vagy új fajta a növény és a név alapján (ha már létezik ilyen nevű, azt használja) */
+    plant_id: z.number().int().nullish(),
+    variety_name: optText(100),
+    supplier: optText(150),
+    origin_type: z.enum(SEED_ORIGINS).default('vasarolt'),
+    vintage_year: year.nullish(),
+    in_stock: z.boolean().default(true),
+    quantity: optText(100),
+    notes: optText(2000),
+  })
+  .refine((s) => s.variety_id || (s.plant_id && s.variety_name), {
+    message: 'Válassz fajtát, vagy adj meg új fajtanevet',
+    path: ['variety_name'],
+  });
+export type SeedStockInput = z.infer<typeof seedStockInput>;
+
+export const gardenInput = z.object({
+  name: text(100).min(1, 'Név megadása kötelező'),
+  location: optText(200),
+  notes: optText(2000),
+});
+export type GardenInput = z.infer<typeof gardenInput>;
+
+export const bedInput = z
+  .object({
+    garden_id: z.number().int().optional(),
+    name: text(100).min(1, 'Név megadása kötelező'),
+    color: z.enum(LIST_COLOR_NAMES).default('green'),
+    length_cm: z.number({ error: 'A hossz megadása kötelező' }).int().min(10, 'Legalább 10 cm').max(100_000),
+    width_cm: z.number({ error: 'A szélesség megadása kötelező' }).int().min(10, 'Legalább 10 cm').max(100_000),
+    row_direction: z.enum(ROW_DIRECTIONS).default('keresztben'),
+    pos_x_cm: z.number().int().nullish(),
+    pos_y_cm: z.number().int().nullish(),
+    rotation_deg: z.number().int().min(0).max(359).default(0),
+    bed_type: z.enum(BED_TYPES).default('foldagyas'),
+    sun: z.enum(SUN_VALUES).nullish(),
+    soil: optText(500),
+    irrigation: optText(200),
+    notes: optText(4000),
+    active_from_year: year.nullish(),
+    active_to_year: year.nullish(),
+    sort_order: z.number().int().min(0).max(9999).default(0),
+  })
+  .refine((b) => !b.active_from_year || !b.active_to_year || b.active_from_year <= b.active_to_year, {
+    message: 'A használat vége nem lehet korábbi a kezdeténél',
+    path: ['active_to_year'],
+  });
+export type BedInput = z.infer<typeof bedInput>;

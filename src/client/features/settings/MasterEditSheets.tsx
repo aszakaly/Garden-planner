@@ -53,7 +53,7 @@ export function FamilyEditSheet({ open, onClose, item }: Props<PlantFamily>) {
         </FormRow>
       </FormGroup>
       <FormGroup title="Megjegyzés">
-        <FormRow label="Megjegyzés" stacked>
+        <FormRow label="Megjegyzés" stacked hideLabel>
           <TextArea rows={3} value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} />
         </FormRow>
       </FormGroup>

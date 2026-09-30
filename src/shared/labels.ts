@@ -49,6 +49,37 @@ export const DATA_STATUS_LABEL: Record<DataStatus, string> = {
 
 export const RELATION_LABEL: Record<-1 | 0 | 1, string> = { 1: 'Kedvező', 0: 'Semleges', [-1]: 'Kerülendő' };
 
+export const SEED_ORIGINS = ['vasarolt', 'sajat', 'csere'] as const;
+export type SeedOrigin = (typeof SEED_ORIGINS)[number];
+export const SEED_ORIGIN_LABEL: Record<SeedOrigin, string> = {
+  vasarolt: 'Vásárolt',
+  sajat: 'Saját fogású',
+  csere: 'Csere / ajándék',
+};
+
+export const BED_TYPES = ['foldagyas', 'emelt', 'folia', 'uveghaz', 'cserep'] as const;
+export type BedType = (typeof BED_TYPES)[number];
+export const BED_TYPE_LABEL: Record<BedType, string> = {
+  foldagyas: 'Földágyás',
+  emelt: 'Emelt ágyás',
+  folia: 'Fóliasátor',
+  uveghaz: 'Üvegház',
+  cserep: 'Cserép / láda',
+};
+
+export const ROW_DIRECTIONS = ['keresztben', 'hosszaban'] as const;
+export type RowDirection = (typeof ROW_DIRECTIONS)[number];
+export const ROW_DIRECTION_LABEL: Record<RowDirection, string> = {
+  keresztben: 'Keresztben',
+  hosszaban: 'Hosszában',
+};
+
+/** Az ágyásokhoz választható színek (Apple rendszerszínek nevei). */
+export const LIST_COLOR_NAMES = [
+  'red', 'orange', 'yellow', 'green', 'mint', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink', 'brown', 'gray',
+] as const;
+export type ListColorName = (typeof LIST_COLOR_NAMES)[number];
+
 export const MONTHS_HU = [
   'január', 'február', 'március', 'április', 'május', 'június',
   'július', 'augusztus', 'szeptember', 'október', 'november', 'december',

@@ -1,0 +1,20 @@
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 0;
+}
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.swatch:hover {
+  transform: scale(1.08);
+}
+.selected {
+  box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px color-mix(in srgb, var(--c) 70%, transparent);
+}

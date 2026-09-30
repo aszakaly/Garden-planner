@@ -1,5 +1,5 @@
 import { networkInterfaces, hostname } from 'node:os';
-import { join, dirname } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDatabase } from './db/index.ts';
 import { backupDatabase } from './db/backup.ts';
@@ -13,7 +13,7 @@ const DB_PATH = process.env.KERT_DB ?? join(ROOT, 'data', 'garden.db');
 
 const db = openDatabase(DB_PATH);
 const seeded = seedIfEmpty(db);
-const backup = backupDatabase(db, join(dirname(DB_PATH), 'backups'));
+const backup = backupDatabase(db, join(dirname(DB_PATH), 'backups'), basename(DB_PATH, '.db'));
 
 const production = process.env.NODE_ENV === 'production';
 const app = buildApp({ db, clientDir: production ? join(ROOT, 'dist', 'client') : undefined });

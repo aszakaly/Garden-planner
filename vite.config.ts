@@ -15,6 +15,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    proxy: { '/api': 'http://localhost:4321' },
+    // Az API portja a szerverével azonos környezeti változóból jön (homokozóhoz)
+    proxy: { '/api': `http://localhost:${process.env.KERT_PORT ?? 4321}` },
   },
 });

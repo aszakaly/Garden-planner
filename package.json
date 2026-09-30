@@ -11,6 +11,7 @@
     "dev": "concurrently -k -n server,client -c green,blue \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite",
+    "dev:sandbox": "KERT_PORT=4331 KERT_DB=data/sandbox.db concurrently -k -n server,client -c green,blue \"tsx watch src/server/index.ts\" \"vite --port 5180 --strictPort\"",
     "build": "vite build",
     "start": "npm run build && NODE_ENV=production tsx src/server/index.ts",
     "test": "vitest run",

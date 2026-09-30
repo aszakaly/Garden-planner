@@ -1,4 +1,71 @@
-import type { DataStatus, NutrientGroup, RotationStage, Season, Sun, WindowMethod } from './labels.ts';
+import type {
+  BedType,
+  DataStatus,
+  ListColorName,
+  NutrientGroup,
+  RotationStage,
+  RowDirection,
+  Season,
+  SeedOrigin,
+  Sun,
+  WindowMethod,
+} from './labels.ts';
+import type { SeedViability } from './domain/seeds.ts';
+
+export interface SeedStock {
+  id: number;
+  variety_id: number;
+  supplier: string | null;
+  origin_type: SeedOrigin;
+  vintage_year: number | null;
+  in_stock: boolean;
+  quantity: string | null;
+  notes: string | null;
+}
+
+export interface SeedStockListItem extends SeedStock {
+  variety_name: string;
+  plant_id: number;
+  plant_name: string;
+  seed_viability_years: number | null;
+  /** Csírázóképesség az aktuális évben */
+  viability: SeedViability;
+}
+
+export interface Garden {
+  id: number;
+  name: string;
+  location: string | null;
+  notes: string | null;
+}
+
+export interface Bed {
+  id: number;
+  garden_id: number;
+  name: string;
+  color: ListColorName;
+  length_cm: number;
+  width_cm: number;
+  row_direction: RowDirection;
+  pos_x_cm: number | null;
+  pos_y_cm: number | null;
+  rotation_deg: number;
+  bed_type: BedType;
+  sun: Sun | null;
+  soil: string | null;
+  irrigation: string | null;
+  notes: string | null;
+  active_from_year: number | null;
+  active_to_year: number | null;
+  sort_order: number;
+}
+
+export interface BedListItem extends Bed {
+  /** Az adott év ültetéseinek száma */
+  planting_count: number;
+  /** Az adott évben használatban van-e */
+  active: boolean;
+}
 
 export interface PlantFamily {
   id: number;
@@ -81,6 +148,9 @@ export interface Variety {
 
 export interface VarietyWithWindows extends Variety {
   windows: GrowingWindow[];
+  /** Készleten lévő vetőmagtételek száma és a legfrissebb évjárat */
+  stock_count: number;
+  latest_vintage: number | null;
 }
 
 export interface VarietyListItem extends Variety {

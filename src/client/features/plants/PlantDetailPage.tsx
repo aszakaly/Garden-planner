@@ -1,5 +1,5 @@
-import { CheckCircle2, Pencil, Plus, Snowflake, Sprout } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { CheckCircle2, Pencil, Snowflake, Sprout } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
   DATA_STATUS_LABEL,
@@ -9,6 +9,7 @@ import {
 } from '@shared/labels.ts';
 import type { CompanionView, GrowingWindow, Variety } from '@shared/types.ts';
 import { Chip } from '../../components/ui/Chip.tsx';
+import { AddButton, Block, Fact, FactGrid } from '../../components/ui/Detail.tsx';
 import { PageHeader, ToolbarButton } from '../../components/ui/PageHeader.tsx';
 import { api } from '../../lib/api.ts';
 import { qk, useApiMutation, usePlantDetail, useSettings } from '../../lib/queries.ts';
@@ -88,7 +89,7 @@ export function PlantDetailPage() {
         </div>
       )}
 
-      <div className={s.facts}>
+      <FactGrid>
         <Fact label="Család" value={family?.name_hu} detail={family ? `${family.rotation_gap_years} év vetésforgó-szünet` : undefined} />
         <Fact label="Zöldségcsoport" value={crop_group?.name_hu} />
         <Fact label="Vetésforgó-szakasz" value={plant.rotation_stage ? ROTATION_STAGE_LABEL[plant.rotation_stage] : 'Vetésforgón kívül'} />
@@ -104,7 +105,7 @@ export function PlantDetailPage() {
         />
         <Fact label="Fényigény" value={plant.sun ? SUN_LABEL[plant.sun] : undefined} />
         <Fact label="Csírázóképesség" value={plant.seed_viability_years ? `${plant.seed_viability_years} év` : undefined} />
-      </div>
+      </FactGrid>
 
       <Block
         title="Termesztési naptár"
@@ -162,11 +163,16 @@ export function PlantDetailPage() {
                   {v.description && <span className={s.varietyDesc}>{v.description}</span>}
                 </span>
                 {v.days_to_harvest && <span className={s.varietyMeta}>{v.days_to_harvest} nap</span>}
+                {v.stock_count > 0 && (
+                  <Chip tone="good">
+                    Vetőmag készleten{v.latest_vintage ? ` · ${v.latest_vintage}` : ''}
+                  </Chip>
+                )}
               </button>
             ))}
           </div>
         ) : (
-          <p className={s.muted}>Még nincs rögzített fajta. A vetőmagkészletnél is felvehetsz fajtát.</p>
+          <p className={s.muted}>Még nincs rögzített fajta. Vetőmag felvételekor is létrehozhatsz fajtát.</p>
         )}
       </Block>
 
@@ -204,37 +210,6 @@ export function PlantDetailPage() {
         companion={editing?.kind === 'companion' ? editing.companion : undefined}
       />
     </div>
-  );
-}
-
-function Fact({ label, value, detail }: { label: string; value?: string | null; detail?: string }) {
-  return (
-    <div className={s.fact}>
-      <span className={s.factLabel}>{label}</span>
-      <span className={value ? s.factValue : `${s.factValue} ${s.factEmpty}`}>{value ?? '—'}</span>
-      {detail && <span className={s.factDetail}>{detail}</span>}
-    </div>
-  );
-}
-
-function Block({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
-  return (
-    <section className={s.block}>
-      <header className={s.blockHeader}>
-        <h2>{title}</h2>
-        {action}
-      </header>
-      {children}
-    </section>
-  );
-}
-
-function AddButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return (
-    <button type="button" className={s.addButton} onClick={onClick}>
-      <Plus size={15} strokeWidth={2.6} />
-      {children}
-    </button>
   );
 }
 

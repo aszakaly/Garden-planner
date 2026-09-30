@@ -1,0 +1,31 @@
+.figure {
+  margin: 0;
+}
+.svg {
+  display: block;
+  width: 100%;
+  max-width: 700px;
+  height: auto;
+  max-height: 280px;
+}
+.bed {
+  fill: color-mix(in srgb, var(--c) 12%, white);
+  stroke: var(--c);
+  stroke-width: 1.5;
+}
+.row {
+  stroke: color-mix(in srgb, var(--c) 45%, white);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  stroke-linecap: round;
+}
+.dim {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--label-2);
+}
+.caption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--label-2);
+}

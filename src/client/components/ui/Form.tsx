@@ -14,10 +14,21 @@ export function FormGroup({ title, footer, children }: { title?: ReactNode; foot
 }
 
 /** Egy sor: felirat balra, vezérlő jobbra. */
-export function FormRow({ label, children, stacked }: { label: ReactNode; children: ReactNode; stacked?: boolean }) {
+export function FormRow({
+  label,
+  children,
+  stacked,
+  hideLabel,
+}: {
+  label: ReactNode;
+  children: ReactNode;
+  stacked?: boolean;
+  /** A felirat csak képernyőolvasónak (pl. ha a csoport címe már elmondja) */
+  hideLabel?: boolean;
+}) {
   return (
     <label className={`${s.row} ${stacked ? s.stacked : ''}`}>
-      <span className={s.label}>{label}</span>
+      <span className={hideLabel ? 'visually-hidden' : s.label}>{label}</span>
       <span className={s.control}>{children}</span>
     </label>
   );

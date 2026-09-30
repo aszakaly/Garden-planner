@@ -129,7 +129,7 @@ export function WindowEditSheet({ open, onClose, plantId, varietyId, window: w }
       </FormGroup>
 
       <FormGroup title="Megjegyzés">
-        <FormRow label="Megjegyzés" stacked>
+        <FormRow label="Megjegyzés" stacked hideLabel>
           <TextArea rows={2} value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} />
         </FormRow>
       </FormGroup>

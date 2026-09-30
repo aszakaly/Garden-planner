@@ -144,9 +144,17 @@ export function getPlantDetail(db: DB, id: number): PlantDetail {
     : null;
   const windows = db.prepare('SELECT * FROM growing_window WHERE plant_id = ? ORDER BY id').all(id).map(mapWindow);
   const varieties = (
-    db.prepare('SELECT * FROM variety WHERE plant_id = ? ORDER BY name COLLATE NOCASE').all(id) as unknown as Variety[]
+    db
+      .prepare(
+        `SELECT v.*,
+                (SELECT COUNT(*) FROM seed_stock s WHERE s.variety_id = v.id AND s.in_stock = 1) AS stock_count,
+                (SELECT MAX(vintage_year) FROM seed_stock s WHERE s.variety_id = v.id AND s.in_stock = 1) AS latest_vintage
+         FROM variety v WHERE v.plant_id = ? ORDER BY v.name COLLATE NOCASE`,
+      )
+      .all(id) as unknown as (Variety & { stock_count: number; latest_vintage: number | null })[]
   ).map((v) => ({
     ...v,
+    stock_count: Number(v.stock_count),
     windows: db.prepare('SELECT * FROM growing_window WHERE variety_id = ? ORDER BY id').all(v.id).map(mapWindow),
   }));
   return { plant, family, crop_group, windows, varieties, companions: listCompanionsFor(db, id) };

@@ -210,7 +210,7 @@ export function PlantEditSheet({ open, onClose, plant }: Props) {
       </FormGroup>
 
       <FormGroup title="Megjegyzés">
-        <FormRow label="Megjegyzés" stacked>
+        <FormRow label="Megjegyzés" stacked hideLabel>
           <TextArea value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} placeholder="Termesztési tudnivalók" />
         </FormRow>
       </FormGroup>

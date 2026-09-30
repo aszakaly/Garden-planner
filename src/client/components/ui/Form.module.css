@@ -80,6 +80,11 @@
 .textarea:focus {
   color: var(--label);
 }
+/* A kurzor jelzi a fókuszt – iOS-űrlapokon nincs keret */
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: none;
+}
 .input::placeholder,
 .textarea::placeholder {
   color: var(--label-3);
