@@ -1,0 +1,31 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 16px 0;
+}
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.icon {
+  flex: none;
+  margin-top: 1px;
+}
+.info {
+  background: color-mix(in srgb, var(--c-blue) 9%, white);
+  color: #0a4fa8;
+}
+.figyelem {
+  background: color-mix(in srgb, var(--c-orange) 13%, white);
+  color: #8a4a00;
+}
+.kerulendo {
+  background: color-mix(in srgb, var(--c-red) 10%, white);
+  color: #b3261e;
+}

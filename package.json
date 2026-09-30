@@ -12,6 +12,7 @@
     "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite",
     "dev:sandbox": "KERT_PORT=4331 KERT_DB=data/sandbox.db concurrently -k -n server,client -c green,blue \"tsx watch src/server/index.ts\" \"vite --port 5180 --strictPort\"",
+    "dev:uitest": "KERT_PORT=4341 KERT_DB=data/uitest.db concurrently -k -n server,client -c green,blue \"tsx watch src/server/index.ts\" \"vite --port 5190 --strictPort\"",
     "build": "vite build",
     "start": "npm run build && NODE_ENV=production tsx src/server/index.ts",
     "test": "vitest run",

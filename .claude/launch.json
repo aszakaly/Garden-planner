@@ -18,6 +18,15 @@
         "dev:sandbox"
       ],
       "port": 5180
+    },
+    {
+      "name": "kerttervezo-uitest",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:uitest"
+      ],
+      "port": 5190
     }
   ]
 }

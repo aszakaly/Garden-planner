@@ -1,14 +1,27 @@
 import { Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { BED_TYPE_LABEL, ROW_DIRECTION_LABEL, SUN_LABEL } from '@shared/labels.ts';
-import { Block, Fact, FactGrid, Muted } from '../../components/ui/Detail.tsx';
+import { findClashes } from '@shared/domain/geometry.ts';
+import { DEFAULT_SETTINGS } from '@shared/settings.ts';
+import type { PlantingListItem } from '@shared/types.ts';
+import { AddButton, Block, Fact, FactGrid, Muted } from '../../components/ui/Detail.tsx';
+import { NoticeList } from '../../components/ui/Notice.tsx';
 import { PageHeader, ToolbarButton } from '../../components/ui/PageHeader.tsx';
 import { formatArea, formatDimensions } from '../../lib/beds.ts';
 import { colorVar } from '../../lib/colors.ts';
-import { useBed } from '../../lib/queries.ts';
+import { cropColor } from '../../lib/cropColors.ts';
+import { formatDay } from '../../lib/format.ts';
+import { useBed, usePlantings, useSettings } from '../../lib/queries.ts';
 import { useYear } from '../../lib/year.tsx';
-import { BedDiagram } from './BedDiagram.tsx';
+import { shortDate } from '@shared/domain/isoDate.ts';
+import { BedTimeline } from '../plan/BedTimeline.tsx';
+import { PlantingEditSheet } from '../plan/PlantingEditSheet.tsx';
+import { PlantingRow } from '../plan/PlantingRow.tsx';
+import { TimelineLegend } from '../plan/TimelineLegend.tsx';
+import { byStart, clashesByPlanting, effectiveBedId, placedInBed, plantingTitle } from '../plan/plantingView.ts';
+import { defaultCursor } from '../plan/timeScale.ts';
+import { BedDiagram, type Strip } from './BedDiagram.tsx';
 import { BedEditSheet } from './BedEditSheet.tsx';
 import s from './BedPage.module.css';
 
@@ -16,7 +29,19 @@ export function BedPage() {
   const id = Number(useParams().id);
   const { year } = useYear();
   const { data: bed, isLoading, error } = useBed(id);
+  const { data: plantings = [] } = usePlantings(year);
+  const { data: settings } = useSettings();
   const [editing, setEditing] = useState(false);
+  const [plantingEdit, setPlantingEdit] = useState<PlantingListItem | 'new' | null>(null);
+  const [cursor, setCursor] = useState<string | null>(null);
+
+  const view = useMemo(() => {
+    if (!bed) return null;
+    const mine = plantings.filter((p) => effectiveBedId(p) === bed.id).sort(byStart);
+    const placed = placedInBed(plantings, bed);
+    const clashes = findClashes(placed);
+    return { mine, placed, clashes, clashMap: clashesByPlanting(mine, [bed]) };
+  }, [plantings, bed]);
 
   if (isLoading) return <PageHeader title="Ágyás" back={{ to: '/kert', label: 'Kert' }} />;
   if (error || !bed) {
@@ -31,6 +56,21 @@ export function BedPage() {
   }
 
   const color = colorVar(bed.color);
+  const day = cursor && cursor.startsWith(String(year)) ? cursor : defaultCursor(year);
+  // Csak az a sáv piros, amelyik a kiválasztott napon ténylegesen ütközik
+  const clashIds = new Set(
+    view?.clashes.filter((c) => c.period.start <= day && day < c.period.end).flatMap((c) => [c.a, c.b]),
+  );
+  const stripsAtDay: Strip[] = (view?.placed ?? [])
+    .filter((o) => o.period.start <= day && day < o.period.end)
+    .map((o) => ({
+      key: o.id,
+      placement: o.placement,
+      label: o.planting.plant_name,
+      color: cropColor(o.planting.crop_group_code),
+      variant: clashIds.has(o.id) ? 'clash' : 'normal',
+      onClick: () => setPlantingEdit(o.planting),
+    }));
   const inUse =
     bed.active_from_year || bed.active_to_year
       ? `${bed.active_from_year ?? '…'} – ${bed.active_to_year ?? 'jelenleg is'}`
@@ -65,15 +105,73 @@ export function BedPage() {
         />
       </FactGrid>
 
-      <Block title="Felülnézet">
-        <BedDiagram lengthCm={bed.length_cm} widthCm={bed.width_cm} rowDirection={bed.row_direction} color={bed.color} />
+      <Block title={`Idővonal ${year}`}>
+        {view && view.placed.length > 0 ? (
+          <>
+            <BedTimeline
+              year={year}
+              bed={bed}
+              items={view.placed}
+              clashes={view.clashes}
+              frost={settings ?? DEFAULT_SETTINGS}
+              cursor={day}
+              onPickDate={setCursor}
+              onSelect={setPlantingEdit}
+            />
+            <TimelineLegend plantings={view.placed.map((o) => o.planting)} tray />
+            <NoticeList
+              items={view.clashes.map((c) => {
+                const a = view.placed.find((o) => o.id === c.a)!.planting;
+                const b = view.placed.find((o) => o.id === c.b)!.planting;
+                return {
+                  level: 'figyelem' as const,
+                  message: `Helyütközés ${shortDate(c.period.start)} – ${shortDate(c.period.end)}: ${plantingTitle(a)} és ${plantingTitle(b)} ugyanazt a sávot foglalná.`,
+                };
+              })}
+            />
+          </>
+        ) : (
+          <Muted>
+            Itt látszik majd, mikor melyik rész foglalt: vízszintesen az év hónapjai, függőlegesen az ágyás hossza.
+            Vegyél fel egy ültetést dátumokkal és elhelyezéssel.
+          </Muted>
+        )}
       </Block>
 
-      <Block title={`Ültetések ${year}`}>
-        <Muted>
-          Az éves tervben itt helyezed el a növényeket sávokban: idővonalon látszik, mikor melyik rész foglalt, és
-          mi követheti egymást ugyanazon a helyen.
-        </Muted>
+      <Block title={`Felülnézet · ${formatDay(day)}`}>
+        <BedDiagram
+          lengthCm={bed.length_cm}
+          widthCm={bed.width_cm}
+          rowDirection={bed.row_direction}
+          color={bed.color}
+          strips={stripsAtDay}
+          caption={
+            view && view.placed.length > 0
+              ? stripsAtDay.length
+                ? `${formatDay(day)}: ${stripsAtDay.map((x) => x.label).join(', ')}. Az idővonalra kattintva másik napot választhatsz.`
+                : `${formatDay(day)}: az ágyás üres. Az idővonalra kattintva másik napot választhatsz.`
+              : undefined
+          }
+        />
+      </Block>
+
+      <Block title={`Ültetések ${year}`} action={<AddButton onClick={() => setPlantingEdit('new')}>Új ültetés</AddButton>}>
+        {view && view.mine.length > 0 ? (
+          <div className={s.list}>
+            {view.mine.map((p) => (
+              <PlantingRow
+                key={p.id}
+                planting={p}
+                year={year}
+                bed={bed}
+                clashes={view.clashMap.get(p.id)}
+                onOpen={() => setPlantingEdit(p)}
+              />
+            ))}
+          </div>
+        ) : (
+          <Muted>Ebben az évben még nincs ültetés ebben az ágyásban.</Muted>
+        )}
       </Block>
 
       <Block title="Előzmények (vetésforgó)">
@@ -87,6 +185,13 @@ export function BedPage() {
       )}
 
       <BedEditSheet open={editing} onClose={() => setEditing(false)} bed={bed} />
+      <PlantingEditSheet
+        open={plantingEdit !== null}
+        onClose={() => setPlantingEdit(null)}
+        planting={plantingEdit && plantingEdit !== 'new' ? plantingEdit : undefined}
+        bedId={bed.id}
+        year={year}
+      />
     </div>
   );
 }

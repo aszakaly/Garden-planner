@@ -1,0 +1,95 @@
+.page {
+  max-width: 1040px;
+  padding-bottom: 32px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px var(--page-pad) 0;
+}
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-m);
+  background: var(--bg-grouped);
+}
+.statValue {
+  font-family: var(--font-rounded);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.statLabel {
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--label-2);
+}
+.warn .statValue {
+  color: #b25f00;
+}
+.bad .statValue {
+  color: var(--c-red);
+}
+
+.timeline {
+  margin: 18px var(--page-pad) 0;
+  padding: 12px 14px 12px;
+  border-radius: var(--radius-l);
+  background: var(--bg-grouped-2);
+  box-shadow: var(--shadow-panel);
+}
+
+.controls {
+  padding: 18px var(--page-pad) 0;
+}
+.controls > * {
+  max-width: 320px;
+}
+
+.sectionLink {
+  color: inherit;
+  text-decoration: none;
+}
+.sectionLink:hover {
+  color: var(--tint);
+}
+
+.empty {
+  margin: 40px auto 0;
+  max-width: 460px;
+  padding: 0 var(--page-pad);
+  text-align: center;
+  color: var(--label-2);
+  font-size: 14px;
+}
+.emptyTitle {
+  margin-bottom: 4px;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--label);
+}
+.emptyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--c-green);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+@media (max-width: 760px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .timeline {
+    padding: 10px 8px;
+  }
+}

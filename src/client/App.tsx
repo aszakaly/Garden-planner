@@ -9,6 +9,7 @@ import { SettingsPage } from './features/settings/SettingsPage.tsx';
 import { SeedsPage } from './features/seeds/SeedsPage.tsx';
 import { GardenPage } from './features/garden/GardenPage.tsx';
 import { BedPage } from './features/garden/BedPage.tsx';
+import { PlanPage } from './features/plan/PlanPage.tsx';
 
 function Home() {
   // Asztalon a „Ez a hét” nyílik; telefonon az elrendezés a listákat mutatja.
@@ -24,7 +25,7 @@ const router = createBrowserRouter([
       { path: 'het', element: <ThisWeekPage /> },
       { path: 'utemezett', element: <PlaceholderPage title="Ütemezett" color="var(--c-red)" step="6. lépésében" /> },
       { path: 'naptar', element: <PlaceholderPage title="Naptár" color="var(--c-indigo)" step="6. lépésében" /> },
-      { path: 'terv', element: <PlaceholderPage title="Éves terv" color="var(--c-green)" step="4. lépésében" /> },
+      { path: 'terv', element: <PlanPage /> },
       {
         path: 'figyelmeztetesek',
         element: <PlaceholderPage title="Figyelmeztetések" color="var(--c-orange)" step="5. lépésében" />,

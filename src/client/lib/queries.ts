@@ -9,6 +9,7 @@ import type {
   PlantDetail,
   PlantFamily,
   PlantListItem,
+  PlantingListItem,
   SeedStockListItem,
   VarietyListItem,
 } from '@shared/types.ts';
@@ -29,6 +30,8 @@ export const qk = {
   beds: ['beds'] as const,
   bedList: (year: number, activeOnly: boolean) => ['beds', 'list', year, activeOnly] as const,
   bed: (id: number) => ['beds', id] as const,
+  plantings: ['plantings'] as const,
+  plantingList: (year: number) => ['plantings', year] as const,
 };
 
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: () => api.get<Settings>('/settings') });
@@ -52,6 +55,12 @@ export const useBeds = (year: number, activeOnly = false) =>
   });
 export const useBed = (id: number) =>
   useQuery({ queryKey: qk.bed(id), queryFn: () => api.get<Bed>(`/beds/${id}`), enabled: id > 0 });
+
+export const usePlantings = (year: number) =>
+  useQuery({
+    queryKey: qk.plantingList(year),
+    queryFn: () => api.get<PlantingListItem[]>(`/plantings?year=${year}`),
+  });
 
 /** Mutáció, ami siker után a megadott lekérdezéseket érvényteleníti. */
 export function useApiMutation<TInput, TResult = unknown>(

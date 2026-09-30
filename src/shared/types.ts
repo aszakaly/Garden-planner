@@ -3,6 +3,8 @@ import type {
   DataStatus,
   ListColorName,
   NutrientGroup,
+  PlantingMethod,
+  PlantingStatus,
   RotationStage,
   RowDirection,
   Season,
@@ -174,4 +176,72 @@ export interface PlantDetail {
   windows: GrowingWindow[];
   varieties: VarietyWithWindows[];
   companions: CompanionView[];
+}
+
+export interface Planting {
+  id: number;
+  /** Az év, amelyikhez az ültetés tartozik (kötelező – gyors előzménynél is) */
+  year: number;
+  plant_id: number;
+  variety_id: number | null;
+  seed_stock_id: number | null;
+  bed_id: number | null;
+  /** Elhelyezés az ágyásban: sáv a tengely mentén és keresztirányban (cm) */
+  axis_start_cm: number | null;
+  axis_span_cm: number | null;
+  cross_start_cm: number | null;
+  cross_span_cm: number | null;
+  rows: number | null;
+  plant_count: number | null;
+  method: PlantingMethod | null;
+  window_id: number | null;
+  plan_sow_date: string | null;
+  plan_transplant_date: string | null;
+  plan_harvest_start: string | null;
+  plan_end_date: string | null;
+  actual_sow_date: string | null;
+  actual_transplant_date: string | null;
+  actual_harvest_start: string | null;
+  actual_end_date: string | null;
+  actual_bed_id: number | null;
+  actual_axis_start_cm: number | null;
+  actual_axis_span_cm: number | null;
+  actual_cross_start_cm: number | null;
+  actual_cross_span_cm: number | null;
+  status: PlantingStatus;
+  is_history: boolean;
+  series_id: string | null;
+  series_index: number | null;
+  eval_success: number | null;
+  eval_yield: string | null;
+  eval_recommend: 'igen' | 'nem' | 'talan' | null;
+  eval_notes: string | null;
+  notes: string | null;
+}
+
+export interface PlantingListItem extends Planting {
+  plant_name: string;
+  variety_name: string | null;
+  family_id: number | null;
+  family_name: string | null;
+  crop_group_id: number | null;
+  crop_group_code: string | null;
+  crop_group_name: string | null;
+  rotation_stage: RotationStage | null;
+  nutrient_group: NutrientGroup | null;
+  perennial: boolean;
+  frost_sensitive: boolean;
+  /** A fajta értékei, ha meg vannak adva, egyébként a növényé */
+  in_row_spacing_cm: number | null;
+  row_spacing_cm: number | null;
+  days_to_harvest: number | null;
+  harvest_duration_days: number | null;
+  /** A (tényleges, ha az eltér) ágyás neve és színe */
+  bed_name: string | null;
+  bed_color: ListColorName | null;
+  seed_vintage: number | null;
+  /** Van-e készleten vetőmag a fajtából (fajta nélkül: a növény bármely fajtájából) */
+  has_seed: boolean;
+  /** Az újravetés-sorozat tagjainak száma */
+  series_size: number | null;
 }

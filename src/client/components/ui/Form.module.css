@@ -100,6 +100,16 @@
   line-height: 1.4;
 }
 
+.date {
+  width: auto;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.date::-webkit-calendar-picker-indicator {
+  opacity: 0.45;
+  cursor: pointer;
+}
+
 .numberWrap {
   display: flex;
   align-items: baseline;

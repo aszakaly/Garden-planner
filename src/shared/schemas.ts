@@ -3,6 +3,7 @@ import {
   BED_TYPES,
   DATA_STATUS,
   LIST_COLOR_NAMES,
+  PLANTING_METHODS,
   ROTATION_STAGES,
   ROW_DIRECTIONS,
   SEASONS,
@@ -175,3 +176,44 @@ export const bedInput = z
     path: ['active_to_year'],
   });
 export type BedInput = z.infer<typeof bedInput>;
+
+export const isoDate = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, 'ÉÉÉÉ-HH-NN formátum kell');
+const cm = z.number().min(0).max(100_000);
+
+export const plantingInput = z.object({
+  year: z
+    .number({ error: 'Az év megadása kötelező' })
+    .int('Érvénytelen év')
+    .min(1900, 'Érvénytelen év')
+    .max(2200, 'Érvénytelen év'),
+  plant_id: z.number({ error: 'Válassz növényt' }).int(),
+  variety_id: z.number().int().nullish(),
+  seed_stock_id: z.number().int().nullish(),
+  bed_id: z.number().int().nullish(),
+  axis_start_cm: cm.nullish(),
+  axis_span_cm: cm.positive().nullish(),
+  cross_start_cm: cm.nullish(),
+  cross_span_cm: cm.positive().nullish(),
+  rows: z.number().int().min(1).max(1000).nullish(),
+  plant_count: z.number().int().min(0).max(1_000_000).nullish(),
+  method: z.enum(PLANTING_METHODS).nullish(),
+  window_id: z.number().int().nullish(),
+  plan_sow_date: isoDate.nullish(),
+  plan_transplant_date: isoDate.nullish(),
+  plan_harvest_start: isoDate.nullish(),
+  plan_end_date: isoDate.nullish(),
+  is_history: z.boolean().default(false),
+  notes: optText(4000),
+});
+export type PlantingInput = z.infer<typeof plantingInput>;
+
+/** Új ültetés, opcionálisan újravetés-sorozatként (a további tagok időben eltolva, szabad sávba kerülnek). */
+export const plantingCreateInput = plantingInput.extend({
+  series: z
+    .object({
+      count: z.number().int().min(2, 'Legalább 2 vetés kell').max(20, 'Legfeljebb 20 vetés'),
+      interval_days: z.number().int().min(1).max(180),
+    })
+    .nullish(),
+});
+export type PlantingCreateInput = z.infer<typeof plantingCreateInput>;

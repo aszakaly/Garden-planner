@@ -7,12 +7,16 @@ import {
   ROTATION_STAGE_LABEL,
   SUN_LABEL,
 } from '@shared/labels.ts';
-import type { CompanionView, GrowingWindow, Variety } from '@shared/types.ts';
+import type { CompanionView, GrowingWindow, PlantingListItem, Variety } from '@shared/types.ts';
 import { Chip } from '../../components/ui/Chip.tsx';
 import { AddButton, Block, Fact, FactGrid } from '../../components/ui/Detail.tsx';
 import { PageHeader, ToolbarButton } from '../../components/ui/PageHeader.tsx';
 import { api } from '../../lib/api.ts';
-import { qk, useApiMutation, usePlantDetail, useSettings } from '../../lib/queries.ts';
+import { qk, useApiMutation, useBeds, usePlantDetail, usePlantings, useSettings } from '../../lib/queries.ts';
+import { useYear } from '../../lib/year.tsx';
+import { PlantingEditSheet } from '../plan/PlantingEditSheet.tsx';
+import { PlantingRow } from '../plan/PlantingRow.tsx';
+import { byStart, effectiveBedId } from '../plan/plantingView.ts';
 import { CompanionEditSheet } from './CompanionEditSheet.tsx';
 import { PlantEditSheet } from './PlantEditSheet.tsx';
 import { SeasonCalendar } from './SeasonCalendar.tsx';
@@ -33,6 +37,10 @@ export function PlantDetailPage() {
   const { data: settings } = useSettings();
   const [editing, setEditing] = useState<Editing>(null);
   const [showNeutral, setShowNeutral] = useState(false);
+  const { year } = useYear();
+  const { data: plantings = [] } = usePlantings(year);
+  const { data: beds = [] } = useBeds(year);
+  const [plantingEdit, setPlantingEdit] = useState<PlantingListItem | 'new' | null>(null);
   const verify = useApiMutation(() => api.patch(`/plants/${id}`, { data_status: 'ellenorzott' }), [qk.plant(id), qk.plants]);
 
   if (isLoading) return <PageHeader title="Növény" color="var(--c-mint)" />;
@@ -176,6 +184,28 @@ export function PlantDetailPage() {
         )}
       </Block>
 
+      <Block title={`Ültetések ${year}`} action={<AddButton onClick={() => setPlantingEdit('new')}>Tervbe veszem</AddButton>}>
+        {plantings.some((p) => p.plant_id === plant.id) ? (
+          <div className={s.plantings}>
+            {plantings
+              .filter((p) => p.plant_id === plant.id)
+              .sort(byStart)
+              .map((p) => (
+                <PlantingRow
+                  key={p.id}
+                  planting={p}
+                  year={year}
+                  bed={beds.find((b) => b.id === effectiveBedId(p))}
+                  showBed
+                  onOpen={() => setPlantingEdit(p)}
+                />
+              ))}
+          </div>
+        ) : (
+          <p className={s.muted}>Ebben az évben még nincs {plant.name_hu.toLowerCase()} a tervben.</p>
+        )}
+      </Block>
+
       {plant.notes && (
         <Block title="Megjegyzés">
           <p className={s.notes}>{plant.notes}</p>
@@ -189,6 +219,13 @@ export function PlantDetailPage() {
       {plant.source && <p className={s.source}>{plant.source}</p>}
 
       <PlantEditSheet open={editing?.kind === 'plant'} onClose={close} plant={plant} />
+      <PlantingEditSheet
+        open={plantingEdit !== null}
+        onClose={() => setPlantingEdit(null)}
+        planting={plantingEdit && plantingEdit !== 'new' ? plantingEdit : undefined}
+        plantId={plant.id}
+        year={year}
+      />
       <WindowEditSheet
         open={editing?.kind === 'window'}
         onClose={close}

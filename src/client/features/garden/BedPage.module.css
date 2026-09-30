@@ -12,3 +12,7 @@
   line-height: 1.5;
   white-space: pre-wrap;
 }
+.list {
+  --row-pad: 0px;
+  margin-top: -6px;
+}

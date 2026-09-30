@@ -6,7 +6,7 @@
   width: 100%;
   max-width: 700px;
   height: auto;
-  max-height: 280px;
+
 }
 .bed {
   fill: color-mix(in srgb, var(--c) 12%, white);
@@ -28,4 +28,47 @@
   margin-top: 6px;
   font-size: 12px;
   color: var(--label-2);
+}
+
+.strip rect {
+  fill: color-mix(in srgb, var(--sc) 30%, white);
+  stroke: var(--sc);
+  stroke-width: 1.5;
+}
+.strip text {
+  font-size: 11px;
+  font-weight: 600;
+  fill: color-mix(in srgb, var(--sc) 55%, black);
+  pointer-events: none;
+}
+.current rect {
+  fill: color-mix(in srgb, var(--sc) 45%, white);
+  stroke-width: 2.5;
+}
+.muted rect {
+  fill: color-mix(in srgb, var(--c-gray) 16%, white);
+  stroke: color-mix(in srgb, var(--c-gray) 60%, white);
+}
+.muted text {
+  fill: var(--label-2);
+  font-weight: 500;
+}
+.ghost rect {
+  fill: color-mix(in srgb, var(--sc) 14%, white);
+  stroke-dasharray: 4 3;
+}
+.clash rect {
+  fill: color-mix(in srgb, var(--c-red) 16%, transparent);
+  stroke: var(--c-red);
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+}
+.clash text {
+  fill: #b3261e;
+}
+.clickable {
+  cursor: pointer;
+}
+.clickable:hover rect {
+  filter: brightness(0.95);
 }

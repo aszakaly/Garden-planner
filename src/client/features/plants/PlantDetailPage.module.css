@@ -228,3 +228,8 @@
     align-items: stretch;
   }
 }
+
+.plantings {
+  --row-pad: 0px;
+  margin-top: -6px;
+}

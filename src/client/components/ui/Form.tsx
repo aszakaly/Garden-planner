@@ -87,6 +87,26 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
   );
 }
 
+/** Dátumválasztó ('YYYY-MM-DD' vagy null). */
+export function DateInput({
+  value,
+  onChange,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
+  value: string | null | undefined;
+  onChange: (v: string | null) => void;
+}) {
+  return (
+    <input
+      type="date"
+      {...rest}
+      className={`${s.input} ${s.date}`}
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value || null)}
+    />
+  );
+}
+
 const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 /** Hónap-nap választó (év nélkül): 'HH-NN' vagy null. */

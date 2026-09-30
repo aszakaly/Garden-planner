@@ -18,7 +18,7 @@ import { SmartTile } from '../components/ui/SmartTile.tsx';
 import { SidebarRow } from '../components/ui/SidebarRow.tsx';
 import { BED_ICON } from '../lib/beds.ts';
 import { colorVar } from '../lib/colors.ts';
-import { useBeds } from '../lib/queries.ts';
+import { useBeds, usePlantings } from '../lib/queries.ts';
 import { useYear } from '../lib/year.tsx';
 import { MOCK_COUNTS } from '../mock/checkpoint.ts';
 import s from './Sidebar.module.css';
@@ -26,6 +26,8 @@ import s from './Sidebar.module.css';
 export function Sidebar() {
   const { year, setYear } = useYear();
   const { data: beds = [] } = useBeds(year, true);
+  const { data: plantings = [] } = usePlantings(year);
+  const planCount = plantings.filter((p) => p.year === year).length;
   const thisYear = new Date().getFullYear();
   const years = Array.from({ length: 9 }, (_, i) => thisYear - 6 + i);
 
@@ -70,7 +72,7 @@ export function Sidebar() {
           label="Naptár"
           count={MOCK_COUNTS.calendar}
         />
-        <SmartTile to="/terv" icon={Sprout} color="var(--c-green)" label="Éves terv" count={MOCK_COUNTS.plan} />
+        <SmartTile to="/terv" icon={Sprout} color="var(--c-green)" label="Éves terv" count={planCount} />
         <SmartTile
           to="/figyelmeztetesek"
           icon={TriangleAlert}

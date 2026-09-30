@@ -26,6 +26,29 @@ export const WINDOW_METHOD_LABEL: Record<WindowMethod, string> = {
   ultetes: 'Ültetés (gumó, hagyma, tő)',
 };
 
+/** Az ültetés módja (a palántás időszakból saját vagy vásárolt palánta is lehet). */
+export const PLANTING_METHODS = ['helyrevetes', 'palanta', 'vasarolt_palanta', 'ultetes'] as const;
+export type PlantingMethod = (typeof PLANTING_METHODS)[number];
+export const PLANTING_METHOD_LABEL: Record<PlantingMethod, string> = {
+  helyrevetes: 'Helyrevetés',
+  palanta: 'Saját palánta',
+  vasarolt_palanta: 'Vásárolt palánta',
+  ultetes: 'Ültetés',
+};
+
+export const PLANTING_STATUSES = ['terv', 'folyamatban', 'lezart', 'elmaradt', 'sikertelen'] as const;
+export type PlantingStatus = (typeof PLANTING_STATUSES)[number];
+export const PLANTING_STATUS_LABEL: Record<PlantingStatus, string> = {
+  terv: 'Tervezett',
+  folyamatban: 'Folyamatban',
+  lezart: 'Lezárva',
+  elmaradt: 'Elmaradt',
+  sikertelen: 'Sikertelen',
+};
+
+/** Ellenőrzések súlyossága: tájékoztató, figyelmeztetés, kerülendő / hibás. */
+export type CheckLevel = 'info' | 'figyelem' | 'kerulendo';
+
 export const NUTRIENT_GROUPS = [1, 2, 3] as const;
 export type NutrientGroup = (typeof NUTRIENT_GROUPS)[number];
 export const NUTRIENT_LABEL: Record<NutrientGroup, string> = {
