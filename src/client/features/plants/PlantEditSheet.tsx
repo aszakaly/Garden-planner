@@ -59,7 +59,7 @@ export function PlantEditSheet({ open, onClose, plant }: Props) {
 
   useEffect(() => {
     if (open) setForm(plant ? toForm(plant) : EMPTY);
-  }, [open, plant]);
+  }, [open, plant?.id]);
 
   const save = useApiMutation(
     (f: Form) => {

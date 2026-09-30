@@ -44,7 +44,7 @@ export function WindowEditSheet({ open, onClose, plantId, varietyId, window: w }
       const { id: _i, plant_id: _p, variety_id: _v, ...rest } = w;
       setForm(rest);
     } else setForm(EMPTY);
-  }, [open, w]);
+  }, [open, w?.id]);
 
   const invalidate = [qk.plant(plantId), qk.plants];
   const save = useApiMutation(

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   BED_TYPES,
+  BED_TYPE_DESCRIPTION,
   BED_TYPE_LABEL,
   ROW_DIRECTIONS,
   ROW_DIRECTION_LABEL,
@@ -57,7 +58,7 @@ export function BedEditSheet({ open, onClose, bed }: Props) {
       const { id: _id, garden_id: _g, ...rest } = bed;
       setForm(rest);
     } else setForm(EMPTY);
-  }, [open, bed]);
+  }, [open, bed?.id]);
 
   const invalidate = [qk.beds];
   const save = useApiMutation((f: Form) => (bed ? api.put<Bed>(`/beds/${bed.id}`, f) : api.post<Bed>('/beds', f)), invalidate);
@@ -120,7 +121,7 @@ export function BedEditSheet({ open, onClose, bed }: Props) {
         </div>
       </FormGroup>
 
-      <FormGroup title="Adottságok">
+      <FormGroup title="Típus" footer={BED_TYPE_DESCRIPTION[form.bed_type]}>
         <FormRow label="Típus">
           <Select value={form.bed_type} onChange={(e) => set('bed_type', e.target.value as Form['bed_type'])}>
             {BED_TYPES.map((t) => (
@@ -130,6 +131,9 @@ export function BedEditSheet({ open, onClose, bed }: Props) {
             ))}
           </Select>
         </FormRow>
+      </FormGroup>
+
+      <FormGroup title="Adottságok">
         <FormRow label="Napfény">
           <Select value={form.sun ?? ''} onChange={(e) => set('sun', (e.target.value || null) as Form['sun'])}>
             <option value="">—</option>

@@ -73,6 +73,14 @@ describe('ágyások', () => {
     expect(ok.statusCode).toBe(201);
     expect(ok.json()).toMatchObject({ garden_id: 1, row_direction: 'keresztben' });
 
+    const raised = await app.inject({
+      method: 'POST',
+      url: '/api/beds',
+      payload: { name: 'Magaságyás 1', length_cm: 200, width_cm: 80, bed_type: 'magasagyas' },
+    });
+    expect(raised.statusCode).toBe(201);
+    expect(raised.json().bed_type).toBe('magasagyas');
+
     const bad = await app.inject({ method: 'POST', url: '/api/beds', payload: { name: 'X', length_cm: 5, width_cm: 100 } });
     expect(bad.statusCode).toBe(400);
 

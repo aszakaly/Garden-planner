@@ -28,10 +28,15 @@ export function Sheet({
   children,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
+  // A billentyűkezelő mindig a legfrissebb függvényeket lássa, de a hatás csak nyitáskor fusson le:
+  // különben minden leütés utáni újrarenderelés visszaugratná a fókuszt az első mezőre.
+  const latest = useRef({ onClose, onConfirm, confirmDisabled });
+  latest.current = { onClose, onConfirm, confirmDisabled };
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      const { onClose, onConfirm, confirmDisabled } = latest.current;
       if (e.key === 'Escape') onClose();
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && onConfirm && !confirmDisabled) onConfirm();
     };
@@ -43,7 +48,7 @@ export function Sheet({
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [open, onClose, onConfirm, confirmDisabled]);
+  }, [open]);
 
   if (!open) return null;
 

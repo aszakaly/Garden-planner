@@ -33,7 +33,7 @@ export function VarietyEditSheet({ open, onClose, plantId, plantName, variety }:
       delete (rest as { windows?: unknown }).windows;
       setForm(rest);
     } else setForm(EMPTY);
-  }, [open, variety]);
+  }, [open, variety?.id]);
 
   const invalidate = [qk.plant(plantId), qk.plants, qk.varieties];
   const save = useApiMutation(

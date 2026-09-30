@@ -16,26 +16,39 @@ export function openDatabase(path: string): DB {
   return db;
 }
 
-export function migrate(db: DB): string[] {
+export function migrate(db: DB, dir = MIGRATIONS_DIR): string[] {
   db.exec(
     'CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TEXT NOT NULL)',
   );
   const applied = new Set(
     db.prepare('SELECT version FROM schema_migrations').all().map((r) => String(r.version)),
   );
-  const pending = readdirSync(MIGRATIONS_DIR)
+  const pending = readdirSync(dir)
     .filter((f) => f.endsWith('.sql') && !applied.has(f))
     .sort();
+  if (!pending.length) return pending;
 
-  for (const file of pending) {
-    const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
-    transaction(db, () => {
-      db.exec(sql);
-      db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(
-        file,
-        new Date().toISOString(),
-      );
-    });
+  // A táblák újraépítése (pl. CHECK-feltétel módosítása) csak kikapcsolt idegenkulcs-ellenőrzéssel
+  // biztonságos: különben a régi tábla eldobása lenullázná a rá mutató hivatkozásokat.
+  // A kapcsoló tranzakción belül hatástalan, ezért itt, kívül állítjuk.
+  db.exec('PRAGMA foreign_keys = OFF');
+  try {
+    for (const file of pending) {
+      const sql = readFileSync(join(dir, file), 'utf8');
+      transaction(db, () => {
+        db.exec(sql);
+        const broken = db.prepare('PRAGMA foreign_key_check').all();
+        if (broken.length) {
+          throw new Error(`A(z) ${file} migráció után ${broken.length} hibás hivatkozás maradt – visszavonva.`);
+        }
+        db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(
+          file,
+          new Date().toISOString(),
+        );
+      });
+    }
+  } finally {
+    db.exec('PRAGMA foreign_keys = ON');
   }
   return pending;
 }

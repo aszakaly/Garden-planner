@@ -57,14 +57,23 @@ export const SEED_ORIGIN_LABEL: Record<SeedOrigin, string> = {
   csere: 'Csere / ajándék',
 };
 
-export const BED_TYPES = ['foldagyas', 'emelt', 'folia', 'uveghaz', 'cserep'] as const;
+export const BED_TYPES = ['foldagyas', 'emelt', 'magasagyas', 'folia', 'uveghaz', 'cserep'] as const;
 export type BedType = (typeof BED_TYPES)[number];
 export const BED_TYPE_LABEL: Record<BedType, string> = {
   foldagyas: 'Földágyás',
   emelt: 'Emelt ágyás',
+  magasagyas: 'Magaságyás',
   folia: 'Fóliasátor',
   uveghaz: 'Üvegház',
   cserep: 'Cserép / láda',
+};
+export const BED_TYPE_DESCRIPTION: Record<BedType, string> = {
+  foldagyas: 'Keret nélküli ágyás a talajszinten.',
+  emelt: 'Alacsony, kb. 15–20 cm magas kerettel.',
+  magasagyas: '45 cm-nél magasabb kerettel – gyorsabban melegszik, de hamarabb ki is szárad.',
+  folia: 'Fóliával fedett termesztőtér – korábbi vetés, hosszabb szezon.',
+  uveghaz: 'Üveggel fedett termesztőtér.',
+  cserep: 'Mozgatható edény, láda vagy dézsa.',
 };
 
 export const ROW_DIRECTIONS = ['keresztben', 'hosszaban'] as const;

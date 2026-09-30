@@ -1,9 +1,10 @@
-import { House, Rows3, Tent, Flower2, type LucideIcon } from 'lucide-react';
+import { Boxes, Flower2, House, Rows3, Tent, type LucideIcon } from 'lucide-react';
 import type { BedType } from '@shared/labels.ts';
 
 export const BED_ICON: Record<BedType, LucideIcon> = {
   foldagyas: Rows3,
   emelt: Rows3,
+  magasagyas: Boxes,
   folia: Tent,
   uveghaz: House,
   cserep: Flower2,

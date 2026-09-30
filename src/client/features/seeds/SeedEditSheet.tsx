@@ -67,7 +67,7 @@ export function SeedEditSheet({ open, onClose, seed, plantId }: Props) {
           }
         : empty(plantId ?? null),
     );
-  }, [open, seed, plantId]);
+  }, [open, seed?.id, plantId]);
 
   const plantVarieties = useMemo(() => varieties.filter((v) => v.plant_id === form.plant_id), [varieties, form.plant_id]);
   const plant = plants.find((p) => p.id === form.plant_id);

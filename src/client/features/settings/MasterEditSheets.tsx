@@ -23,7 +23,7 @@ export function FamilyEditSheet({ open, onClose, item }: Props<PlantFamily>) {
           ? { name_hu: item.name_hu, name_latin: item.name_latin, rotation_gap_years: item.rotation_gap_years, notes: item.notes }
           : { name_hu: '', name_latin: null, rotation_gap_years: 3, notes: null },
       );
-  }, [open, item]);
+  }, [open, item?.id]);
   const invalidate = [qk.families, qk.plants];
   const save = useApiMutation((f: FamilyInput) => (item ? api.put(`/families/${item.id}`, f) : api.post('/families', f)), invalidate);
   const remove = useApiMutation(() => api.delete(`/families/${item!.id}`), invalidate);
@@ -79,7 +79,7 @@ export function CropGroupEditSheet({ open, onClose, item }: Props<CropGroup>) {
           : empty,
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, item]);
+  }, [open, item?.id]);
   const invalidate = [qk.cropGroups, qk.plants];
   const save = useApiMutation(
     (f: CropGroupInput) => (item ? api.put(`/crop-groups/${item.id}`, f) : api.post('/crop-groups', f)),

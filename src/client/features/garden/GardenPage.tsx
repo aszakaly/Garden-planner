@@ -154,7 +154,7 @@ function GardenEditSheet({ open, onClose, garden }: { open: boolean; onClose: ()
   const [form, setForm] = useState({ name: '', location: '', notes: '' });
   useEffect(() => {
     if (open) setForm({ name: garden.name, location: garden.location ?? '', notes: garden.notes ?? '' });
-  }, [open, garden]);
+  }, [open, garden.id]);
   const save = useApiMutation(() => api.put(`/gardens/${garden.id}`, form), [qk.gardens]);
   return (
     <Sheet

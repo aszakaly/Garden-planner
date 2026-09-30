@@ -29,7 +29,7 @@ export function CompanionEditSheet({ open, onClose, plantId, plantName, companio
     setOther(companion?.other_plant_id ?? null);
     setRelation(companion?.relation ?? 1);
     setReason(companion?.reason ?? '');
-  }, [open, companion]);
+  }, [open, companion?.id]);
 
   const invalidate = [qk.plants, ['plants']];
   const save = useApiMutation(
