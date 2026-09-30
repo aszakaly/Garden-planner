@@ -15,19 +15,31 @@ const db = openDatabase(DB_PATH);
 const seeded = seedIfEmpty(db);
 const backup = backupDatabase(db, join(dirname(DB_PATH), 'backups'));
 
-const app = buildApp({
-  db,
-  clientDir: process.env.NODE_ENV === 'production' ? join(ROOT, 'dist', 'client') : undefined,
-});
+const production = process.env.NODE_ENV === 'production';
+const app = buildApp({ db, clientDir: production ? join(ROOT, 'dist', 'client') : undefined });
 
-await app.listen({ port: PORT, host: '0.0.0.0' });
+try {
+  await app.listen({ port: PORT, host: '0.0.0.0' });
+} catch (err) {
+  if ((err as { code?: string }).code === 'EADDRINUSE') {
+    console.error(`\n⚠️  A ${PORT}-es port foglalt – valószínűleg már fut egy Kerttervező. Állítsd le, vagy adj meg másik portot: KERT_PORT=4322\n`);
+    process.exit(1);
+  }
+  throw err;
+}
 
 const lan = Object.values(networkInterfaces())
   .flat()
   .find((i) => i && i.family === 'IPv4' && !i.internal)?.address;
+const host = `${hostname().replace(/\.local$/, '')}.local`;
 console.log(`\n🌱 Kerttervező fut`);
-console.log(`   Ezen a gépen:   http://localhost:${PORT}`);
-console.log(`   Otthoni hálón:  http://${hostname().replace(/\.local$/, '')}.local:${PORT}${lan ? `  (${lan})` : ''}`);
+if (production) {
+  console.log(`   Ezen a gépen:   http://localhost:${PORT}`);
+  console.log(`   Otthoni hálón:  http://${host}:${PORT}${lan ? `  (${lan})` : ''}`);
+} else {
+  console.log(`   Fejlesztői mód: a felület a [client] sorban kiírt Vite-címen érhető el (pl. :5173),`);
+  console.log(`                   az API itt fut: http://localhost:${PORT}/api`);
+}
 console.log(`   Adatbázis:      ${DB_PATH}`);
 console.log(`   Mentés:         ${backup}`);
 if (seeded) console.log('   Kezdő törzsadatok betöltve (növények, családok, társítások).');
