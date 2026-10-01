@@ -18,9 +18,16 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 if curl -sf "http://localhost:$PORT/api/health" >/dev/null 2>&1; then
-  echo "A Kerttervező már fut – megnyitom a böngészőben."
-  open "http://localhost:$PORT"
-  exit 0
+  if curl -sf "http://localhost:$PORT/" | grep -q 'id="root"'; then
+    echo "A Kerttervező már fut – megnyitom a böngészőben."
+    open "http://localhost:$PORT"
+    exit 0
+  fi
+  # Fejlesztői módban (npm run dev) ezen a porton csak az API fut, a felület a Vite-címen van
+  echo "A $PORT-es porton fejlesztői mód fut (npm run dev). A felülete: http://localhost:5173"
+  echo "Az indítóhoz előbb állítsd le (Ctrl+C abban a Terminálban)."
+  read -k1 "?Nyomj meg egy billentyűt a bezáráshoz…"
+  exit 1
 fi
 
 if [ ! -d node_modules ]; then
