@@ -163,4 +163,20 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
     await confirm(planting);
     await expect(page.getByRole('button', { name: new RegExp(`^${plantName}`) }).first()).toBeVisible();
   });
+
+  await test.step('11. ágyás másolása: több egyforma ágyás egyszerre, sorszámozott névvel', async () => {
+    await page.goto('/kert');
+    await page.getByRole('main').getByRole('link', { name: /E2E ágyás/ }).click();
+    await page.getByRole('button', { name: 'Másolás' }).click();
+    const sheet = dialog(page, 'Új ágyás');
+    await expect(field(sheet, 'Név')).toHaveValue('E2E ágyás 2');
+    await expect(field(sheet, 'Hossz')).toHaveValue('300');
+    await field(sheet, 'Darabszám').fill('3');
+    await expect(sheet.getByText('3 ágyás jön létre: E2E ágyás 2, E2E ágyás 3, E2E ágyás 4.')).toBeVisible();
+    await confirm(sheet);
+    await expect(page).toHaveURL(/\/kert$/);
+    for (const name of ['E2E ágyás 2', 'E2E ágyás 3', 'E2E ágyás 4']) {
+      await expect(page.getByRole('main').getByText(name, { exact: true })).toBeVisible();
+    }
+  });
 });

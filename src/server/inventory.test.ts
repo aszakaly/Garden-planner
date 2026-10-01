@@ -114,4 +114,26 @@ describe('ágyások', () => {
     const counted: BedListItem[] = (await app.inject({ url: '/api/beds?year=2026' })).json();
     expect(counted.find((b) => b.id === bed.id)!.planting_count).toBe(1);
   });
+
+  it('több egyforma ágyás egyszerre, sorszámozott névvel a lista végére', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/beds/batch',
+      payload: { bed: { name: 'Emelt ágyás 1', length_cm: 400, width_cm: 120, bed_type: 'emelt', sort_order: 10 }, count: 3 },
+    });
+    expect(res.statusCode).toBe(201);
+    const created: BedListItem[] = res.json();
+    expect(created.map((b) => b.name)).toEqual(['Emelt ágyás 2', 'Emelt ágyás 3', 'Emelt ágyás 4']);
+    expect(created.every((b) => b.length_cm === 400 && b.width_cm === 120 && b.bed_type === 'emelt')).toBe(true);
+
+    const names = ((await app.inject({ url: '/api/beds' })).json() as BedListItem[]).map((b) => b.name);
+    expect(names.slice(-3)).toEqual(['Emelt ágyás 2', 'Emelt ágyás 3', 'Emelt ágyás 4']);
+
+    const single = await app.inject({
+      method: 'POST',
+      url: '/api/beds/batch',
+      payload: { bed: { name: 'X', length_cm: 100, width_cm: 100 }, count: 1 },
+    });
+    expect(single.statusCode).toBe(400);
+  });
 });

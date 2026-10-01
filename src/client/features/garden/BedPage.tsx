@@ -1,4 +1,4 @@
-import { Lightbulb, Pencil } from 'lucide-react';
+import { Copy, Lightbulb, Pencil } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { BED_TYPE_LABEL, ROW_DIRECTION_LABEL, SUN_LABEL } from '@shared/labels.ts';
@@ -40,6 +40,7 @@ export function BedPage() {
   const { data: plantings = [] } = usePlantings(year);
   const { data: settings } = useSettings();
   const [editing, setEditing] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [plantingEdit, setPlantingEdit] = useState<PlantingListItem | 'new' | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const checks = useYearChecks(year);
@@ -98,9 +99,14 @@ export function BedPage() {
         back={{ to: '/kert', label: 'Kert' }}
         subtitle={`${BED_TYPE_LABEL[bed.bed_type]} · ${formatDimensions(bed.length_cm, bed.width_cm)} · ${formatArea(bed.length_cm, bed.width_cm)}`}
         actions={
-          <ToolbarButton label="Szerkesztés" onClick={() => setEditing(true)}>
-            <Pencil size={17} strokeWidth={2.2} />
-          </ToolbarButton>
+          <>
+            <ToolbarButton label="Másolás" onClick={() => setCopying(true)}>
+              <Copy size={17} strokeWidth={2.2} />
+            </ToolbarButton>
+            <ToolbarButton label="Szerkesztés" onClick={() => setEditing(true)}>
+              <Pencil size={17} strokeWidth={2.2} />
+            </ToolbarButton>
+          </>
         }
       />
 
@@ -226,6 +232,7 @@ export function BedPage() {
 
       {journal.sheet}
       <BedEditSheet open={editing} onClose={() => setEditing(false)} bed={bed} />
+      <BedEditSheet open={copying} onClose={() => setCopying(false)} template={bed} />
       <HistorySheet open={historyYear !== null} onClose={() => setHistoryYear(null)} bed={bed} year={historyYear ?? year - 1} />
       <SuggestionSheet
         open={suggesting}

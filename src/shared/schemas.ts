@@ -181,6 +181,13 @@ export const bedInput = z
   });
 export type BedInput = z.infer<typeof bedInput>;
 
+/** Több egyforma ágyás egyszerre: a nevük sorszámot kap (lásd `numberedNames`). */
+export const bedBatchInput = z.object({
+  bed: bedInput,
+  count: z.number().int().min(2, 'Legalább 2 darab').max(50, 'Egyszerre legfeljebb 50 ágyás'),
+});
+export type BedBatchInput = z.infer<typeof bedBatchInput>;
+
 export const isoDate = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, 'ÉÉÉÉ-HH-NN formátum kell');
 const cm = z.number().min(0).max(100_000);
 

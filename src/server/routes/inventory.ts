@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { DB } from '../db/index.ts';
 import * as seeds from '../repos/seeds.ts';
 import * as garden from '../repos/garden.ts';
-import { bedInput, gardenInput, seedStockInput } from '../../shared/schemas.ts';
+import { bedBatchInput, bedInput, gardenInput, seedStockInput } from '../../shared/schemas.ts';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 const bedQuery = z.object({
@@ -40,6 +40,10 @@ export const inventoryRoutes =
     });
     app.get('/beds/:id', async (req) => garden.getBed(db, id(req)));
     app.post('/beds', async (req, reply) => reply.status(201).send(garden.createBed(db, bedInput.parse(req.body))));
+    app.post('/beds/batch', async (req, reply) => {
+      const { bed, count } = bedBatchInput.parse(req.body);
+      return reply.status(201).send(garden.createBeds(db, bed, count));
+    });
     app.put('/beds/:id', async (req) => garden.updateBed(db, id(req), bedInput.parse(req.body)));
     app.delete('/beds/:id', async (req, reply) => {
       garden.deleteBed(db, id(req));

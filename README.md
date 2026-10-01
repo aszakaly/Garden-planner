@@ -8,7 +8,7 @@ Kert- és veteményes-tervező és kertészeti napló saját használatra. Magya
 
 - **Törzsadatok:** kb. 55 gyakori zöldség-, fűszer- és kísérőnövény magyar vetési naptárral, több szezonnal, fajtákkal és társítási adatokkal.
 - **Vetőmagkészlet:** eredet, évjárat, készlet, csírázóképesség figyelése.
-- **Kert és ágyások:** méretek, adottságok.
+- **Kert és ágyások:** méretek, adottságok; egy meglévő ágyás másolása mintaként, akár több egyforma ágyás egyszerre, sorszámozott névvel.
 - **Éves terv:** ültetések sávos elhelyezéssel, dátumszámítással, újravetés-sorozatokkal, ágyás-idővonallal.
 - **Ellenőrzések:** vetésforgó (család, tápanyagigény, vetésforgó-szakasz) és társítás, a múltbeli évek gyors rögzítésével.
 - **Feladatok és naptár:** a tervből generált teendők, „Ez a hét” és havi lista, havi és éves naptár.

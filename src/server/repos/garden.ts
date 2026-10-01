@@ -1,5 +1,7 @@
 import type { DB } from '../db/index.ts';
+import { transaction } from '../db/index.ts';
 import { HttpError, insert, notFound, remove, update } from '../db/helpers.ts';
+import { numberedNames } from '../../shared/domain/beds.ts';
 import type { BedInput, GardenInput } from '../../shared/schemas.ts';
 import type { Bed, BedListItem, Garden } from '../../shared/types.ts';
 
@@ -52,6 +54,14 @@ export function createBed(db: DB, input: BedInput): Bed {
     input.sort_order ||
     Number((db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 10 AS n FROM bed').get() as { n: number }).n);
   return getBed(db, insert(db, 'bed', { ...input, garden_id, sort_order }));
+}
+
+/** `count` egyforma ágyás sorszámozott névvel, a lista végére, egy tranzakcióban. */
+export function createBeds(db: DB, input: BedInput, count: number): Bed[] {
+  return transaction(db, () => {
+    const taken = (db.prepare('SELECT name FROM bed').all() as { name: string }[]).map((r) => r.name);
+    return numberedNames(input.name, count, taken).map((name) => createBed(db, { ...input, name, sort_order: 0 }));
+  });
 }
 
 export function updateBed(db: DB, id: number, input: BedInput): Bed {
