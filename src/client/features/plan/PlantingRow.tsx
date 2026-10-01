@@ -1,10 +1,18 @@
 import { ChevronRight } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { LEVEL_RANK, type IssueLevel, type PlantingIssue } from '@shared/domain/plantingChecks.ts';
 import type { Bed, PlantingListItem } from '@shared/types.ts';
 import { Chip } from '../../components/ui/Chip.tsx';
 import { cropColor } from '../../lib/cropColors.ts';
-import { datesSummary, needsSeed, placementSummary, plantingTitle, type ClashInfo } from './plantingView.ts';
+import { datesSummary, placementSummary, plantingTitle } from './plantingView.ts';
 import s from './PlantingRow.module.css';
+
+const TONE: Record<IssueLevel, 'bad' | 'warn' | 'info' | 'good'> = {
+  kerulendo: 'bad',
+  figyelem: 'warn',
+  info: 'info',
+  ok: 'good',
+};
 
 interface Props {
   planting: PlantingListItem;
@@ -12,14 +20,25 @@ interface Props {
   year: number;
   bed?: Bed;
   showBed?: boolean;
-  clashes?: ClashInfo[];
+  /** Az ültetés ellenőrzési jelzései (vetésforgó, társítás, ütközés, …) */
+  issues?: PlantingIssue[];
   onOpen: () => void;
 }
 
 /** Egy ültetés a listákban: növény és fajta, dátumok, hely, jelzések. */
-export function PlantingRow({ planting: p, year, bed, showBed, clashes, onOpen }: Props) {
+export function PlantingRow({ planting: p, year, bed, showBed, issues = [], onOpen }: Props) {
   const place = [showBed ? (p.bed_name ?? 'Elhelyezésre vár') : null, placementSummary(p, bed)].filter(Boolean).join(' · ');
-  const unplacedInBed = p.bed_id != null && p.axis_start_cm == null && p.actual_axis_start_cm == null;
+  const goodNeighbours = issues.filter((i) => i.category === 'tarsitas' && i.level === 'ok' && i.neighbour).map((i) => i.other);
+  const chips = [
+    ...new Map(
+      [...issues]
+        .filter((i) => i.chip && !(i.category === 'tarsitas' && i.level === 'ok'))
+        // Ágyás nélküli ültetésnél a csoport címe már elmondja
+        .filter((i) => !(i.category === 'elhelyezes' && i.level === 'info' && !showBed && p.bed_id == null))
+        .sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level])
+        .map((i) => [i.chip, i]),
+    ).values(),
+  ];
   return (
     <div className={s.row}>
       <button type="button" className={s.inner} onClick={onOpen}>
@@ -29,18 +48,19 @@ export function PlantingRow({ planting: p, year, bed, showBed, clashes, onOpen }
           <span className={s.meta}>{datesSummary(p, year)}</span>
           {place && <span className={s.meta}>{place}</span>}
           <span className={s.chips}>
-            {!!clashes?.length && (
-              <Chip tone="bad">Ütközik: {[...new Set(clashes.map((c) => c.other.plant_name))].join(', ')}</Chip>
-            )}
-            {needsSeed(p) && !p.has_seed && p.year >= year && <Chip tone="warn">Nincs vetőmag</Chip>}
+            {chips.map((i) => (
+              <Chip key={i.chip} tone={TONE[i.level]}>
+                {i.chip}
+              </Chip>
+            ))}
+            {goodNeighbours.length > 0 && <Chip tone="good">Jó szomszéd: {goodNeighbours.join(', ')}</Chip>}
             {(p.series_size ?? 0) > 1 && (
-              <Chip tone="info">
+              <Chip tone="neutral">
                 Újravetés {p.series_index}/{p.series_size}
               </Chip>
             )}
             {p.year < year && <Chip>Előző évről</Chip>}
             {p.is_history && <Chip>Előzmény</Chip>}
-            {unplacedInBed && <Chip>Nincs kijelölt sávja</Chip>}
           </span>
         </span>
         <ChevronRight size={16} className={s.chevron} />

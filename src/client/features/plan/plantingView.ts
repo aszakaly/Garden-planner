@@ -1,7 +1,7 @@
 import { PLANTING_METHOD_LABEL } from '@shared/labels.ts';
 import { bedStart } from '@shared/domain/dates.ts';
 import { effectiveBedId, effectiveDates, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
-import { bedAxes, estimatePlantCount, findClashes, type BedGeometry, type Occupant, type Period } from '@shared/domain/geometry.ts';
+import { bedAxes, estimatePlantCount, type BedGeometry, type Occupant } from '@shared/domain/geometry.ts';
 import { shortDate } from '@shared/domain/isoDate.ts';
 import type { Bed, PlantingListItem } from '@shared/types.ts';
 
@@ -80,26 +80,6 @@ export function placedInBed(plantings: PlantingListItem[], bed: Bed): PlacedPlan
   });
 }
 
-export interface ClashInfo {
-  other: PlantingListItem;
-  period: Period;
-}
-
-/** Ütközések ültetésenként (mindkét félnél), ágyásonként számolva. */
-export function clashesByPlanting(plantings: PlantingListItem[], beds: Bed[]): Map<number, ClashInfo[]> {
-  const out = new Map<number, ClashInfo[]>();
-  const byId = new Map(plantings.map((p) => [p.id, p]));
-  for (const bed of beds) {
-    for (const c of findClashes(placedInBed(plantings, bed))) {
-      const add = (id: number, other: number) =>
-        out.set(id, [...(out.get(id) ?? []), { other: byId.get(other)!, period: c.period }]);
-      add(c.a, c.b);
-      add(c.b, c.a);
-    }
-  }
-  return out;
-}
-
 export const needsSeed = (p: PlantingListItem) => p.method !== 'vasarolt_palanta' && !p.is_history;
 
 export function axisLabel(bed: BedGeometry): string {
@@ -107,3 +87,22 @@ export function axisLabel(bed: BedGeometry): string {
 }
 
 export { bedAxes };
+
+/** Üres ültetés-sablon (a szerkesztő élő ellenőrzéséhez épített „virtuális” ültetéshez). */
+export function blankPlanting(): PlantingListItem {
+  return {
+    id: -1, year: 0, plant_id: 0, variety_id: null, seed_stock_id: null, bed_id: null,
+    axis_start_cm: null, axis_span_cm: null, cross_start_cm: null, cross_span_cm: null, rows: null, plant_count: null,
+    method: null, window_id: null,
+    plan_sow_date: null, plan_transplant_date: null, plan_harvest_start: null, plan_end_date: null,
+    actual_sow_date: null, actual_transplant_date: null, actual_harvest_start: null, actual_end_date: null,
+    actual_bed_id: null, actual_axis_start_cm: null, actual_axis_span_cm: null, actual_cross_start_cm: null, actual_cross_span_cm: null,
+    status: 'terv', is_history: false, series_id: null, series_index: null,
+    eval_success: null, eval_yield: null, eval_recommend: null, eval_notes: null, notes: null,
+    plant_name: '', variety_name: null, family_id: null, family_name: null,
+    crop_group_id: null, crop_group_code: null, crop_group_name: null,
+    rotation_stage: null, nutrient_group: null, perennial: false, frost_sensitive: false,
+    in_row_spacing_cm: null, row_spacing_cm: null, days_to_harvest: null, harvest_duration_days: null, seed_viability_years: null,
+    bed_name: null, bed_color: null, seed_vintage: null, has_seed: false, series_size: null,
+  };
+}

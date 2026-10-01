@@ -21,6 +21,7 @@ import { colorVar } from '../lib/colors.ts';
 import { useBeds, usePlantings } from '../lib/queries.ts';
 import { useYear } from '../lib/year.tsx';
 import { MOCK_COUNTS } from '../mock/checkpoint.ts';
+import { useYearChecks } from '../features/plan/useChecks.ts';
 import s from './Sidebar.module.css';
 
 export function Sidebar() {
@@ -28,6 +29,7 @@ export function Sidebar() {
   const { data: beds = [] } = useBeds(year, true);
   const { data: plantings = [] } = usePlantings(year);
   const planCount = plantings.filter((p) => p.year === year).length;
+  const { warnings } = useYearChecks(year);
   const thisYear = new Date().getFullYear();
   const years = Array.from({ length: 9 }, (_, i) => thisYear - 6 + i);
 
@@ -78,7 +80,7 @@ export function Sidebar() {
           icon={TriangleAlert}
           color="var(--c-orange)"
           label="Figyelmeztetések"
-          count={MOCK_COUNTS.warnings}
+          count={warnings.length}
         />
         <SmartTile to="/naplo" icon={BookOpen} color="var(--c-brown)" label="Napló" count={MOCK_COUNTS.journal} />
       </div>

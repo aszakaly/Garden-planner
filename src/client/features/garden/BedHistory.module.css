@@ -1,0 +1,61 @@
+.years {
+  display: flex;
+  flex-direction: column;
+}
+.year {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: var(--hairline) solid var(--separator);
+}
+.label {
+  flex: none;
+  width: 44px;
+  font-family: var(--font-rounded);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--label-2);
+}
+.items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sc) 14%, white);
+  font-size: 13px;
+  font-weight: 500;
+}
+.item:hover {
+  background: color-mix(in srgb, var(--sc) 24%, white);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sc);
+}
+.planned {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+.none {
+  font-size: 13px;
+  color: var(--label-3);
+}
+.add {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tint);
+}
+.add:hover {
+  text-decoration: underline;
+}

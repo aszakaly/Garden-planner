@@ -38,7 +38,7 @@ describe('ültetések', () => {
     const res = await post({ year: 2025, plant_id: plantId('paradicsom'), bed_id: bed.id, is_history: true });
     expect(res.statusCode).toBe(201);
     const [p]: PlantingListItem[] = res.json();
-    expect(p).toMatchObject({ year: 2025, is_history: true, status: 'terv', plan_sow_date: null, bed_name: 'Emelt 1' });
+    expect(p).toMatchObject({ year: 2025, is_history: true, status: 'lezart', plan_sow_date: null, bed_name: 'Emelt 1' });
   });
 
   it('a vetőmagtételből kiderül a fajta; más növény fajtája hibát ad', async () => {

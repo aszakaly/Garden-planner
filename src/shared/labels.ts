@@ -8,6 +8,16 @@ export const ROTATION_STAGE_LABEL: Record<RotationStage, string> = {
   termes: 'Termés',
   gyoker: 'Gyökér',
 };
+/** Mondatba illő alak: „termés után gyökérzöldség következik” */
+export const ROTATION_STAGE_NOUN: Record<RotationStage, string> = {
+  huvelyes: 'hüvelyes',
+  level: 'levélzöldség',
+  termes: 'természöldség',
+  gyoker: 'gyökérzöldség',
+};
+/** A klasszikus négyes forgó: hüvelyes → levél → termés → gyökér → hüvelyes … */
+export const nextRotationStage = (s: RotationStage): RotationStage =>
+  ROTATION_STAGES[(ROTATION_STAGES.indexOf(s) + 1) % ROTATION_STAGES.length]!;
 
 export const SEASONS = ['tavaszi', 'nyari', 'oszi', 'attelelo'] as const;
 export type Season = (typeof SEASONS)[number];

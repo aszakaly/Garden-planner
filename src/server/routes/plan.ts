@@ -7,6 +7,7 @@ import { plantingCreateInput, plantingInput } from '../../shared/schemas.ts';
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 const listQuery = z.object({
   year: z.coerce.number().int().min(1900).max(2200).default(new Date().getFullYear()),
+  from_year: z.coerce.number().int().min(1900).max(2200).optional(),
   bed_id: z.coerce.number().int().positive().optional(),
 });
 
@@ -18,7 +19,7 @@ export const planRoutes =
 
     app.get('/plantings', async (req) => {
       const q = listQuery.parse(req.query);
-      return plantings.listPlantings(db, { year: q.year, bedId: q.bed_id });
+      return plantings.listPlantings(db, { year: q.year, fromYear: q.from_year, bedId: q.bed_id });
     });
     app.get('/plantings/:id', async (req) => plantings.getPlanting(db, id(req)));
     app.post('/plantings', async (req, reply) =>

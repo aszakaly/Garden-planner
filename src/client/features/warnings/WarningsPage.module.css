@@ -1,0 +1,95 @@
+.page {
+  max-width: 920px;
+  padding-bottom: 32px;
+}
+.controls {
+  padding: 14px var(--page-pad) 0;
+}
+.controls > * {
+  max-width: 420px;
+}
+
+.row {
+  padding-left: var(--page-pad);
+}
+.inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 10px var(--page-pad) 10px 0;
+  border-bottom: var(--hairline) solid var(--separator);
+  text-align: left;
+}
+.row:hover .title {
+  color: var(--tint);
+}
+.icon {
+  flex: none;
+  margin-top: 1px;
+}
+.kerulendo {
+  color: var(--c-red);
+}
+.figyelem {
+  color: var(--c-orange);
+}
+.info {
+  color: var(--c-blue);
+}
+.ok {
+  color: var(--c-green);
+}
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-size: 15px;
+  line-height: 20px;
+}
+.where {
+  font-size: 13px;
+  color: var(--label-2);
+}
+.message {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--label-2);
+}
+.chevron {
+  flex: none;
+  align-self: center;
+  color: var(--label-3);
+}
+
+.empty {
+  margin: 48px auto 0;
+  max-width: 440px;
+  padding: 0 var(--page-pad);
+  text-align: center;
+  color: var(--label-2);
+  font-size: 14px;
+}
+.emptyIcon {
+  color: var(--c-green);
+}
+.emptyTitle {
+  margin: 8px 0 4px;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+@media (max-width: 760px) {
+  .title {
+    font-size: 17px;
+  }
+}

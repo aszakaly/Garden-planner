@@ -74,6 +74,7 @@ export const masterRoutes =
     });
 
     // Társítások
+    app.get('/companions', async () => repo.allCompanions(db));
     app.put('/companions', async (req, reply) => {
       repo.upsertCompanion(db, companionInput.parse(req.body));
       return reply.status(204).send();

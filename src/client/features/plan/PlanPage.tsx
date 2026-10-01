@@ -14,7 +14,8 @@ import { GardenTimeline } from './GardenTimeline.tsx';
 import { PlantingEditSheet } from './PlantingEditSheet.tsx';
 import { PlantingRow } from './PlantingRow.tsx';
 import { TimelineLegend } from './TimelineLegend.tsx';
-import { byStart, clashesByPlanting, effectiveBedId, firstActionOf, needsSeed } from './plantingView.ts';
+import { byStart, effectiveBedId, firstActionOf, needsSeed } from './plantingView.ts';
+import { useYearChecks } from './useChecks.ts';
 import s from './PlanPage.module.css';
 
 type View = 'agyas' | 'idorend';
@@ -28,7 +29,8 @@ export function PlanPage() {
   const [editing, setEditing] = useState<PlantingListItem | 'new' | null>(null);
 
   const own = plantings.filter((p) => p.year === year);
-  const clashes = useMemo(() => clashesByPlanting(plantings, beds), [plantings, beds]);
+  const checks = useYearChecks(year);
+  const clashIds = new Set(checks.issues.filter((i) => i.category === 'utkozes').map((i) => i.plantingId));
   const bedById = new Map(beds.map((b) => [b.id, b]));
   const timelineBeds = beds.filter((b) => b.active || plantings.some((p) => effectiveBedId(p) === b.id));
 
@@ -37,7 +39,7 @@ export function PlanPage() {
     count: own.length,
     unplaced: own.filter((p) => effectiveBedId(p) == null).length,
     seeds: missingSeeds.size,
-    clashes: [...clashes.values()].reduce((n, list) => n + list.length, 0) / 2,
+    clashes: checks.warnings.filter((i) => i.category === 'utkozes').length,
   };
 
   const byBed = useMemo(() => {
@@ -105,7 +107,7 @@ export function PlanPage() {
               year={year}
               beds={timelineBeds}
               plantings={plantings}
-              clashIds={new Set(clashes.keys())}
+              clashIds={clashIds}
               frost={settings ?? DEFAULT_SETTINGS}
               onSelect={setEditing}
             />
@@ -137,14 +139,14 @@ export function PlanPage() {
                   detail={items.length}
                 >
                   {items.map((p) => (
-                    <PlantingRow key={p.id} planting={p} year={year} bed={bed} clashes={clashes.get(p.id)} onOpen={() => setEditing(p)} />
+                    <PlantingRow key={p.id} planting={p} year={year} bed={bed} issues={checks.byPlanting.get(p.id)} onOpen={() => setEditing(p)} />
                   ))}
                 </Section>
               ))}
               {byBed.unplaced.length > 0 && (
                 <Section title="Elhelyezésre vár" detail={byBed.unplaced.length}>
                   {byBed.unplaced.map((p) => (
-                    <PlantingRow key={p.id} planting={p} year={year} onOpen={() => setEditing(p)} />
+                    <PlantingRow key={p.id} planting={p} year={year} issues={checks.byPlanting.get(p.id)} onOpen={() => setEditing(p)} />
                   ))}
                 </Section>
               )}
@@ -161,7 +163,7 @@ export function PlanPage() {
                     year={year}
                     bed={bedById.get(effectiveBedId(p) ?? 0)}
                     showBed
-                    clashes={clashes.get(p.id)}
+                    issues={checks.byPlanting.get(p.id)}
                     onOpen={() => setEditing(p)}
                   />
                 ))}

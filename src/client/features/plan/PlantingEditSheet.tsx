@@ -67,7 +67,9 @@ import {
   useSettings,
 } from '../../lib/queries.ts';
 import { BedDiagram, type Strip } from '../garden/BedDiagram.tsx';
-import { axisLabel, placedInBed, plantingTitle } from './plantingView.ts';
+import { companionChecks, companionIssue, rotationChecks, rotationHistory } from '@shared/domain/plantingChecks.ts';
+import { axisLabel, blankPlanting, placedInBed, plantingTitle } from './plantingView.ts';
+import { useChecksContext } from './useChecks.ts';
 import s from './PlantingEditSheet.module.css';
 
 const NEW_VARIETY = -1;
@@ -226,6 +228,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
   const { data: allBeds } = useBeds(form.year);
   const { data: plantings } = usePlantings(form.year);
   const { data: seeds = [] } = useSeeds();
+  const checksCtx = useChecksContext(form.year);
   const { data: detail } = usePlantDetail(form.plant_id ?? 0);
   const frost = settings ?? DEFAULT_SETTINGS;
 
@@ -411,6 +414,42 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     }
   }
   if (bed && !period) placementIssues.push({ level: 'info', message: 'Dátumok nélkül az ütközést nem lehet ellenőrizni.' });
+
+  // Élő vetésforgó- és társításellenőrzés a még el nem mentett adatokkal
+  const rotationNotices: { level: CheckLevel | 'ok'; message: string }[] = [];
+  if (plant && bed && checksCtx) {
+    const virtual = {
+      ...(planting ?? blankPlanting()),
+      year: form.year,
+      plant_id: plant.id,
+      plant_name: plant.name_hu,
+      family_id: plant.family_id,
+      rotation_stage: plant.rotation_stage,
+      nutrient_group: plant.nutrient_group,
+      perennial: plant.perennial,
+      method: form.method,
+      bed_id: form.bed_id,
+      axis_start_cm: placement?.axis_start_cm ?? null,
+      axis_span_cm: placement?.axis_span_cm ?? null,
+      cross_start_cm: placement?.cross_start_cm ?? null,
+      cross_span_cm: placement?.cross_span_cm ?? null,
+      plan_sow_date: usesSow(form.method) ? form.dates.sow : null,
+      plan_transplant_date: usesTransplant(form.method) ? form.dates.transplant : null,
+      plan_harvest_start: form.dates.harvestStart,
+      plan_end_date: form.dates.end,
+    };
+    const rotation = rotationChecks(virtual, checksCtx);
+    rotationNotices.push(...rotation);
+    if (!rotation.length && !plant.perennial) {
+      const earlier = rotationHistory(virtual, checksCtx).filter((h) => h.year < form.year);
+      rotationNotices.push(
+        earlier.length
+          ? { level: 'ok', message: 'Vetésforgó rendben: az itt korábban álló növények után nincs akadály.' }
+          : { level: 'info', message: 'Ennek a helynek még nincs rögzített előzménye, így a vetésforgót nem lehet ellenőrizni. A korábbi éveket az ágyás oldalán rögzítheted.' },
+      );
+    }
+    rotationNotices.push(...companionChecks(virtual, checksCtx).map((h) => companionIssue(virtual, h)));
+  }
 
   const stocks = seeds.filter((x) => x.variety_id === form.variety_id);
   const needsSeed = usesSow(form.method) && !!plant;
@@ -743,6 +782,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
             </div>
           )}
           <NoticeList items={placementIssues} />
+          <NoticeList title="Vetésforgó és szomszédok" items={rotationNotices} />
 
           {!planting && (
             <FormGroup

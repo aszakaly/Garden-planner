@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api } from './api.ts';
 import type { Settings } from '@shared/settings.ts';
+import type { CompanionPair } from '@shared/domain/companions.ts';
+import { ROTATION_LOOKBACK_YEARS } from '@shared/domain/rotation.ts';
 import type {
   Bed,
   BedListItem,
@@ -32,6 +34,8 @@ export const qk = {
   bed: (id: number) => ['beds', id] as const,
   plantings: ['plantings'] as const,
   plantingList: (year: number) => ['plantings', year] as const,
+  plantingHistory: (year: number) => ['plantings', 'elozmeny', year] as const,
+  companions: ['companions'] as const,
 };
 
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: () => api.get<Settings>('/settings') });
@@ -61,6 +65,16 @@ export const usePlantings = (year: number) =>
     queryKey: qk.plantingList(year),
     queryFn: () => api.get<PlantingListItem[]>(`/plantings?year=${year}`),
   });
+
+/** Az év és a megelőző évek ültetései (vetésforgó-előzményekhez). */
+export const usePlantingHistory = (year: number) =>
+  useQuery({
+    queryKey: qk.plantingHistory(year),
+    queryFn: () => api.get<PlantingListItem[]>(`/plantings?year=${year}&from_year=${year - ROTATION_LOOKBACK_YEARS}`),
+  });
+
+export const useCompanions = () =>
+  useQuery({ queryKey: qk.companions, queryFn: () => api.get<CompanionPair[]>('/companions'), staleTime: Infinity });
 
 /** Mutáció, ami siker után a megadott lekérdezéseket érvényteleníti. */
 export function useApiMutation<TInput, TResult = unknown>(

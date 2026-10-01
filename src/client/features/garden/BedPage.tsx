@@ -19,10 +19,13 @@ import { BedTimeline } from '../plan/BedTimeline.tsx';
 import { PlantingEditSheet } from '../plan/PlantingEditSheet.tsx';
 import { PlantingRow } from '../plan/PlantingRow.tsx';
 import { TimelineLegend } from '../plan/TimelineLegend.tsx';
-import { byStart, clashesByPlanting, effectiveBedId, placedInBed, plantingTitle } from '../plan/plantingView.ts';
+import { byStart, effectiveBedId, placedInBed, plantingTitle } from '../plan/plantingView.ts';
+import { useYearChecks } from '../plan/useChecks.ts';
 import { defaultCursor } from '../plan/timeScale.ts';
 import { BedDiagram, type Strip } from './BedDiagram.tsx';
 import { BedEditSheet } from './BedEditSheet.tsx';
+import { BedHistory } from './BedHistory.tsx';
+import { HistorySheet } from './HistorySheet.tsx';
 import s from './BedPage.module.css';
 
 export function BedPage() {
@@ -34,13 +37,15 @@ export function BedPage() {
   const [editing, setEditing] = useState(false);
   const [plantingEdit, setPlantingEdit] = useState<PlantingListItem | 'new' | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
+  const checks = useYearChecks(year);
+  const [historyYear, setHistoryYear] = useState<number | null>(null);
 
   const view = useMemo(() => {
     if (!bed) return null;
     const mine = plantings.filter((p) => effectiveBedId(p) === bed.id).sort(byStart);
     const placed = placedInBed(plantings, bed);
     const clashes = findClashes(placed);
-    return { mine, placed, clashes, clashMap: clashesByPlanting(mine, [bed]) };
+    return { mine, placed, clashes };
   }, [plantings, bed]);
 
   if (isLoading) return <PageHeader title="Ágyás" back={{ to: '/kert', label: 'Kert' }} />;
@@ -164,7 +169,7 @@ export function BedPage() {
                 planting={p}
                 year={year}
                 bed={bed}
-                clashes={view.clashMap.get(p.id)}
+                issues={checks.byPlanting.get(p.id)}
                 onOpen={() => setPlantingEdit(p)}
               />
             ))}
@@ -174,8 +179,11 @@ export function BedPage() {
         )}
       </Block>
 
-      <Block title="Előzmények (vetésforgó)">
-        <Muted>Az ágyás korábbi éveinek növényei – ezekből dolgozik a vetésforgó-ellenőrzés. Múltbeli évek is rögzíthetők lesznek.</Muted>
+      <Block
+        title="Előzmények (vetésforgó)"
+        action={<AddButton onClick={() => setHistoryYear(year - 1)}>Előzmény rögzítése</AddButton>}
+      >
+        <BedHistory bed={bed} year={year} ctx={checks.ctx} onOpen={setPlantingEdit} onAdd={setHistoryYear} />
       </Block>
 
       {bed.notes && (
@@ -185,6 +193,7 @@ export function BedPage() {
       )}
 
       <BedEditSheet open={editing} onClose={() => setEditing(false)} bed={bed} />
+      <HistorySheet open={historyYear !== null} onClose={() => setHistoryYear(null)} bed={bed} year={historyYear ?? year - 1} />
       <PlantingEditSheet
         open={plantingEdit !== null}
         onClose={() => setPlantingEdit(null)}

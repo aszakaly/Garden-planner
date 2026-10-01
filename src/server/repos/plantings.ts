@@ -20,7 +20,7 @@ const SELECT = `
          COALESCE(v.in_row_spacing_cm, pl.in_row_spacing_cm) AS in_row_spacing_cm,
          COALESCE(v.row_spacing_cm, pl.row_spacing_cm) AS row_spacing_cm,
          COALESCE(v.days_to_harvest, pl.days_to_harvest) AS days_to_harvest,
-         pl.harvest_duration_days,
+         pl.harvest_duration_days, pl.seed_viability_years,
          b.name AS bed_name, b.color AS bed_color,
          s.vintage_year AS seed_vintage,
          CASE WHEN p.variety_id IS NOT NULL
@@ -52,6 +52,8 @@ function mapPlanting(r: Row): PlantingListItem {
 
 export interface PlantingFilter {
   year: number;
+  /** Ha meg van adva, a `fromYear`–`year` közötti összes év ültetései (vetésforgó-előzményekhez) */
+  fromYear?: number;
   bedId?: number;
 }
 
@@ -59,9 +61,10 @@ export interface PlantingFilter {
  * Az év ültetései, valamint a korábbi években kezdett, de ebbe az évbe átnyúlók
  * (pl. ősszel ültetett fokhagyma) – az ágyás-idővonalhoz ezek is kellenek.
  */
-export function listPlantings(db: DB, { year, bedId }: PlantingFilter): PlantingListItem[] {
-  const where = [`(p.year = ? OR (p.year < ? AND COALESCE(p.actual_end_date, p.plan_end_date) > ?))`];
-  const params: (number | string)[] = [year, year, `${year}-01-01`];
+export function listPlantings(db: DB, { year, fromYear, bedId }: PlantingFilter): PlantingListItem[] {
+  const from = Math.min(fromYear ?? year, year);
+  const where = [`((p.year BETWEEN ? AND ?) OR (p.year < ? AND COALESCE(p.actual_end_date, p.plan_end_date) > ?))`];
+  const params: (number | string)[] = [from, year, from, `${from}-01-01`];
   if (bedId) {
     where.push('COALESCE(p.actual_bed_id, p.bed_id) = ?');
     params.push(bedId);
@@ -69,7 +72,7 @@ export function listPlantings(db: DB, { year, bedId }: PlantingFilter): Planting
   return db
     .prepare(
       `${SELECT} WHERE ${where.join(' AND ')}
-       ORDER BY COALESCE(p.actual_transplant_date, p.plan_transplant_date, p.actual_sow_date, p.plan_sow_date), p.id`,
+       ORDER BY p.year, COALESCE(p.actual_transplant_date, p.plan_transplant_date, p.actual_sow_date, p.plan_sow_date), p.id`,
     )
     .all(...params)
     .map(mapPlanting);
@@ -161,7 +164,9 @@ function occupantsInBed(db: DB, year: number, bedId: number): Occupant[] {
 /** Új ültetés; sorozatnál minden tag időben eltolva, a következő szabad sávba kerül. */
 export function createPlantings(db: DB, input: PlantingCreateInput): PlantingListItem[] {
   const ids = transaction(db, () => {
-    const { series, ...base } = normalize(db, input);
+    const { series, ...fields } = normalize(db, input);
+    // A gyors előzmény már megtörtént ültetés
+    const base = { ...fields, status: fields.is_history ? ('lezart' as const) : ('terv' as const) };
     if (!series) return [insert(db, 'planting', base)];
 
     const offsets = seriesOffsets(series.count, series.interval_days);

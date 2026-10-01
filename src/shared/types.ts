@@ -236,6 +236,7 @@ export interface PlantingListItem extends Planting {
   row_spacing_cm: number | null;
   days_to_harvest: number | null;
   harvest_duration_days: number | null;
+  seed_viability_years: number | null;
   /** A (tényleges, ha az eltér) ágyás neve és színe */
   bed_name: string | null;
   bed_color: ListColorName | null;

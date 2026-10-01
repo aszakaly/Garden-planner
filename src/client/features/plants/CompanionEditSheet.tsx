@@ -31,7 +31,7 @@ export function CompanionEditSheet({ open, onClose, plantId, plantName, companio
     setReason(companion?.reason ?? '');
   }, [open, companion?.id]);
 
-  const invalidate = [qk.plants, ['plants']];
+  const invalidate = [qk.plants, ['plants'], qk.companions];
   const save = useApiMutation(
     () => api.put('/companions', { plant_a_id: plantId, plant_b_id: other, relation, reason }),
     invalidate,

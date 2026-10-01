@@ -17,6 +17,7 @@ import { useYear } from '../../lib/year.tsx';
 import { PlantingEditSheet } from '../plan/PlantingEditSheet.tsx';
 import { PlantingRow } from '../plan/PlantingRow.tsx';
 import { byStart, effectiveBedId } from '../plan/plantingView.ts';
+import { useYearChecks } from '../plan/useChecks.ts';
 import { CompanionEditSheet } from './CompanionEditSheet.tsx';
 import { PlantEditSheet } from './PlantEditSheet.tsx';
 import { SeasonCalendar } from './SeasonCalendar.tsx';
@@ -41,6 +42,7 @@ export function PlantDetailPage() {
   const { data: plantings = [] } = usePlantings(year);
   const { data: beds = [] } = useBeds(year);
   const [plantingEdit, setPlantingEdit] = useState<PlantingListItem | 'new' | null>(null);
+  const checks = useYearChecks(year);
   const verify = useApiMutation(() => api.patch(`/plants/${id}`, { data_status: 'ellenorzott' }), [qk.plant(id), qk.plants]);
 
   if (isLoading) return <PageHeader title="Növény" color="var(--c-mint)" />;
@@ -197,6 +199,7 @@ export function PlantDetailPage() {
                   year={year}
                   bed={beds.find((b) => b.id === effectiveBedId(p))}
                   showBed
+                  issues={checks.byPlanting.get(p.id)}
                   onOpen={() => setPlantingEdit(p)}
                 />
               ))}

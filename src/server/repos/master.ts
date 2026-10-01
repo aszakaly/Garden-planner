@@ -1,5 +1,6 @@
 import type { DB } from '../db/index.ts';
 import { HttpError, insert, notFound, remove, slugify, update } from '../db/helpers.ts';
+import type { CompanionPair } from '../../shared/domain/companions.ts';
 import type {
   CompanionInput,
   CropGroupInput,
@@ -273,8 +274,9 @@ export function deleteCompanion(db: DB, id: number): void {
 }
 
 /** Az összes társítás tömören (a tervezési ellenőrzésekhez). */
-export function allCompanions(db: DB): { a: number; b: number; relation: -1 | 0 | 1; reason: string | null }[] {
+/** Az összes nem semleges társítás tömören (az ültetések ellenőrzéséhez). */
+export function allCompanions(db: DB): CompanionPair[] {
   return db
-    .prepare('SELECT plant_a_id AS a, plant_b_id AS b, relation, reason FROM companion')
-    .all() as unknown as { a: number; b: number; relation: -1 | 0 | 1; reason: string | null }[];
+    .prepare('SELECT plant_a_id AS a, plant_b_id AS b, relation, reason FROM companion WHERE relation <> 0')
+    .all() as unknown as CompanionPair[];
 }

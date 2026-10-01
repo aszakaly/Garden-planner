@@ -177,6 +177,8 @@ export function suggestedSeriesCount(w: GrowingWindow, firstSow: string, interva
 
 export interface DateIssue {
   level: CheckLevel;
+  /** sorrend: fordított dátumok · fagy / oszi_fagy: fagyveszély · idoszak: a javasolt időszakon kívül */
+  code: 'sorrend' | 'fagy' | 'oszi_fagy' | 'idoszak';
   field: DateField;
   message: string;
 }
@@ -211,6 +213,7 @@ export function checkDates({ dates, method, window: w, crop, frost }: CheckDates
     if (dates[b]! < dates[a]!) {
       issues.push({
         level: 'kerulendo',
+        code: 'sorrend',
         field: b,
         message: `${withArticle(FIELD_NAME[b], true)} (${shortDate(dates[b]!)}) korábbra esik, mint ${withArticle(FIELD_NAME[a])} (${shortDate(dates[a]!)}).`,
       });
@@ -224,6 +227,7 @@ export function checkDates({ dates, method, window: w, crop, frost }: CheckDates
     if (start < lastFrost) {
       issues.push({
         level: 'figyelem',
+        code: 'fagy',
         field: startField,
         message: `Fagyérzékeny növény: ${withArticle(startName)} (${shortDate(start)}) az utolsó tavaszi fagy (${shortDate(lastFrost)}) előtt van – készülj takarással.`,
       });
@@ -231,12 +235,14 @@ export function checkDates({ dates, method, window: w, crop, frost }: CheckDates
     if (dates.harvestStart && dates.harvestStart >= firstFrost) {
       issues.push({
         level: 'figyelem',
+        code: 'oszi_fagy',
         field: 'harvestStart',
         message: `A betakarítás az első őszi fagy (${shortDate(firstFrost)}) utánra esik – fagyérzékeny növénynél ez már késő.`,
       });
     } else if (dates.end && dates.end > firstFrost && !crop.perennial) {
       issues.push({
         level: 'info',
+        code: 'oszi_fagy',
         field: 'end',
         message: `A fagyérzékeny kultúra várhatóan csak az első őszi fagyig (${shortDate(firstFrost)}) marad meg.`,
       });
@@ -248,6 +254,7 @@ export function checkDates({ dates, method, window: w, crop, frost }: CheckDates
     if (dates.sow && usesSow(method) && w.sow_start && w.sow_end && !monthDayInRange(monthDayOf(dates.sow), w.sow_start, w.sow_end)) {
       issues.push({
         level: 'info',
+        code: 'idoszak',
         field: 'sow',
         message: `${withArticle(method === 'ultetes' ? 'ültetés' : 'vetés', true)} a javasolt időszakon (${shortDate(w.sow_start)} – ${shortDate(w.sow_end)}) kívül esik.`,
       });
@@ -261,6 +268,7 @@ export function checkDates({ dates, method, window: w, crop, frost }: CheckDates
     ) {
       issues.push({
         level: 'info',
+        code: 'idoszak',
         field: 'transplant',
         message: `A kiültetés a javasolt időszakon (${shortDate(w.transplant_start)} – ${shortDate(w.transplant_end)}) kívül esik.`,
       });

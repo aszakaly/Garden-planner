@@ -70,6 +70,23 @@ export function placementsOverlap(a: Placement, b: Placement): boolean {
   );
 }
 
+/** Szomszédosnak számít két sáv, ha legfeljebb ennyi cm választja el őket. */
+export const NEIGHBOUR_GAP_CM = 10;
+
+const gapBetween = (a0: number, a1: number, b0: number, b1: number) => Math.max(0, b0 - a1, a0 - b1);
+
+/** Közvetlen szomszédok (vagy átfedők): mindkét irányban legfeljebb `gap` cm távolságra. */
+export function placementsAdjacent(a: Placement, b: Placement, gap = NEIGHBOUR_GAP_CM): boolean {
+  const axis = gapBetween(a.axis_start_cm, a.axis_start_cm + a.axis_span_cm, b.axis_start_cm, b.axis_start_cm + b.axis_span_cm);
+  const cross = gapBetween(
+    a.cross_start_cm,
+    a.cross_start_cm + a.cross_span_cm,
+    b.cross_start_cm,
+    b.cross_start_cm + b.cross_span_cm,
+  );
+  return axis <= gap + EPS && cross <= gap + EPS;
+}
+
 export const occupantsClash = (a: Occupant, b: Occupant) =>
   periodsOverlap(a.period, b.period) && placementsOverlap(a.placement, b.placement);
 

@@ -4,6 +4,14 @@
   gap: 6px;
   margin: 8px 16px 0;
 }
+.title {
+  margin: 14px 0 0 16px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--label-2);
+}
 .notice {
   display: flex;
   align-items: flex-start;
@@ -16,6 +24,10 @@
 .icon {
   flex: none;
   margin-top: 1px;
+}
+.ok {
+  background: color-mix(in srgb, var(--c-green) 11%, white);
+  color: #1f6b33;
 }
 .info {
   background: color-mix(in srgb, var(--c-blue) 9%, white);
