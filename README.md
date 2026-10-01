@@ -2,7 +2,7 @@
 
 Kert- és veteményes-tervező és kertészeti napló saját használatra. Magyar felület, Apple Emlékeztetők stílusban, helyi szerverrel; az otthoni Wi-Fi-n telefonról is használható, és főképernyőre téve alkalmazásként nyílik.
 
-> **Fejlesztés alatt.** Az első teljes változat (MVP) elkészült; a terv: [docs/specs/2026-09-30-kerttervezo-design.md](docs/specs/2026-09-30-kerttervezo-design.md).
+> **Fejlesztés alatt.** Az első teljes változat (MVP) elkészült; a terv: [docs/specs/2026-09-30-kerttervezo-design.md](docs/specs/2026-09-30-kerttervezo-design.md), a változások: [CHANGELOG.md](CHANGELOG.md).
 
 ## Mit tud
 

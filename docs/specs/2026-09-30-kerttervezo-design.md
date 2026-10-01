@@ -185,3 +185,24 @@ Minden lépés végén futnak a tesztek, és commit készül.
   9. múltbeli (2025-ös) előzmény gyors rögzítése csak évvel → a vetésforgó-ellenőrzés figyelembe veszi;
   10. 2028-as terv: a javaslat a tényleges előzményt veszi figyelembe.
 - **Kézi ellenőrzés:** `npm start`, majd megnyitás a böngészőpanelen. Képernyőképek asztali és mobil nézetben; elérés iPhone-ról a `http://<gépnév>.local:4321` címen.
+
+## Bővítések az MVP után
+Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változatlan; a felhasználói összefoglaló a [CHANGELOG.md](../../CHANGELOG.md)-ben van.
+
+### Ágyás másolása (2026-10-01)
+**Cél:** több egyforma ágyás (pl. 11 emelt ágyás) gyors felvétele, egyenkénti kitöltés helyett.
+- **Felület:** az „Új ágyás” lapon „Minta” választó (egy meglévő ágyás) és „Darabszám” mező (1–50), a létrejövő nevek előnézetével. Az ágyás oldalán a „Másolás” gomb ugyanezt a lapot nyitja meg, az adott ágyással mintaként.
+- **Mi másolódik:** méret, szín, típus, sorok iránya, elforgatás, adottságok, megjegyzés, használati évek.
+- **Mi nem másolódik:**
+  - ültetések, előzmények, napló – ezek az adott ágyás történetéhez tartoznak, és a vetésforgó-ellenőrzés is ágyásonként számol;
+  - a kertbeli hely (`pos_x`, `pos_y`), mert két ágyás nem állhat ugyanott.
+- **Névsorszámozás** (`src/shared/domain/beds.ts`, `numberedNames`):
+  - a név utolsó olyan számát lépteti, amelyet nem követ betű: „Emelt ágyás 7.” → „8.”, „1. ágyás” → „2. ágyás”, de „E2E ágyás” → „E2E ágyás 2”;
+  - megtartja a nullákkal kitöltött szélességet („Á-09” → „Á-10”);
+  - a foglalt neveket kis- és nagybetűtől függetlenül kihagyja;
+  - a felület előnézete és a szerver ugyanezt a függvényt használja;
+  - egyetlen ágyásnál a beírt név marad: az ágyásnév továbbra sem kötelezően egyedi.
+- **API:** `POST /api/beds/batch` `{ bed, count }`, ahol a `count` 2–50. Egyetlen ágyás továbbra is a `POST /api/beds` végponton jön létre.
+  - Egy tranzakcióban hozza létre az ágyásokat: vagy mind létrejön, vagy egy sem.
+  - Mindegyik saját, növekvő `sort_order`-t kap a lista végén, így a létrehozás sorrendjében jelennek meg (a névsor szerinti rendezés a „10”-et a „2” elé tenné).
+- **Tesztek:** egységtesztek a sorszámozásra, API-teszt a tömeges létrehozásra, és a végponttól végpontig tartó folyamat 11. lépése (másolás három példányban).
