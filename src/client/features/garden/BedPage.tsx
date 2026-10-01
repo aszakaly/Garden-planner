@@ -1,11 +1,12 @@
-import { Pencil } from 'lucide-react';
+import { Lightbulb, Pencil } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { BED_TYPE_LABEL, ROW_DIRECTION_LABEL, SUN_LABEL } from '@shared/labels.ts';
 import { findClashes } from '@shared/domain/geometry.ts';
 import { DEFAULT_SETTINGS } from '@shared/settings.ts';
 import type { PlantingListItem } from '@shared/types.ts';
-import { AddButton, Block, Fact, FactGrid, Muted } from '../../components/ui/Detail.tsx';
+import type { Suggestion } from '@shared/domain/suggestions.ts';
+import { AddButton, Block, BlockActions, Fact, FactGrid, Muted } from '../../components/ui/Detail.tsx';
 import { NoticeList } from '../../components/ui/Notice.tsx';
 import { PageHeader, ToolbarButton } from '../../components/ui/PageHeader.tsx';
 import { formatArea, formatDimensions } from '../../lib/beds.ts';
@@ -18,6 +19,7 @@ import { shortDate } from '@shared/domain/isoDate.ts';
 import { BedTimeline } from '../plan/BedTimeline.tsx';
 import { PlantingEditSheet } from '../plan/PlantingEditSheet.tsx';
 import { PlantingRow } from '../plan/PlantingRow.tsx';
+import { SuggestionSheet } from '../plan/SuggestionSheet.tsx';
 import { TimelineLegend } from '../plan/TimelineLegend.tsx';
 import { byStart, effectiveBedId, placedInBed, plantingTitle } from '../plan/plantingView.ts';
 import { useYearChecks } from '../plan/useChecks.ts';
@@ -42,6 +44,8 @@ export function BedPage() {
   const [cursor, setCursor] = useState<string | null>(null);
   const checks = useYearChecks(year);
   const [historyYear, setHistoryYear] = useState<number | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [picked, setPicked] = useState<{ suggestion: Suggestion; bedId: number } | null>(null);
   const { data: entries = [] } = useJournal({ bed_id: id, year }, id > 0);
   const journal = useJournalSheet();
 
@@ -165,7 +169,17 @@ export function BedPage() {
         />
       </Block>
 
-      <Block title={`Ültetések ${year}`} action={<AddButton onClick={() => setPlantingEdit('new')}>Új ültetés</AddButton>}>
+      <Block
+        title={`Ültetések ${year}`}
+        action={
+          <BlockActions>
+            <AddButton icon={<Lightbulb size={15} strokeWidth={2.4} />} onClick={() => setSuggesting(true)}>
+              Mi kerülhet ide?
+            </AddButton>
+            <AddButton onClick={() => setPlantingEdit('new')}>Új ültetés</AddButton>
+          </BlockActions>
+        }
+      >
         {view && view.mine.length > 0 ? (
           <div className={s.list}>
             {view.mine.map((p) => (
@@ -213,11 +227,26 @@ export function BedPage() {
       {journal.sheet}
       <BedEditSheet open={editing} onClose={() => setEditing(false)} bed={bed} />
       <HistorySheet open={historyYear !== null} onClose={() => setHistoryYear(null)} bed={bed} year={historyYear ?? year - 1} />
+      <SuggestionSheet
+        open={suggesting}
+        onClose={() => setSuggesting(false)}
+        year={year}
+        request={{ bedId: bed.id }}
+        onPick={(sg, toBed) => {
+          setSuggesting(false);
+          setPicked({ suggestion: sg, bedId: toBed });
+          setPlantingEdit('new');
+        }}
+      />
       <PlantingEditSheet
         open={plantingEdit !== null}
-        onClose={() => setPlantingEdit(null)}
+        onClose={() => {
+          setPlantingEdit(null);
+          setPicked(null);
+        }}
         planting={plantingEdit && plantingEdit !== 'new' ? plantingEdit : undefined}
-        bedId={bed.id}
+        bedId={picked?.bedId ?? bed.id}
+        suggestion={plantingEdit === 'new' ? picked?.suggestion : undefined}
         year={year}
       />
     </div>

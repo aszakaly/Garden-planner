@@ -7,6 +7,7 @@ import {
   LIST_COLOR_NAMES,
   PLANTING_METHODS,
   PLANTING_STATUSES,
+  PLAN_YEAR_STATUSES,
   ROTATION_STAGES,
   ROW_DIRECTIONS,
   SEASONS,
@@ -278,3 +279,15 @@ export const journalInput = z
   })
   .refine((e) => e.body !== '' || e.amount != null, { message: 'Írj szöveget vagy adj meg mennyiséget', path: ['body'] });
 export type JournalInput = z.input<typeof journalInput>;
+
+/** Tervév: állapot és jegyzet. */
+export const planYearInput = z.object({
+  status: z.enum(PLAN_YEAR_STATUSES),
+  notes: optText(4000),
+});
+export type PlanYearInput = z.infer<typeof planYearInput>;
+
+/** Évelők átvitele az előző évből: az átvinni kívánt (előző évi) ültetések. */
+export const carryOverInput = z.object({
+  ids: z.array(z.number().int().positive()).max(500),
+});

@@ -67,6 +67,14 @@ export const JOURNAL_TYPE_LABEL: Record<JournalType, string> = {
   altalanos: 'Általános',
 };
 
+export const PLAN_YEAR_STATUSES = ['tervezes', 'aktiv', 'lezart'] as const;
+export type PlanYearStatus = (typeof PLAN_YEAR_STATUSES)[number];
+export const PLAN_YEAR_STATUS_LABEL: Record<PlanYearStatus, string> = {
+  tervezes: 'Tervezés alatt',
+  aktiv: 'Folyamatban',
+  lezart: 'Lezárva',
+};
+
 export const EVAL_RECOMMEND = ['igen', 'talan', 'nem'] as const;
 export type EvalRecommend = (typeof EVAL_RECOMMEND)[number];
 export const EVAL_RECOMMEND_LABEL: Record<EvalRecommend, string> = { igen: 'Igen', talan: 'Talán', nem: 'Nem' };

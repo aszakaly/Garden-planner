@@ -16,5 +16,6 @@
     height: auto;
     min-height: 100dvh;
     overflow: visible;
+    padding-bottom: calc(48px + env(safe-area-inset-bottom));
   }
 }

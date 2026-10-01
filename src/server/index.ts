@@ -13,10 +13,11 @@ const DB_PATH = process.env.KERT_DB ?? join(ROOT, 'data', 'garden.db');
 
 const db = openDatabase(DB_PATH);
 const seeded = seedIfEmpty(db);
-const backup = backupDatabase(db, join(dirname(DB_PATH), 'backups'), basename(DB_PATH, '.db'));
+const backupConfig = { dir: join(dirname(DB_PATH), 'backups'), name: basename(DB_PATH, '.db') };
+const backup = backupDatabase(db, backupConfig.dir, backupConfig.name);
 
 const production = process.env.NODE_ENV === 'production';
-const app = buildApp({ db, clientDir: production ? join(ROOT, 'dist', 'client') : undefined });
+const app = buildApp({ db, backup: backupConfig, clientDir: production ? join(ROOT, 'dist', 'client') : undefined });
 
 try {
   await app.listen({ port: PORT, host: '0.0.0.0' });

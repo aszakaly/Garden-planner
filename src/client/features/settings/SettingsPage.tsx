@@ -8,6 +8,7 @@ import { PageHeader } from '../../components/ui/PageHeader.tsx';
 import { api } from '../../lib/api.ts';
 import { errorMessage } from '../../lib/errors.ts';
 import { qk, useApiMutation, useCropGroups, useFamilies, useSettings } from '../../lib/queries.ts';
+import { DataGroup } from './DataGroup.tsx';
 import { CropGroupEditSheet, FamilyEditSheet } from './MasterEditSheets.tsx';
 import s from './SettingsPage.module.css';
 
@@ -83,6 +84,8 @@ export function SettingsPage() {
         ))}
         <ListButton onClick={() => setEditing({ kind: 'group' })} title="Új zöldségcsoport" add />
       </FormGroup>
+
+      <DataGroup />
 
       <FormGroup title="Források">
         <div className={s.sources}>

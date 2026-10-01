@@ -34,7 +34,8 @@
 }
 .row + .row::before,
 .row + .button::before,
-.button + .row::before {
+.button + .row::before,
+.button + .button::before {
   content: '';
   position: absolute;
   top: 0;

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { openDatabase } from './index.ts';
-import { backupDatabase } from './backup.ts';
+import { backupDatabase, listBackups } from './backup.ts';
 
 const NOW = new Date(2026, 8, 30, 12, 0, 0);
 const old = new Date(2026, 0, 1);
@@ -39,5 +39,15 @@ describe('backupDatabase', () => {
     expect(backupDatabase(db, dir, 'garden', new Date(Date.now() + 60_000))).toBeNull();
     expect(backupDatabase(db, dir, 'garden', new Date(Date.now() + 7 * 3600_000))).not.toBeNull();
     expect(readdirSync(dir)).toHaveLength(2);
+  });
+
+  it('kényszerítve azonnal is ment, ugyanabban a másodpercben sem ír felül', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kert-backup-'));
+    const db = openDatabase(':memory:');
+    const a = backupDatabase(db, dir, 'garden', NOW);
+    const b = backupDatabase(db, dir, 'garden', NOW, true);
+    expect(b).not.toBe(a);
+    expect(b).toMatch(/garden-20260930-120001\.db$/);
+    expect(listBackups(dir, 'garden').map((x) => x.name)).toEqual(['garden-20260930-120001.db', 'garden-20260930-120000.db']);
   });
 });

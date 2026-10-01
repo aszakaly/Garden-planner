@@ -3,6 +3,7 @@ import { api } from './api.ts';
 import type { Settings } from '@shared/settings.ts';
 import type { CompanionPair } from '@shared/domain/companions.ts';
 import { ROTATION_LOOKBACK_YEARS } from '@shared/domain/rotation.ts';
+import type { PlanYear } from '@shared/domain/planYear.ts';
 import type { TaskItem } from '@shared/domain/tasks.ts';
 import type { JournalType } from '@shared/labels.ts';
 import type {
@@ -44,6 +45,10 @@ export const qk = {
   taskRange: (from: string, to: string) => ['plantings', 'tasks', from, to] as const,
   planting: (id: number) => ['plantings', 'egy', id] as const,
   cultivation: (kind: 'noveny' | 'fajta', id: number) => ['plantings', 'tortenet', kind, id] as const,
+  /** Az előző évből áthozható évelők (az ültetésekkel együtt frissül) */
+  carryover: (year: number) => ['plantings', 'atvitel', year] as const,
+  planYear: (year: number) => ['plan-years', year] as const,
+  backups: ['backups'] as const,
   journal: ['journal'] as const,
   journalList: (filter: JournalFilter) => ['journal', 'lista', filter] as const,
   journalCount: (year: number) => ['journal', 'db', year] as const,
@@ -132,6 +137,19 @@ export const useJournal = (filter: JournalFilter, enabled = true) =>
 
 export const useJournalCount = (year: number) =>
   useQuery({ queryKey: qk.journalCount(year), queryFn: () => api.get<{ count: number }>(`/journal/count?year=${year}`) });
+
+export const usePlanYear = (year: number) =>
+  useQuery({ queryKey: qk.planYear(year), queryFn: () => api.get<PlanYear>(`/plan-years/${year}`) });
+
+export const useCarryCandidates = (year: number) =>
+  useQuery({ queryKey: qk.carryover(year), queryFn: () => api.get<PlantingListItem[]>(`/plan-years/${year}/carryover`) });
+
+/** A mentések listája (a legújabbal kezdve) és a helyük. */
+export interface BackupList {
+  dir: string | null;
+  files: { name: string; size: number; created: string }[];
+}
+export const useBackups = () => useQuery({ queryKey: qk.backups, queryFn: () => api.get<BackupList>('/backups') });
 
 export const useCompanions = () =>
   useQuery({ queryKey: qk.companions, queryFn: () => api.get<CompanionPair[]>('/companions'), staleTime: Infinity });

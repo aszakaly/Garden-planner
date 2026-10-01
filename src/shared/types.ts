@@ -213,6 +213,8 @@ export interface Planting {
   is_history: boolean;
   series_id: string | null;
   series_index: number | null;
+  /** Évelőnél: az előző évi ültetés, amelyből át lett hozva (január 1-jétől foglalja a helyét) */
+  carried_from_id: number | null;
   eval_success: number | null;
   eval_yield: string | null;
   eval_recommend: 'igen' | 'nem' | 'talan' | null;

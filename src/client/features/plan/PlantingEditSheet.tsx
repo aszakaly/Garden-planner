@@ -37,6 +37,7 @@ import { occupancyPeriod, placeSeries } from '@shared/domain/plantings.ts';
 import { addDaysISO, shortDate } from '@shared/domain/isoDate.ts';
 import { DEFAULT_SETTINGS } from '@shared/settings.ts';
 import type { PlantingCreateInput } from '@shared/schemas.ts';
+import type { Suggestion } from '@shared/domain/suggestions.ts';
 import type { BedListItem, GrowingWindow, PlantListItem, PlantingListItem, Variety, VarietyWithWindows } from '@shared/types.ts';
 import {
   DateInput,
@@ -72,6 +73,7 @@ import { axisLabel, blankPlanting, placedInBed, plantingTitle } from './planting
 import { useChecksContext } from './useChecks.ts';
 import { actualFromPlanting, actualPayload, PlantingActualPanel, type ActualForm } from './PlantingActualPanel.tsx';
 import { PlantingJournalPanel } from './PlantingJournalPanel.tsx';
+import { SuggestionSheet } from './SuggestionSheet.tsx';
 import s from './PlantingEditSheet.module.css';
 
 const NEW_VARIETY = -1;
@@ -183,11 +185,13 @@ function cropOf(plant: PlantListItem, variety?: Variety | null): CropTiming {
 }
 
 /** Az űrlap dátumai egy ültetés-szerű objektumként (a foglaltság számításához). */
-function periodOf(f: Form) {
+function periodOf(f: Form, perennial = false, carriedFrom: number | null = null) {
   return occupancyPeriod({
     year: f.year,
     method: f.method,
     status: 'terv',
+    perennial,
+    carried_from_id: carriedFrom,
     plan_sow_date: usesSow(f.method) ? f.dates.sow : null,
     plan_transplant_date: usesTransplant(f.method) ? f.dates.transplant : null,
     plan_harvest_start: f.dates.harvestStart,
@@ -222,13 +226,16 @@ interface Props {
   year: number;
   /** Meglévő ültetésnél a nyitó fül */
   initialTab?: SheetTab;
+  /** Új ültetésnél a „Mi kerülhet ide?” lapon választott javaslat */
+  suggestion?: Suggestion;
 }
 
 type SheetTab = 'terv' | 'teny' | 'naplo';
 
-export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, year, initialTab = 'terv' }: Props) {
+export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, year, initialTab = 'terv', suggestion }: Props) {
   const [form, setForm] = useState<Form>(() => emptyForm(year));
   const [tab, setTab] = useState<SheetTab>(initialTab);
+  const [suggesting, setSuggesting] = useState(false);
   const [actual, setActual] = useState<ActualForm | null>(null);
   const actualInitial = useRef<string | null>(null);
   const { data: plants = [] } = usePlants();
@@ -276,7 +283,8 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     setActual(null);
     let f: Form = { ...emptyForm(year), bed_id: bedId ?? null };
     const plant = plants.find((p) => p.id === plantId);
-    if (plant) f = withPlant(f, plant);
+    if (suggestion && bedId) f = withSuggestion(f, suggestion, bedId);
+    else if (plant) f = withPlant(f, plant);
     setForm(place(f));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, planting?.id, ready, year]);
@@ -299,7 +307,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
   /** Szabad hely keresése, amíg az elhelyezést kézzel nem módosították. */
   function place(f: Form): Form {
     const b = beds.find((x) => x.id === f.bed_id);
-    const period = periodOf(f);
+    const period = periodOf(f, plants.find((p) => p.id === f.plant_id)?.perennial, planting?.carried_from_id);
     if (!f.autoPlace || !b || !period || !f.axis_span_cm) return f;
     const start = firstFreeStart(bedAxes(b).axis, othersIn(f.bed_id), period, f.axis_span_cm, crossOf(f, b));
     return { ...f, axis_start_cm: start ?? 0 };
@@ -337,6 +345,22 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
       plant_count: null,
     };
     return withWindow(next, defaultWindow(p.windows, f.year), cropOf(p));
+  }
+
+  /** A „Mi kerülhet ide?” javaslata: növény, fajta, időszak, dátumok és a kijelölt sáv. */
+  function withSuggestion(f: Form, sg: Suggestion, toBed: number): Form {
+    return {
+      ...withPlant({ ...f, bed_id: toBed }, sg.plant),
+      variety_id: sg.variety_id,
+      seed_stock_id: sg.seed_stock_id,
+      window_id: sg.window.id,
+      method: sg.method,
+      dates: sg.dates,
+      rows: sg.rows,
+      axis_start_cm: sg.placement.axis_start_cm,
+      axis_span_cm: sg.placement.axis_span_cm,
+      autoPlace: false,
+    };
   }
 
   const choosePlant = (id: number | null) => {
@@ -392,7 +416,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
 
   // --- Származtatott értékek -------------------------------------------------
 
-  const period = periodOf(form);
+  const period = periodOf(form, plant?.perennial, planting?.carried_from_id);
   const placement = placementOfForm(form, bed);
   const axes = bed ? bedAxes(bed) : null;
   const occupants = othersIn(form.bed_id);
@@ -650,6 +674,9 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
                 ))}
               </Select>
             </FormRow>
+            {!planting && (
+              <FormButton onClick={() => setSuggesting(true)}>Mi kerülhet ide? – javaslatok az ágyás előzményei alapján</FormButton>
+            )}
           </FormGroup>
           <NoticeList items={seedIssues} />
 
@@ -694,7 +721,11 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
 
               <FormGroup
                 title="Dátumok"
-                footer={`A javaslat az időszak elejéről indul${plant.frost_sensitive ? `, fagyérzékeny növénynél legkorábban az utolsó fagy napjától (${shortDate(frost.lastFrost)})` : ''}. Egy dátum módosítása a későbbieket is ugyanannyival tolja.`}
+                footer={
+                  planting?.carried_from_id
+                    ? `Az előző évből áthozott évelő: január 1-jétől a helyén áll, ${sowLabel.toLocaleLowerCase('hu')} dátuma nem kell.`
+                    : `A javaslat az időszak elejéről indul${plant.frost_sensitive ? `, fagyérzékeny növénynél legkorábban az utolsó fagy napjától (${shortDate(frost.lastFrost)})` : ''}. Egy dátum módosítása a későbbieket is ugyanannyival tolja.`
+                }
               >
                 {usesSow(form.method) && (
                   <FormRow label={sowLabel}>
@@ -881,6 +912,22 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
             </FormGroup>
           )}
         </>
+      )}
+      {!planting && (
+        <SuggestionSheet
+          open={suggesting}
+          onClose={() => setSuggesting(false)}
+          year={form.year}
+          request={{
+            bedId: form.bed_id,
+            strip: !form.autoPlace && placement ? { start: placement.axis_start_cm, span: placement.axis_span_cm } : null,
+            cross: placement && !form.fullCross ? { start: placement.cross_start_cm, span: placement.cross_span_cm } : null,
+          }}
+          onPick={(sg, toBed) => {
+            setForm((f) => withSuggestion(f, sg, toBed));
+            setSuggesting(false);
+          }}
+        />
       )}
     </Sheet>
   );

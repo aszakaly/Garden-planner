@@ -1,16 +1,21 @@
-import { Plus } from 'lucide-react';
+import { NotebookPen, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { MONTHS_HU } from '@shared/labels.ts';
+import { MONTHS_HU, PLAN_YEAR_STATUS_LABEL } from '@shared/labels.ts';
+import type { Suggestion } from '@shared/domain/suggestions.ts';
 import { DEFAULT_SETTINGS } from '@shared/settings.ts';
 import type { PlantingListItem } from '@shared/types.ts';
 import { PageHeader, ToolbarButton } from '../../components/ui/PageHeader.tsx';
 import { Section } from '../../components/ui/Section.tsx';
 import { SegmentedControl } from '../../components/ui/SegmentedControl.tsx';
-import { useBeds, usePlantings, useSettings } from '../../lib/queries.ts';
+import { useBeds, useCarryCandidates, usePlanYear, usePlantings, useSettings } from '../../lib/queries.ts';
 import { useStoredState } from '../../lib/useStoredState.ts';
 import { useYear } from '../../lib/year.tsx';
+import { CarryOverCard } from './CarryOverCard.tsx';
 import { GardenTimeline } from './GardenTimeline.tsx';
+import { NextYearPanel } from './NextYearPanel.tsx';
+import { PlanYearSheet } from './PlanYearSheet.tsx';
+import { SuggestionSheet } from './SuggestionSheet.tsx';
 import { PlantingEditSheet } from './PlantingEditSheet.tsx';
 import { PlantingRow } from './PlantingRow.tsx';
 import { TimelineLegend } from './TimelineLegend.tsx';
@@ -27,6 +32,12 @@ export function PlanPage() {
   const { data: settings } = useSettings();
   const [view, setView] = useStoredState<View>('kerttervezo.planView', 'agyas');
   const [editing, setEditing] = useState<PlantingListItem | 'new' | null>(null);
+  const [editTab, setEditTab] = useState<'terv' | 'teny'>('terv');
+  const [yearSheet, setYearSheet] = useState(false);
+  const [suggestBed, setSuggestBed] = useState<number | null>(null);
+  const [picked, setPicked] = useState<{ suggestion: Suggestion; bedId: number } | null>(null);
+  const { data: planYear } = usePlanYear(year);
+  const { data: candidates = [] } = useCarryCandidates(year);
 
   const own = plantings.filter((p) => p.year === year);
   const checks = useYearChecks(year);
@@ -72,25 +83,47 @@ export function PlanPage() {
         title="Éves terv"
         color="var(--c-green)"
         count={stats.count || undefined}
-        subtitle={`${year}${stats.count ? ` · ${new Set(own.map(effectiveBedId).filter(Boolean)).size} ágyás` : ''}`}
+        subtitle={`${year}${planYear ? ` · ${PLAN_YEAR_STATUS_LABEL[planYear.status]}` : ''}${stats.count ? ` · ${new Set(own.map(effectiveBedId).filter(Boolean)).size} ágyás` : ''}`}
         actions={
-          <ToolbarButton label="Új ültetés" onClick={() => setEditing('new')}>
-            <Plus size={19} strokeWidth={2.2} />
-          </ToolbarButton>
+          <>
+            <ToolbarButton label="Tervév: állapot és jegyzet" onClick={() => setYearSheet(true)}>
+              <NotebookPen size={18} strokeWidth={2.1} />
+            </ToolbarButton>
+            <ToolbarButton label="Új ültetés" onClick={() => setEditing('new')}>
+              <Plus size={19} strokeWidth={2.2} />
+            </ToolbarButton>
+          </>
         }
       />
 
-      {!isLoading && own.length === 0 && (
-        <div className={s.empty}>
-          <p className={s.emptyTitle}>Ebben az évben ({year}) még nincs tervezett ültetés</p>
-          <p>
-            Vedd fel, mit hova és mikor vetsz vagy ültetsz: a dátumokat a növény termesztési időszakából javasolja a
-            program, és az ágyásban a következő szabad sávot keresi meg. Másik évet az oldalsáv tetején választhatsz.
-          </p>
-          <button type="button" className={s.emptyButton} onClick={() => setEditing('new')}>
-            <Plus size={16} strokeWidth={2.4} /> Első ültetés felvétele
+      {planYear?.notes && (
+        <p className={s.yearNotes}>
+          {planYear.notes}
+          <button type="button" onClick={() => setYearSheet(true)}>
+            Szerkesztés
           </button>
-        </div>
+        </p>
+      )}
+
+      {candidates.length > 0 && (
+        <CarryOverCard
+          year={year}
+          candidates={candidates}
+          onOpen={(p) => {
+            setEditTab('teny');
+            setEditing(p);
+          }}
+        />
+      )}
+
+      {!isLoading && own.length === 0 && (
+        <NextYearPanel
+          year={year}
+          beds={beds}
+          ctx={checks.ctx}
+          onSuggest={setSuggestBed}
+          onNew={() => setEditing('new')}
+        />
       )}
 
       {own.length > 0 && (
@@ -174,10 +207,29 @@ export function PlanPage() {
 
       <PlantingEditSheet
         open={editing !== null}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null);
+          setEditTab('terv');
+          setPicked(null);
+        }}
         planting={editing && editing !== 'new' ? editing : undefined}
+        bedId={picked?.bedId}
+        suggestion={editing === 'new' ? picked?.suggestion : undefined}
+        initialTab={editTab}
         year={year}
       />
+      <SuggestionSheet
+        open={suggestBed !== null}
+        onClose={() => setSuggestBed(null)}
+        year={year}
+        request={{ bedId: suggestBed }}
+        onPick={(sg, bedId) => {
+          setSuggestBed(null);
+          setPicked({ suggestion: sg, bedId });
+          setEditing('new');
+        }}
+      />
+      {planYear && <PlanYearSheet open={yearSheet} onClose={() => setYearSheet(false)} planYear={planYear} />}
     </div>
   );
 }

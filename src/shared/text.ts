@@ -25,3 +25,9 @@ export const yearIn = (y: number) => `${y}-${backVowelNumber(y) ? 'ban' : 'ben'}
 
 /** „2028-tól”, „2029-től” */
 export const yearFrom = (y: number) => `${y}-${backVowelNumber(y) ? 'tól' : 'től'}`;
+
+/** „2026-ból”, „2027-ből” */
+export const yearOutOf = (y: number) => `${y}-${backVowelNumber(y) ? 'ból' : 'ből'}`;
+
+/** „2026-ra”, „2027-re” */
+export const yearOnto = (y: number) => `${y}-${backVowelNumber(y) ? 'ra' : 're'}`;

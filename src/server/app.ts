@@ -9,15 +9,19 @@ import { inventoryRoutes } from './routes/inventory.ts';
 import { planRoutes } from './routes/plan.ts';
 import { taskRoutes } from './routes/tasks.ts';
 import { journalRoutes } from './routes/journal.ts';
+import { planYearRoutes } from './routes/planYears.ts';
+import { dataRoutes, type BackupConfig } from './routes/data.ts';
 
 export interface AppOptions {
   db: DB;
   /** A lefordított kliens mappája; ha létezik, a szerver ezt is kiszolgálja. */
   clientDir?: string;
+  /** A mentések helye (kézi mentéshez és visszatöltés előtti mentéshez) */
+  backup?: BackupConfig;
   logger?: boolean;
 }
 
-export function buildApp({ db, clientDir, logger = false }: AppOptions): FastifyInstance {
+export function buildApp({ db, clientDir, backup, logger = false }: AppOptions): FastifyInstance {
   const app = Fastify({ logger });
 
   app.setErrorHandler((err, _req, reply) => {
@@ -41,6 +45,8 @@ export function buildApp({ db, clientDir, logger = false }: AppOptions): Fastify
       await api.register(planRoutes(db));
       await api.register(taskRoutes(db));
       await api.register(journalRoutes(db));
+      await api.register(planYearRoutes(db));
+      await api.register(dataRoutes(db, backup));
     },
     { prefix: '/api' },
   );

@@ -16,7 +16,10 @@ type Timed = Pick<
   | 'actual_transplant_date'
   | 'actual_harvest_start'
   | 'actual_end_date'
->;
+> & {
+  carried_from_id?: number | null;
+  perennial?: boolean;
+};
 
 export function planDates(p: Timed): PlantingDates {
   return { sow: p.plan_sow_date, transplant: p.plan_transplant_date, harvestStart: p.plan_harvest_start, end: p.plan_end_date };
@@ -34,15 +37,17 @@ export function effectiveDates(p: Timed): PlantingDates {
 
 /**
  * Mettől meddig foglalja az ültetés az ágyást. Ha a vége nem ismert, a betakarítás
- * kezdete után még egy hónapig, ennek híján az év végéig számolunk vele.
+ * kezdete után még egy hónapig, ennek híján (és évelőnél mindig) az év végéig számolunk vele.
+ * Az előző évből áthozott évelő január 1-jétől áll a helyén.
  * Az elmaradt ültetés nem foglal helyet; dátum nélküli (gyors előzmény) sem.
  */
 export function occupancyPeriod(p: Timed): Period | null {
   if (p.status === 'elmaradt') return null;
   const d = effectiveDates(p);
-  const start = (p.method ? bedStart(p.method, d) : null) ?? d.transplant ?? d.sow;
+  const start =
+    (p.method ? bedStart(p.method, d) : null) ?? d.transplant ?? d.sow ?? (p.carried_from_id ? `${p.year}-01-01` : null);
   if (!start) return null;
-  const end = d.end ?? (d.harvestStart ? addDaysISO(d.harvestStart, DEFAULT_HARVEST_DAYS) : `${p.year}-12-31`);
+  const end = d.end ?? (d.harvestStart && !p.perennial ? addDaysISO(d.harvestStart, DEFAULT_HARVEST_DAYS) : `${p.year}-12-31`);
   return { start, end: end < start ? start : end };
 }
 
@@ -105,7 +110,7 @@ export function blankPlanting(): PlantingListItem {
     plan_sow_date: null, plan_transplant_date: null, plan_harvest_start: null, plan_end_date: null,
     actual_sow_date: null, actual_transplant_date: null, actual_harvest_start: null, actual_end_date: null,
     actual_bed_id: null, actual_axis_start_cm: null, actual_axis_span_cm: null, actual_cross_start_cm: null, actual_cross_span_cm: null,
-    status: 'terv', is_history: false, series_id: null, series_index: null,
+    status: 'terv', is_history: false, series_id: null, series_index: null, carried_from_id: null,
     eval_success: null, eval_yield: null, eval_recommend: null, eval_notes: null, notes: null,
     plant_name: '', variety_name: null, family_id: null, family_name: null,
     crop_group_id: null, crop_group_code: null, crop_group_name: null,

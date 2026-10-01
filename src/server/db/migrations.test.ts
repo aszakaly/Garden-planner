@@ -26,7 +26,7 @@ describe('002 – magaságyás típus', () => {
     expect(() => db.exec("INSERT INTO bed (garden_id, name, length_cm, width_cm, bed_type) VALUES (1, 'X', 100, 100, 'magasagyas')")).toThrow();
 
     // Új migrációk
-    expect(migrate(db)).toEqual(['002_bed_magasagyas.sql']);
+    expect(migrate(db)).toEqual(['002_bed_magasagyas.sql', '003_carry_over.sql']);
 
     expect(db.prepare('SELECT bed_id, actual_bed_id FROM planting WHERE id = 1').get()).toEqual({ bed_id: 7, actual_bed_id: 7 });
     expect(db.prepare('SELECT name, bed_type FROM bed WHERE id = 7').get()).toEqual({ name: 'Emelt 1', bed_type: 'emelt' });

@@ -65,6 +65,12 @@
 .addButton:hover {
   text-decoration: underline;
 }
+.actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 16px;
+}
 
 .muted {
   margin: 0;

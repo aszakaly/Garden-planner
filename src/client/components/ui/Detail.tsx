@@ -31,13 +31,18 @@ export function Block({ title, action, children }: { title: ReactNode; action?: 
   );
 }
 
-export function AddButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+export function AddButton({ children, onClick, icon }: { children: ReactNode; onClick: () => void; icon?: ReactNode }) {
   return (
     <button type="button" className={s.addButton} onClick={onClick}>
-      <Plus size={15} strokeWidth={2.6} />
+      {icon ?? <Plus size={15} strokeWidth={2.6} />}
       {children}
     </button>
   );
+}
+
+/** Több művelet egy blokk fejlécében. */
+export function BlockActions({ children }: { children: ReactNode }) {
+  return <span className={s.actions}>{children}</span>;
 }
 
 export function Muted({ children }: { children: ReactNode }) {
