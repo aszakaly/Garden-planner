@@ -4,6 +4,24 @@ Kert- és veteményes-tervező és kertészeti napló saját használatra. Magya
 
 > **Fejlesztés alatt.** Az első teljes változat (MVP) elkészült; a terv: [docs/specs/2026-09-30-kerttervezo-design.md](docs/specs/2026-09-30-kerttervezo-design.md).
 
+## Fontos tudnivalók
+
+A Kerttervező saját használatra készült prototípus, nem kereskedelmi termék. A kódot azért tettem közzé, hogy bárki megnézhesse, kipróbálhassa és továbbfejleszthesse – de mindezt a saját felelősségére teheti:
+
+- **Ahogy van.** A program mindennemű garancia nélkül érhető el; nincs támogatás, és nincs ígéret a további fejlesztésre vagy a hibák javítására.
+- **Biztonság.** Nincs benne felhasználókezelés és jelszó, otthoni, megbízható hálózatra készült. Ne tedd elérhetővé az internetről. Biztonsági hibák előfordulhatnak; az ezekből eredő károkért nem vállalok felelősséget.
+- **Telepítés és adatok.** A telepítés és a futtatás a saját gépeden a te felelősséged. Az adatok elvesztéséért vagy sérüléséért nem vállalok felelősséget – készíts rendszeresen mentést (lásd [Mentés és visszaállítás](#mentés-és-visszaállítás)).
+- **A kertészeti adatok pontossága.** A vetési időszakok, a tő- és sortáv, a tenyészidő, a társítási és vetésforgó-javaslatok általános, tájékoztató jellegű értékek, hibásak vagy hiányosak lehetnek, és nem helyettesítik a vetőmag tasakján lévő útmutatást, a helyi tapasztalatot vagy a szakember tanácsát. Az ezek alapján hozott döntések következményeiért (pl. terméskiesésért) nem vállalok felelősséget.
+
+Jogi értelemben az [MIT licenc](LICENSE) szövege az irányadó; ez a rész csak közérthetően összefoglalja.
+
+<details>
+<summary>English summary</summary>
+
+Kerttervező is a personal prototype, not a commercial product. It is provided "as is", without warranty of any kind and without support. It has no authentication and is meant for a trusted home network only – do not expose it to the internet. You install and run it at your own risk: the author accepts no liability for security issues, data loss, or the accuracy of the horticultural data (sowing times, spacing, growing periods, companion and rotation suggestions), which are general reference values only. The [MIT License](LICENSE) is the legally binding text.
+
+</details>
+
 ## Mit tud
 
 - **Törzsadatok:** kb. 55 gyakori zöldség-, fűszer- és kísérőnövény magyar vetési naptárral, több szezonnal, fajtákkal és társítási adatokkal.
