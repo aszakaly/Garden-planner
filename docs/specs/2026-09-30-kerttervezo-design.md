@@ -6,7 +6,7 @@ A `Kerttervező alkalmazás - v1.docx` egy saját használatú kert- és vetemé
 A projektmappában jelenleg csak a Word dokumentum van, se kód, se git.
 
 **Döntések (a felhasználóval egyeztetve):**
-- **Futtatás:** helyi szerver a Macen (MacBook Air, Node 26, npm 11). Az adatok egyetlen SQLite fájlban vannak. Az otthoni Wi-Fi-n telefonról is elérhető: `http://Szaki-MacBook-Air.local:4321`.
+- **Futtatás:** helyi szerver a Macen (MacBook Air, Node 26, npm 11). Az adatok egyetlen SQLite fájlban vannak. Az otthoni Wi-Fi-n telefonról is elérhető: `http://<gépnév>.local:4321` (a szerver induláskor kiírja a pontos címet).
 - **Törzsadatok:** kb. 55 gyakori zöldség-, fűszer- és kísérőnövény előtöltve magyar adatokkal. Minden adat szerkeszthető.
 - **Elhelyezés:** az ágyás sávokra/sorokra oszlik. A geometria ágyáson belüli cm-koordinátákban tárolódik (téglalap), így később grafikusan is felhasználható.
 - **Klíma:** Közép-Magyarország, az Alföld északi csücske. Alapértékek: utolsó tavaszi fagy május 10., első őszi fagy október 20. Mindkettő szerkeszthető.
@@ -184,4 +184,4 @@ Minden lépés végén futnak a tesztek, és commit készül.
   8. naplóbejegyzés felvitele az ültetéshez (termés, minőség, megjegyzés) → megjelenik a Naplóban, a naptárban és a fajta adatlapján, és a keresés megtalálja;
   9. múltbeli (2025-ös) előzmény gyors rögzítése csak évvel → a vetésforgó-ellenőrzés figyelembe veszi;
   10. 2028-as terv: a javaslat a tényleges előzményt veszi figyelembe.
-- **Kézi ellenőrzés:** `npm start`, majd megnyitás a böngészőpanelen. Képernyőképek asztali és mobil nézetben; elérés iPhone-ról a `http://Szaki-MacBook-Air.local:4321` címen.
+- **Kézi ellenőrzés:** `npm start`, majd megnyitás a böngészőpanelen. Képernyőképek asztali és mobil nézetben; elérés iPhone-ról a `http://<gépnév>.local:4321` címen.

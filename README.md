@@ -42,3 +42,7 @@ npm test       # egység- és API-tesztek (Vitest)
 A társítási adatok (`seed/companions.json`) a [Wind River Greens Plant Variety Database](https://plants.windrivergreens.com) ([bripatch/plant-variety-database](https://github.com/bripatch/plant-variety-database)) adatain alapulnak, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) licenc alatt. Az eredeti, fajtaszintű angol adatokat faj szintre vontuk össze, és az indoklásokat magyarra fordítottuk; a feldolgozást a [scripts/build-companions.ts](scripts/build-companions.ts) végzi.
 
 A vetési időpontok általános magyar vetési naptárértékek, ellenőrzésre szorulnak.
+
+## Licenc
+
+A kód [MIT licenc](LICENSE) alatt használható. A `seed/companions.json` társítási adatai a forrásuk CC BY 4.0 licence alá tartoznak (lásd fent).
