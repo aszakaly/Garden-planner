@@ -2,7 +2,6 @@ import { Navigate, createBrowserRouter, RouterProvider } from 'react-router';
 import { AppLayout } from './layout/AppLayout.tsx';
 import { useIsMobile } from './lib/useIsMobile.ts';
 import { PlaceholderPage } from './pages/PlaceholderPage.tsx';
-import { ThisWeekPage } from './pages/ThisWeekPage.tsx';
 import { PlantsPage } from './features/plants/PlantsPage.tsx';
 import { PlantDetailPage } from './features/plants/PlantDetailPage.tsx';
 import { SettingsPage } from './features/settings/SettingsPage.tsx';
@@ -11,6 +10,9 @@ import { GardenPage } from './features/garden/GardenPage.tsx';
 import { BedPage } from './features/garden/BedPage.tsx';
 import { PlanPage } from './features/plan/PlanPage.tsx';
 import { WarningsPage } from './features/warnings/WarningsPage.tsx';
+import { ThisWeekPage } from './features/tasks/ThisWeekPage.tsx';
+import { ScheduledPage } from './features/tasks/ScheduledPage.tsx';
+import { CalendarPage } from './features/calendar/CalendarPage.tsx';
 
 function Home() {
   // Asztalon a „Ez a hét” nyílik; telefonon az elrendezés a listákat mutatja.
@@ -24,8 +26,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'het', element: <ThisWeekPage /> },
-      { path: 'utemezett', element: <PlaceholderPage title="Ütemezett" color="var(--c-red)" step="6. lépésében" /> },
-      { path: 'naptar', element: <PlaceholderPage title="Naptár" color="var(--c-indigo)" step="6. lépésében" /> },
+      { path: 'utemezett', element: <ScheduledPage /> },
+      { path: 'naptar', element: <CalendarPage /> },
       { path: 'terv', element: <PlanPage /> },
       { path: 'figyelmeztetesek', element: <WarningsPage /> },
       { path: 'naplo', element: <PlaceholderPage title="Napló" color="var(--c-brown)" step="7. lépésében" /> },

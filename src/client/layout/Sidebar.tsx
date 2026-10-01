@@ -14,14 +14,16 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { Link } from 'react-router';
+import type { TaskItem } from '@shared/domain/tasks.ts';
 import { SmartTile } from '../components/ui/SmartTile.tsx';
 import { SidebarRow } from '../components/ui/SidebarRow.tsx';
 import { BED_ICON } from '../lib/beds.ts';
 import { colorVar } from '../lib/colors.ts';
-import { useBeds, usePlantings } from '../lib/queries.ts';
+import { useBeds, usePlantings, useTasks } from '../lib/queries.ts';
+import { todayISO } from '../lib/format.ts';
 import { useYear } from '../lib/year.tsx';
-import { MOCK_COUNTS } from '../mock/checkpoint.ts';
 import { useYearChecks } from '../features/plan/useChecks.ts';
+import { isDone, monthRange, weekRange, yearRange } from '../features/tasks/taskView.ts';
 import s from './Sidebar.module.css';
 
 export function Sidebar() {
@@ -30,6 +32,14 @@ export function Sidebar() {
   const { data: plantings = [] } = usePlantings(year);
   const planCount = plantings.filter((p) => p.year === year).length;
   const { warnings } = useYearChecks(year);
+  const today = todayISO();
+  const week = weekRange(today);
+  const yr = yearRange(year);
+  const month = monthRange(today.slice(0, 7));
+  const openCount = (data?: TaskItem[]) => data?.filter((t) => !isDone(t)).length;
+  const weekCount = openCount(useTasks(week.from, week.to).data);
+  const scheduledCount = openCount(useTasks(yr.from, yr.to).data);
+  const monthCount = openCount(useTasks(month.from, month.to).data);
   const thisYear = new Date().getFullYear();
   const years = Array.from({ length: 9 }, (_, i) => thisYear - 6 + i);
 
@@ -59,20 +69,20 @@ export function Sidebar() {
       </label>
 
       <div className={s.tiles}>
-        <SmartTile to="/het" icon={ListTodo} color="var(--c-blue)" label="Ez a hét" count={MOCK_COUNTS.week} />
+        <SmartTile to="/het" icon={ListTodo} color="var(--c-blue)" label="Ez a hét" count={weekCount} />
         <SmartTile
           to="/utemezett"
           icon={CalendarClock}
           color="var(--c-red)"
           label="Ütemezett"
-          count={MOCK_COUNTS.scheduled}
+          count={scheduledCount}
         />
         <SmartTile
           to="/naptar"
           icon={CalendarDays}
           color="var(--c-indigo)"
           label="Naptár"
-          count={MOCK_COUNTS.calendar}
+          count={monthCount}
         />
         <SmartTile to="/terv" icon={Sprout} color="var(--c-green)" label="Éves terv" count={planCount} />
         <SmartTile
@@ -82,7 +92,7 @@ export function Sidebar() {
           label="Figyelmeztetések"
           count={warnings.length}
         />
-        <SmartTile to="/naplo" icon={BookOpen} color="var(--c-brown)" label="Napló" count={MOCK_COUNTS.journal} />
+        <SmartTile to="/naplo" icon={BookOpen} color="var(--c-brown)" label="Napló" />
       </div>
 
       <h2 className={s.heading}>Kertem</h2>

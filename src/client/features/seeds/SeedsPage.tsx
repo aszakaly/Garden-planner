@@ -22,7 +22,7 @@ export function SeedsPage() {
   const [editing, setEditing] = useState<SeedStockListItem | 'new' | null>(null);
   const toggle = useApiMutation(
     (seed: SeedStockListItem) => api.patch(`/seeds/${seed.id}`, { in_stock: !seed.in_stock }),
-    [qk.seeds, ['plants']],
+    [qk.seeds, ['plants'], qk.plantings],
   );
 
   const inStock = seeds.filter((x) => x.in_stock);

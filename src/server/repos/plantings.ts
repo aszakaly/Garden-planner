@@ -5,6 +5,7 @@ import { HttpError, insert, notFound, update } from '../db/helpers.ts';
 import { seriesOffsets, shiftDates } from '../../shared/domain/dates.ts';
 import { bedAxes, type Occupant } from '../../shared/domain/geometry.ts';
 import { occupancyPeriod, placeSeries, placementOf } from '../../shared/domain/plantings.ts';
+import { TASK_SLOTS, taskKey } from '../../shared/domain/tasks.ts';
 import type { PlantingCreateInput, PlantingInput } from '../../shared/schemas.ts';
 import type { PlantingListItem } from '../../shared/types.ts';
 import { getBed } from './garden.ts';
@@ -237,9 +238,19 @@ export function updatePlanting(db: DB, id: number, input: PlantingInput): Planti
 export function deletePlanting(db: DB, id: number, wholeSeries = false): number {
   const row = db.prepare('SELECT series_id FROM planting WHERE id = ?').get(id) as { series_id: string | null } | undefined;
   if (!row) throw notFound('Az ültetés');
-  const result =
+  const ids =
     wholeSeries && row.series_id
-      ? db.prepare('DELETE FROM planting WHERE series_id = ?').run(row.series_id)
-      : db.prepare('DELETE FROM planting WHERE id = ?').run(id);
-  return Number(result.changes);
+      ? (db.prepare('SELECT id FROM planting WHERE series_id = ?').all(row.series_id) as { id: number }[]).map((r) => r.id)
+      : [id];
+  return transaction(db, () => {
+    const del = db.prepare('DELETE FROM planting WHERE id = ?');
+    const delState = db.prepare('DELETE FROM task_state WHERE task_key = ?');
+    let changes = 0;
+    for (const pid of ids) {
+      changes += Number(del.run(pid).changes);
+      // A generált feladatok állapota (áthelyezés, megjegyzés) is megy
+      for (const slot of TASK_SLOTS) if (slot !== 'beszerzes') delState.run(taskKey(slot, pid));
+    }
+    return changes;
+  });
 }

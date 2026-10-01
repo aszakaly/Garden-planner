@@ -1,0 +1,17 @@
+.overdue {
+  color: var(--c-red);
+}
+
+.bed {
+  font-weight: 500;
+}
+
+.shifted {
+  color: var(--c-orange);
+}
+
+.note {
+  display: block;
+  margin-top: 1px;
+  font-style: italic;
+}

@@ -217,3 +217,23 @@ export const plantingCreateInput = plantingInput.extend({
     .nullish(),
 });
 export type PlantingCreateInput = z.infer<typeof plantingCreateInput>;
+
+/** Generált vagy saját feladat állapotának módosítása (csak a megadott mezők változnak). */
+export const taskStatePatch = z.object({
+  /** Elvégezve ezen a napon; null: visszavonás */
+  done_on: isoDate.nullable().optional(),
+  /** Áthelyezés másik napra; null: vissza a terv szerinti napra */
+  moved_to: isoDate.nullable().optional(),
+  note: optText(2000),
+});
+export type TaskStatePatch = z.infer<typeof taskStatePatch>;
+
+export const customTaskInput = z.object({
+  title: z.string().trim().min(1, 'Add meg a feladatot').max(200),
+  due_date: isoDate,
+  bed_id: z.number().int().positive().nullish(),
+  planting_id: z.number().int().positive().nullish(),
+  notes: optText(2000),
+  done_at: isoDate.nullish(),
+});
+export type CustomTaskInput = z.infer<typeof customTaskInput>;

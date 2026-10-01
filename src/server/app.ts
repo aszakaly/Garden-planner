@@ -7,6 +7,7 @@ import { settingsRoutes } from './routes/settings.ts';
 import { masterRoutes } from './routes/master.ts';
 import { inventoryRoutes } from './routes/inventory.ts';
 import { planRoutes } from './routes/plan.ts';
+import { taskRoutes } from './routes/tasks.ts';
 
 export interface AppOptions {
   db: DB;
@@ -37,6 +38,7 @@ export function buildApp({ db, clientDir, logger = false }: AppOptions): Fastify
       await api.register(masterRoutes(db));
       await api.register(inventoryRoutes(db));
       await api.register(planRoutes(db));
+      await api.register(taskRoutes(db));
     },
     { prefix: '/api' },
   );

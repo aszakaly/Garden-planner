@@ -1,0 +1,45 @@
+.page {
+  max-width: 920px;
+  padding-bottom: 32px;
+}
+
+.empty {
+  margin: 48px auto 0;
+  max-width: 460px;
+  padding: 0 var(--page-pad);
+  text-align: center;
+  color: var(--label-2);
+  font-size: 14px;
+}
+.emptyIcon {
+  color: var(--c);
+  margin-bottom: 8px;
+}
+.emptyTitle {
+  margin-bottom: 4px;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--label);
+}
+.emptyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--c);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.doneNote {
+  margin: 14px var(--page-pad) 0;
+  font-size: 13px;
+  color: var(--label-2);
+}
+.doneNote button {
+  color: var(--tint);
+  font-weight: 500;
+}

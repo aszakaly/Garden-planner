@@ -1,4 +1,4 @@
-import type { Planting } from '../types.ts';
+import type { Planting, PlantingListItem } from '../types.ts';
 import { bedStart, DEFAULT_HARVEST_DAYS, type PlantingDates } from './dates.ts';
 import { bedAxes, firstFreeStart, type BedGeometry, type Occupant, type Period, type Placement } from './geometry.ts';
 import { addDaysISO } from './isoDate.ts';
@@ -94,4 +94,23 @@ export function placeSeries(first: Occupant, offsets: number[], axisLength: numb
     taken.push(item);
     return item;
   });
+}
+
+/** Üres ültetés-sablon (a szerkesztő élő ellenőrzéséhez épített „virtuális” ültetéshez). */
+export function blankPlanting(): PlantingListItem {
+  return {
+    id: -1, year: 0, plant_id: 0, variety_id: null, seed_stock_id: null, bed_id: null,
+    axis_start_cm: null, axis_span_cm: null, cross_start_cm: null, cross_span_cm: null, rows: null, plant_count: null,
+    method: null, window_id: null,
+    plan_sow_date: null, plan_transplant_date: null, plan_harvest_start: null, plan_end_date: null,
+    actual_sow_date: null, actual_transplant_date: null, actual_harvest_start: null, actual_end_date: null,
+    actual_bed_id: null, actual_axis_start_cm: null, actual_axis_span_cm: null, actual_cross_start_cm: null, actual_cross_span_cm: null,
+    status: 'terv', is_history: false, series_id: null, series_index: null,
+    eval_success: null, eval_yield: null, eval_recommend: null, eval_notes: null, notes: null,
+    plant_name: '', variety_name: null, family_id: null, family_name: null,
+    crop_group_id: null, crop_group_code: null, crop_group_name: null,
+    rotation_stage: null, nutrient_group: null, perennial: false, frost_sensitive: false,
+    in_row_spacing_cm: null, row_spacing_cm: null, days_to_harvest: null, harvest_duration_days: null, seed_viability_years: null,
+    bed_name: null, bed_color: null, seed_vintage: null, has_seed: false, series_size: null,
+  };
 }

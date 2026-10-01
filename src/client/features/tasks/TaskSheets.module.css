@@ -1,0 +1,43 @@
+.head {
+  margin: 4px 4px 18px;
+}
+
+.kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--label-2);
+}
+.kind::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--k);
+}
+
+.title {
+  margin: 6px 0 2px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sub {
+  margin: 0;
+  font-size: 14px;
+  color: var(--label-2);
+}
+
+.bed {
+  font-weight: 500;
+  color: var(--c);
+}
+
+.value {
+  color: var(--label-2);
+}

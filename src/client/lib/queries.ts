@@ -3,6 +3,7 @@ import { api } from './api.ts';
 import type { Settings } from '@shared/settings.ts';
 import type { CompanionPair } from '@shared/domain/companions.ts';
 import { ROTATION_LOOKBACK_YEARS } from '@shared/domain/rotation.ts';
+import type { TaskItem } from '@shared/domain/tasks.ts';
 import type {
   Bed,
   BedListItem,
@@ -36,6 +37,10 @@ export const qk = {
   plantingList: (year: number) => ['plantings', year] as const,
   plantingHistory: (year: number) => ['plantings', 'elozmeny', year] as const,
   companions: ['companions'] as const,
+  /** A feladatok az ültetésekből készülnek: az ültetések érvénytelenítése a feladatokat is frissíti */
+  tasks: ['plantings', 'tasks'] as const,
+  taskRange: (from: string, to: string) => ['plantings', 'tasks', from, to] as const,
+  planting: (id: number) => ['plantings', 'egy', id] as const,
 };
 
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: () => api.get<Settings>('/settings') });
@@ -72,6 +77,17 @@ export const usePlantingHistory = (year: number) =>
     queryKey: qk.plantingHistory(year),
     queryFn: () => api.get<PlantingListItem[]>(`/plantings?year=${year}&from_year=${year - ROTATION_LOOKBACK_YEARS}`),
   });
+
+export const usePlanting = (id: number | null) =>
+  useQuery({
+    queryKey: qk.planting(id ?? 0),
+    queryFn: () => api.get<PlantingListItem>(`/plantings/${id}`),
+    enabled: !!id && id > 0,
+  });
+
+/** A két nap közé eső feladatok (generált és saját). */
+export const useTasks = (from: string, to: string) =>
+  useQuery({ queryKey: qk.taskRange(from, to), queryFn: () => api.get<TaskItem[]>(`/tasks?from=${from}&to=${to}`) });
 
 export const useCompanions = () =>
   useQuery({ queryKey: qk.companions, queryFn: () => api.get<CompanionPair[]>('/companions'), staleTime: Infinity });

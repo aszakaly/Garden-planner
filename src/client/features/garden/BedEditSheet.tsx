@@ -60,7 +60,7 @@ export function BedEditSheet({ open, onClose, bed }: Props) {
     } else setForm(EMPTY);
   }, [open, bed?.id]);
 
-  const invalidate = [qk.beds];
+  const invalidate = [qk.beds, qk.plantings];
   const save = useApiMutation((f: Form) => (bed ? api.put<Bed>(`/beds/${bed.id}`, f) : api.post<Bed>('/beds', f)), invalidate);
   const remove = useApiMutation(() => api.delete(`/beds/${bed!.id}`), invalidate);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));

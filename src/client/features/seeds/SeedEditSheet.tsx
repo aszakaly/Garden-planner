@@ -74,7 +74,7 @@ export function SeedEditSheet({ open, onClose, seed, plantId }: Props) {
   // Ha a növénynek még nincs fajtája, rögtön új fajtát kérünk
   const isNewVariety = form.variety_id === NEW_VARIETY || (form.plant_id !== null && plantVarieties.length === 0);
 
-  const invalidate = [qk.seeds, qk.varieties, qk.plants, ['plants']];
+  const invalidate = [qk.seeds, qk.varieties, qk.plants, ['plants'], qk.plantings];
   const save = useApiMutation((f: Form) => {
     const body: SeedStockInput = {
       variety_id: isNewVariety ? null : f.variety_id,
