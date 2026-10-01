@@ -56,6 +56,21 @@ export const PLANTING_STATUS_LABEL: Record<PlantingStatus, string> = {
   sikertelen: 'Sikertelen',
 };
 
+export const JOURNAL_TYPES = ['megfigyeles', 'termes', 'betegseg', 'kartevo', 'problema', 'altalanos'] as const;
+export type JournalType = (typeof JOURNAL_TYPES)[number];
+export const JOURNAL_TYPE_LABEL: Record<JournalType, string> = {
+  megfigyeles: 'Megfigyelés',
+  termes: 'Termés',
+  betegseg: 'Betegség',
+  kartevo: 'Kártevő',
+  problema: 'Probléma',
+  altalanos: 'Általános',
+};
+
+export const EVAL_RECOMMEND = ['igen', 'talan', 'nem'] as const;
+export type EvalRecommend = (typeof EVAL_RECOMMEND)[number];
+export const EVAL_RECOMMEND_LABEL: Record<EvalRecommend, string> = { igen: 'Igen', talan: 'Talán', nem: 'Nem' };
+
 /** Ellenőrzések súlyossága: tájékoztató, figyelmeztetés, kerülendő / hibás. */
 export type CheckLevel = 'info' | 'figyelem' | 'kerulendo';
 

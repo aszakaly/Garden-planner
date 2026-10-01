@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import type { DB } from '../db/index.ts';
 import { transaction } from '../db/index.ts';
 import { HttpError, insert, notFound, update } from '../db/helpers.ts';
-import { seriesOffsets, shiftDates } from '../../shared/domain/dates.ts';
+import { DATE_FIELDS, seriesOffsets, shiftDates, type DateField, type PlantingDates } from '../../shared/domain/dates.ts';
 import { bedAxes, type Occupant } from '../../shared/domain/geometry.ts';
 import { occupancyPeriod, placeSeries, placementOf } from '../../shared/domain/plantings.ts';
-import { TASK_SLOTS, taskKey } from '../../shared/domain/tasks.ts';
-import type { PlantingCreateInput, PlantingInput } from '../../shared/schemas.ts';
+import { ACTUAL_COLUMN, statusFromActuals, TASK_SLOTS, taskKey } from '../../shared/domain/tasks.ts';
+import type { PlantingActualInput, PlantingCreateInput, PlantingInput } from '../../shared/schemas.ts';
 import type { PlantingListItem } from '../../shared/types.ts';
 import { getBed } from './garden.ts';
 
@@ -222,6 +222,38 @@ function pickPlanDates(p: PlantingInput) {
     plan_harvest_start: p.plan_harvest_start ?? null,
     plan_end_date: p.plan_end_date ?? null,
   };
+}
+
+/**
+ * A tényleges megvalósulás (dátumok, hely, státusz) és a szezonvégi értékelés módosítása.
+ * Ha a státusz nincs megadva, de a tény dátumok változnak, a státusz azokból adódik.
+ */
+export function updatePlantingActual(db: DB, id: number, input: PlantingActualInput): PlantingListItem {
+  const current = getPlanting(db, id);
+  if (input.actual_bed_id && !db.prepare('SELECT 1 FROM bed WHERE id = ?').get(input.actual_bed_id)) {
+    throw bad('Az ágyás nem található.');
+  }
+  const data: Record<string, unknown> = { ...input };
+  const datesChanged = DATE_FIELDS.some((f) => input[ACTUAL_COLUMN[f]] !== undefined);
+  if (!input.status && datesChanged) {
+    const pick = (f: DateField) => (input[ACTUAL_COLUMN[f]] !== undefined ? (input[ACTUAL_COLUMN[f]] ?? null) : current[ACTUAL_COLUMN[f]]);
+    const actual: PlantingDates = { sow: pick('sow'), transplant: pick('transplant'), harvestStart: pick('harvestStart'), end: pick('end') };
+    data.status = statusFromActuals(current.status, actual);
+  }
+  update(db, 'planting', id, { ...data, updated_at: new Date().toISOString() });
+  return getPlanting(db, id);
+}
+
+/** Egy növény (vagy fajta) összes ültetése minden évből, a legutóbbi elöl – a tudásbázis-nézetekhez. */
+export function plantingHistory(db: DB, { plantId, varietyId }: { plantId?: number; varietyId?: number }): PlantingListItem[] {
+  const where = varietyId ? 'p.variety_id = ?' : 'p.plant_id = ?';
+  return db
+    .prepare(
+      `${SELECT} WHERE ${where}
+       ORDER BY p.year DESC, COALESCE(p.actual_transplant_date, p.plan_transplant_date, p.actual_sow_date, p.plan_sow_date) DESC, p.id DESC`,
+    )
+    .all(varietyId ?? plantId ?? 0)
+    .map(mapPlanting);
 }
 
 export function updatePlanting(db: DB, id: number, input: PlantingInput): PlantingListItem {

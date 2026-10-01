@@ -21,12 +21,14 @@ interface Props {
   task: TaskItem;
   onClose: () => void;
   onOpenPlanting: (id: number) => void;
+  /** Naplóbejegyzés az ültetéshez (betakarításnál termés) */
+  onJournal: (task: TaskItem) => void;
 }
 
 const dayText = (iso: string) => `${formatDay(iso)}, ${formatWeekday(iso)}`;
 
 /** A tervből generált feladat részletei: elvégzés (visszamenőleg is), áthelyezés, megjegyzés. */
-export function TaskDetailSheet({ task: t, onClose, onOpenPlanting }: Props) {
+export function TaskDetailSheet({ task: t, onClose, onOpenPlanting, onJournal }: Props) {
   const navigate = useNavigate();
   const save = useTaskPatch();
   const [done, setDone] = useState(t.done_on !== null);
@@ -116,6 +118,9 @@ export function TaskDetailSheet({ task: t, onClose, onOpenPlanting }: Props) {
           <FormButton onClick={() => onOpenPlanting(t.planting_id!)}>
             {t.planting_ids.length > 1 ? 'Az első ültetés megnyitása' : 'Ültetés megnyitása'}
           </FormButton>
+        )}
+        {t.planting_id && t.slot !== 'beszerzes' && t.slot !== 'palanta_beszerzes' && (
+          <FormButton onClick={() => onJournal(t)}>{t.slot === 'betakaritas' ? 'Termés rögzítése a naplóba' : 'Naplóbejegyzés'}</FormButton>
         )}
         {t.category === 'beszerzes' && t.slot === 'beszerzes' && (
           <FormButton onClick={() => navigate('/vetomag')}>Vetőmagkészlet</FormButton>

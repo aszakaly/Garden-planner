@@ -1,21 +1,35 @@
 import { ChevronLeft, ChevronRight, Plus, Snowflake } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
-import { TASK_CATEGORIES, TASK_CATEGORY_LABEL, type TaskCategory, type TaskItem } from '@shared/domain/tasks.ts';
+import type { TaskItem } from '@shared/domain/tasks.ts';
+import type { JournalEntry } from '@shared/types.ts';
 import { DEFAULT_SETTINGS } from '@shared/settings.ts';
 import { capitalize } from '@shared/text.ts';
 import { PageHeader, ToolbarButton } from '../../components/ui/PageHeader.tsx';
 import { Section } from '../../components/ui/Section.tsx';
 import { SegmentedControl } from '../../components/ui/SegmentedControl.tsx';
 import { formatDay, formatWeekday, relativeDayLabel, todayISO } from '../../lib/format.ts';
-import { useBeds, useSettings, useTasks } from '../../lib/queries.ts';
+import { useBeds, useJournal, useSettings, useTasks } from '../../lib/queries.ts';
 import { useIsMobile } from '../../lib/useIsMobile.ts';
 import { useStoredState } from '../../lib/useStoredState.ts';
 import { useYear } from '../../lib/year.tsx';
 import { useYearChecks } from '../plan/useChecks.ts';
 import { TaskListRow } from '../tasks/TaskListRow.tsx';
-import { CATEGORY_COLOR, yearRange } from '../tasks/taskView.ts';
+import { yearRange } from '../tasks/taskView.ts';
 import { useTaskSheets } from '../tasks/useTaskSheets.tsx';
-import { frostLabel, monthGrid, monthTitle, shiftMonth } from './calendarView.ts';
+import { JournalRow } from '../journal/JournalRow.tsx';
+import { useJournalSheet } from '../journal/useJournalSheet.tsx';
+import {
+  EVENT_COLOR,
+  EVENT_GROUP_LABEL,
+  EVENT_GROUPS,
+  frostLabel,
+  journalEvent,
+  monthGrid,
+  monthTitle,
+  shiftMonth,
+  taskEvent,
+  type EventGroup,
+} from './calendarView.ts';
 import { MonthGrid } from './MonthGrid.tsx';
 import { YearOverview } from './YearOverview.tsx';
 import s from './Calendar.module.css';
@@ -24,7 +38,7 @@ type View = 'honap' | 'ev';
 /** 'all': minden · 'none': ágyás nélküli · egyébként az ágyás azonosítója */
 type BedFilter = string;
 
-/** Naptár: havi rács a napok feladataival, a kiválasztott nap listája, éves áttekintés fagyhatárokkal. */
+/** Naptár: havi rács a napok feladataival és naplóbejegyzéseivel, a kiválasztott nap listája, éves áttekintés fagyhatárokkal. */
 export function CalendarPage() {
   const { year } = useYear();
   const today = todayISO();
@@ -33,7 +47,7 @@ export function CalendarPage() {
   const [view, setView] = useStoredState<View>('kerttervezo.calendarView', 'honap');
   const [month, setMonth] = useState(() => `${year}-${today.slice(5, 7)}`);
   const [selected, setSelected] = useState(() => (year === thisYear ? today : `${year}-${today.slice(5, 7)}-01`));
-  const [hidden, setHidden] = useStoredState<TaskCategory[]>('kerttervezo.calendarHidden', []);
+  const [hidden, setHidden] = useStoredState<EventGroup[]>('kerttervezo.calendarHidden', []);
   const [bedFilter, setBedFilter] = useStoredState<BedFilter>('kerttervezo.calendarBed', 'all');
   const calYear = Number(month.slice(0, 4));
 
@@ -49,16 +63,21 @@ export function CalendarPage() {
   const monthTasks = useTasks(grid[0]!, grid.at(-1)!);
   const yr = yearRange(calYear);
   const yearTasks = useTasks(yr.from, yr.to);
+  const monthJournal = useJournal({ from: grid[0]!, to: grid.at(-1)! });
+  const yearJournal = useJournal({ from: yr.from, to: yr.to }, view === 'ev');
   const { data: settings = DEFAULT_SETTINGS } = useSettings();
   const { data: beds = [] } = useBeds(calYear);
   const checks = useYearChecks(calYear);
   const sheets = useTaskSheets();
+  const journal = useJournalSheet();
 
-  const visible = (t: TaskItem) =>
-    !hidden.includes(t.category) &&
-    (bedFilter === 'all' || (bedFilter === 'none' ? t.bed_id === null : String(t.bed_id) === bedFilter));
+  const onBed = (bedId: number | null) => bedFilter === 'all' || (bedFilter === 'none' ? bedId === null : String(bedId) === bedFilter);
+  const visible = (t: TaskItem) => !hidden.includes(t.category) && onBed(t.bed_id);
+  const visibleEntry = (e: JournalEntry) => !hidden.includes('naplo') && onBed(e.bed_id);
   const shownMonth = (monthTasks.data ?? []).filter(visible);
+  const shownEntries = (monthJournal.data ?? []).filter(visibleEntry);
   const dayTasks = shownMonth.filter((t) => t.date === selected);
+  const dayEntries = shownEntries.filter((e) => e.entry_date === selected);
   const frostText = frostLabel(selected, settings);
 
   const go = (delta: number) => {
@@ -79,7 +98,7 @@ export function CalendarPage() {
     setSelected(day);
     setView('honap');
   };
-  const toggleCategory = (c: TaskCategory) => setHidden(hidden.includes(c) ? hidden.filter((x) => x !== c) : [...hidden, c]);
+  const toggleCategory = (c: EventGroup) => setHidden(hidden.includes(c) ? hidden.filter((x) => x !== c) : [...hidden, c]);
   const dayLabel = relativeDayLabel(selected, today);
   const relative = ['Ma', 'Holnap', 'Tegnap'].includes(dayLabel);
 
@@ -121,17 +140,17 @@ export function CalendarPage() {
       </div>
 
       <div className={s.filters}>
-        {TASK_CATEGORIES.map((c) => (
+        {EVENT_GROUPS.map((c) => (
           <button
             key={c}
             type="button"
             className={`${s.filterChip} ${hidden.includes(c) ? s.filterOff : ''}`}
-            style={{ '--c': CATEGORY_COLOR[c] } as CSSProperties}
+            style={{ '--c': EVENT_COLOR[c] } as CSSProperties}
             aria-pressed={!hidden.includes(c)}
             onClick={() => toggleCategory(c)}
           >
             <i />
-            {TASK_CATEGORY_LABEL[c]}
+            {EVENT_GROUP_LABEL[c]}
           </button>
         ))}
         <select className={s.bedSelect} value={bedFilter} onChange={(e) => setBedFilter(e.target.value)} aria-label="Ágyás szűrése">
@@ -149,7 +168,7 @@ export function CalendarPage() {
         <>
           <MonthGrid
             month={month}
-            tasks={shownMonth}
+            events={[...shownMonth.map(taskEvent), ...shownEntries.map(journalEvent)]}
             selected={selected}
             today={today}
             frost={settings}
@@ -170,19 +189,30 @@ export function CalendarPage() {
             {dayTasks.map((t) => (
               <TaskListRow key={t.key} task={t} issues={checks.byPlanting.get(t.planting_id ?? -1)} onOpen={sheets.open} />
             ))}
-            <button type="button" className={s.addRow} onClick={() => sheets.create(selected)}>
-              <Plus size={16} strokeWidth={2.6} />
-              Új feladat erre a napra
-            </button>
+            {dayEntries.map((e) => (
+              <JournalRow key={e.id} entry={e} onOpen={journal.open} showDate={false} />
+            ))}
+            <div className={s.addRows}>
+              <button type="button" className={s.addRow} onClick={() => sheets.create(selected)}>
+                <Plus size={16} strokeWidth={2.6} />
+                Új feladat
+              </button>
+              {selected <= today && (
+                <button type="button" className={`${s.addRow} ${s.addJournal}`} onClick={() => journal.create({ entry_date: selected })}>
+                  <Plus size={16} strokeWidth={2.6} />
+                  Naplóbejegyzés
+                </button>
+              )}
+            </div>
           </Section>
         </>
       ) : (
         <YearOverview
           year={calYear}
-          tasks={(yearTasks.data ?? []).filter(visible)}
+          events={[...(yearTasks.data ?? []).filter(visible).map(taskEvent), ...(yearJournal.data ?? []).filter(visibleEntry).map(journalEvent)]}
           today={today}
           frost={settings}
-          categories={TASK_CATEGORIES.filter((c) => !hidden.includes(c))}
+          groups={EVENT_GROUPS.filter((c) => !hidden.includes(c))}
           onPickDay={pickDay}
           onPickMonth={(m) => {
             setMonth(m);
@@ -193,6 +223,7 @@ export function CalendarPage() {
       )}
 
       {sheets.sheets}
+      {journal.sheet}
     </div>
   );
 }

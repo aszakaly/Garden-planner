@@ -13,13 +13,13 @@ import {
   Sprout,
   TriangleAlert,
 } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import type { TaskItem } from '@shared/domain/tasks.ts';
 import { SmartTile } from '../components/ui/SmartTile.tsx';
 import { SidebarRow } from '../components/ui/SidebarRow.tsx';
 import { BED_ICON } from '../lib/beds.ts';
 import { colorVar } from '../lib/colors.ts';
-import { useBeds, usePlantings, useTasks } from '../lib/queries.ts';
+import { useBeds, useJournalCount, usePlantings, useTasks } from '../lib/queries.ts';
 import { todayISO } from '../lib/format.ts';
 import { useYear } from '../lib/year.tsx';
 import { useYearChecks } from '../features/plan/useChecks.ts';
@@ -28,6 +28,7 @@ import s from './Sidebar.module.css';
 
 export function Sidebar() {
   const { year, setYear } = useYear();
+  const navigate = useNavigate();
   const { data: beds = [] } = useBeds(year, true);
   const { data: plantings = [] } = usePlantings(year);
   const planCount = plantings.filter((p) => p.year === year).length;
@@ -40,6 +41,7 @@ export function Sidebar() {
   const weekCount = openCount(useTasks(week.from, week.to).data);
   const scheduledCount = openCount(useTasks(yr.from, yr.to).data);
   const monthCount = openCount(useTasks(month.from, month.to).data);
+  const { data: journalCount } = useJournalCount(year);
   const thisYear = new Date().getFullYear();
   const years = Array.from({ length: 9 }, (_, i) => thisYear - 6 + i);
 
@@ -63,10 +65,18 @@ export function Sidebar() {
         </label>
       </div>
 
-      <label className={s.search}>
+      <form
+        role="search"
+        className={s.search}
+        onSubmit={(e) => {
+          e.preventDefault();
+          const q = new FormData(e.currentTarget).get('q')?.toString().trim();
+          if (q) navigate(`/naplo?q=${encodeURIComponent(q)}`);
+        }}
+      >
         <Search size={15} strokeWidth={2.4} />
-        <input type="search" placeholder="Keresés" />
-      </label>
+        <input type="search" name="q" placeholder="Keresés a naplóban" aria-label="Keresés a naplóban" />
+      </form>
 
       <div className={s.tiles}>
         <SmartTile to="/het" icon={ListTodo} color="var(--c-blue)" label="Ez a hét" count={weekCount} />
@@ -92,7 +102,7 @@ export function Sidebar() {
           label="Figyelmeztetések"
           count={warnings.length}
         />
-        <SmartTile to="/naplo" icon={BookOpen} color="var(--c-brown)" label="Napló" />
+        <SmartTile to="/naplo" icon={BookOpen} color="var(--c-brown)" label="Napló" count={journalCount?.count} />
       </div>
 
       <h2 className={s.heading}>Kertem</h2>

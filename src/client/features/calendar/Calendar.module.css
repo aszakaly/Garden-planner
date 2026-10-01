@@ -522,3 +522,16 @@
     gap: 16px 18px;
   }
 }
+
+.eventJournal {
+  font-style: italic;
+}
+
+.addRows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 18px;
+}
+.addJournal {
+  color: var(--c-brown);
+}

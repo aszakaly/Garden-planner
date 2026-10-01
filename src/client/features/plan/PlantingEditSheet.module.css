@@ -7,3 +7,48 @@
   border-radius: 10px;
   background: var(--bg-grouped-2);
 }
+
+.tabs {
+  margin: 0 0 16px;
+}
+
+.actualDate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.planHint {
+  font-size: 12px;
+  color: var(--label-3);
+  white-space: nowrap;
+}
+
+.journalCard {
+  --row-pad: 14px;
+  border-radius: 10px;
+  background: var(--bg-grouped-2);
+  overflow: hidden;
+}
+.journalEmpty {
+  margin: 0;
+  padding: 14px;
+  font-size: 14px;
+  color: var(--label-2);
+}
+.journalAdd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  color: var(--tint);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+}
+.journalTotals {
+  margin: 8px 16px 0;
+  font-size: 13px;
+  color: var(--label-2);
+}

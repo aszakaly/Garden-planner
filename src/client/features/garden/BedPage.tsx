@@ -12,7 +12,7 @@ import { formatArea, formatDimensions } from '../../lib/beds.ts';
 import { colorVar } from '../../lib/colors.ts';
 import { cropColor } from '../../lib/cropColors.ts';
 import { formatDay } from '../../lib/format.ts';
-import { useBed, usePlantings, useSettings } from '../../lib/queries.ts';
+import { useBed, useJournal, usePlantings, useSettings } from '../../lib/queries.ts';
 import { useYear } from '../../lib/year.tsx';
 import { shortDate } from '@shared/domain/isoDate.ts';
 import { BedTimeline } from '../plan/BedTimeline.tsx';
@@ -22,6 +22,9 @@ import { TimelineLegend } from '../plan/TimelineLegend.tsx';
 import { byStart, effectiveBedId, placedInBed, plantingTitle } from '../plan/plantingView.ts';
 import { useYearChecks } from '../plan/useChecks.ts';
 import { defaultCursor } from '../plan/timeScale.ts';
+import { JournalPreview } from '../journal/JournalPreview.tsx';
+import { journalDate } from '../journal/journalView.ts';
+import { useJournalSheet } from '../journal/useJournalSheet.tsx';
 import { BedDiagram, type Strip } from './BedDiagram.tsx';
 import { BedEditSheet } from './BedEditSheet.tsx';
 import { BedHistory } from './BedHistory.tsx';
@@ -39,6 +42,8 @@ export function BedPage() {
   const [cursor, setCursor] = useState<string | null>(null);
   const checks = useYearChecks(year);
   const [historyYear, setHistoryYear] = useState<number | null>(null);
+  const { data: entries = [] } = useJournal({ bed_id: id, year }, id > 0);
+  const journal = useJournalSheet();
 
   const view = useMemo(() => {
     if (!bed) return null;
@@ -180,6 +185,19 @@ export function BedPage() {
       </Block>
 
       <Block
+        title={`Napló ${year}`}
+        action={<AddButton onClick={() => journal.create({ bed_id: bed.id, entry_date: journalDate(year) })}>Új bejegyzés</AddButton>}
+      >
+        <JournalPreview
+          entries={entries}
+          onOpen={journal.open}
+          showBed={false}
+          moreLink={`/naplo?agyas=${bed.id}`}
+          empty="Ebben az évben még nincs bejegyzés ehhez az ágyáshoz."
+        />
+      </Block>
+
+      <Block
         title="Előzmények (vetésforgó)"
         action={<AddButton onClick={() => setHistoryYear(year - 1)}>Előzmény rögzítése</AddButton>}
       >
@@ -192,6 +210,7 @@ export function BedPage() {
         </Block>
       )}
 
+      {journal.sheet}
       <BedEditSheet open={editing} onClose={() => setEditing(false)} bed={bed} />
       <HistorySheet open={historyYear !== null} onClose={() => setHistoryYear(null)} bed={bed} year={historyYear ?? year - 1} />
       <PlantingEditSheet

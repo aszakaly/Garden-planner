@@ -1,4 +1,4 @@
-import { CheckCircle2, Pencil, Snowflake, Sprout } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Pencil, Snowflake, Sprout } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
@@ -12,13 +12,18 @@ import { Chip } from '../../components/ui/Chip.tsx';
 import { AddButton, Block, Fact, FactGrid } from '../../components/ui/Detail.tsx';
 import { PageHeader, ToolbarButton } from '../../components/ui/PageHeader.tsx';
 import { api } from '../../lib/api.ts';
-import { qk, useApiMutation, useBeds, usePlantDetail, usePlantings, useSettings } from '../../lib/queries.ts';
+import { withArticle } from '../../lib/format.ts';
+import { qk, useApiMutation, useBeds, useCultivation, useJournal, usePlantDetail, usePlantings, useSettings } from '../../lib/queries.ts';
 import { useYear } from '../../lib/year.tsx';
 import { PlantingEditSheet } from '../plan/PlantingEditSheet.tsx';
 import { PlantingRow } from '../plan/PlantingRow.tsx';
 import { byStart, effectiveBedId } from '../plan/plantingView.ts';
 import { useYearChecks } from '../plan/useChecks.ts';
+import { JournalPreview } from '../journal/JournalPreview.tsx';
+import { journalDate } from '../journal/journalView.ts';
+import { useJournalSheet } from '../journal/useJournalSheet.tsx';
 import { CompanionEditSheet } from './CompanionEditSheet.tsx';
+import { CultivationList } from './CultivationList.tsx';
 import { PlantEditSheet } from './PlantEditSheet.tsx';
 import { SeasonCalendar } from './SeasonCalendar.tsx';
 import { VarietyEditSheet } from './VarietyEditSheet.tsx';
@@ -43,6 +48,10 @@ export function PlantDetailPage() {
   const { data: beds = [] } = useBeds(year);
   const [plantingEdit, setPlantingEdit] = useState<PlantingListItem | 'new' | null>(null);
   const checks = useYearChecks(year);
+  const [plantingTab, setPlantingTab] = useState<'terv' | 'teny'>('terv');
+  const { data: history = [] } = useCultivation({ plantId: id });
+  const { data: entries = [] } = useJournal({ plant_id: id }, id > 0);
+  const journal = useJournalSheet();
   const verify = useApiMutation(() => api.patch(`/plants/${id}`, { data_status: 'ellenorzott' }), [qk.plant(id), qk.plants]);
 
   if (isLoading) return <PageHeader title="Növény" color="var(--c-mint)" />;
@@ -166,7 +175,7 @@ export function PlantDetailPage() {
         {varieties.length ? (
           <div className={s.list}>
             {varieties.map((v) => (
-              <button key={v.id} type="button" className={s.varietyRow} onClick={() => setEditing({ kind: 'variety', variety: v })}>
+              <Link key={v.id} to={`/novenyek/${plant.id}/fajtak/${v.id}`} className={s.varietyRow}>
                 <Sprout size={16} className={s.varietyIcon} />
                 <span className={s.varietyText}>
                   <span className={s.varietyName}>{v.name}</span>
@@ -178,7 +187,8 @@ export function PlantDetailPage() {
                     Vetőmag készleten{v.latest_vintage ? ` · ${v.latest_vintage}` : ''}
                   </Chip>
                 )}
-              </button>
+                <ChevronRight size={16} className={s.varietyChevron} />
+              </Link>
             ))}
           </div>
         ) : (
@@ -215,19 +225,45 @@ export function PlantDetailPage() {
         </Block>
       )}
 
-      <Block title="Korábbi termesztések és napló">
-        <p className={s.muted}>A saját termesztési előzmények és naplóbejegyzések itt jelennek meg, amint rögzíted őket.</p>
+      <Block title="Termesztési előzmények">
+        <CultivationList
+          plantings={history}
+          entries={entries}
+          onOpen={(p) => {
+            setPlantingTab('teny');
+            setPlantingEdit(p);
+          }}
+          empty="Még nincs rögzített termesztés. Az ültetések megvalósulása és szezonvégi értékelése itt gyűlik évről évre."
+        />
       </Block>
+
+      <Block
+        title="Napló"
+        action={<AddButton onClick={() => journal.create({ plant_id: plant.id, entry_date: journalDate(year) })}>Új bejegyzés</AddButton>}
+      >
+        <JournalPreview
+          entries={entries}
+          onOpen={journal.open}
+          showYear
+          moreLink={`/naplo?noveny=${plant.id}&ev=mind`}
+          empty={`Még nincs naplóbejegyzés ${withArticle(plant.name_hu.toLocaleLowerCase('hu'))} kapcsán.`}
+        />
+      </Block>
+      {journal.sheet}
 
       {plant.source && <p className={s.source}>{plant.source}</p>}
 
       <PlantEditSheet open={editing?.kind === 'plant'} onClose={close} plant={plant} />
       <PlantingEditSheet
         open={plantingEdit !== null}
-        onClose={() => setPlantingEdit(null)}
+        onClose={() => {
+          setPlantingEdit(null);
+          setPlantingTab('terv');
+        }}
         planting={plantingEdit && plantingEdit !== 'new' ? plantingEdit : undefined}
         plantId={plant.id}
-        year={year}
+        year={plantingEdit && plantingEdit !== 'new' ? plantingEdit.year : year}
+        initialTab={plantingTab}
       />
       <WindowEditSheet
         open={editing?.kind === 'window'}

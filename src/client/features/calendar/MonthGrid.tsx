@@ -1,15 +1,13 @@
 import { Snowflake } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import type { TaskItem } from '@shared/domain/tasks.ts';
 import type { Settings } from '@shared/settings.ts';
 import { formatDay, formatWeekday } from '../../lib/format.ts';
-import { CATEGORY_COLOR } from '../tasks/taskView.ts';
-import { frostLabel, monthGrid, WEEKDAYS_SHORT } from './calendarView.ts';
+import { EVENT_COLOR, frostLabel, monthGrid, WEEKDAYS_SHORT, type CalendarEvent } from './calendarView.ts';
 import s from './Calendar.module.css';
 
 interface Props {
   month: string;
-  tasks: TaskItem[];
+  events: CalendarEvent[];
   selected: string;
   today: string;
   frost: Settings;
@@ -21,12 +19,12 @@ interface Props {
 const MAX_EVENTS = 3;
 
 /**
- * Havi naptár-rács (hétfőtől vasárnapig), napokban a feladatok címével vagy pöttyével.
- * A színek a feladattípusé (a szűrősor egyben jelmagyarázat is); az ágyásra szűrni lehet.
+ * Havi naptár-rács (hétfőtől vasárnapig), napokban a feladatok és naplóbejegyzések címével vagy pöttyével.
+ * A színek a feladattípusé, illetve a naplóé (a szűrősor egyben jelmagyarázat is); az ágyásra szűrni lehet.
  */
-export function MonthGrid({ month, tasks, selected, today, frost, compact, onSelect }: Props) {
+export function MonthGrid({ month, events, selected, today, frost, compact, onSelect }: Props) {
   const days = monthGrid(month);
-  const byDay = Map.groupBy(tasks, (t) => t.date);
+  const byDay = Map.groupBy(events, (t) => t.date);
 
   return (
     <div className={`${s.month} ${compact ? s.compact : ''}`}>
@@ -40,7 +38,7 @@ export function MonthGrid({ month, tasks, selected, today, frost, compact, onSel
           const items = byDay.get(day) ?? [];
           const outside = !day.startsWith(month);
           const frostText = frostLabel(day, frost);
-          const open = items.filter((t) => !t.done_on).length;
+          const open = items.filter((t) => !t.done && t.group !== 'naplo').length;
           const cls = [s.cell, outside && s.outside, day === selected && s.selected, day === today && s.today]
             .filter(Boolean)
             .join(' ');
@@ -51,7 +49,7 @@ export function MonthGrid({ month, tasks, selected, today, frost, compact, onSel
               role="gridcell"
               className={cls}
               aria-selected={day === selected}
-              aria-label={`${formatDay(day)}, ${formatWeekday(day)}${items.length ? `, ${items.length} feladat` : ''}${frostText ? `, ${frostText.toLowerCase()}` : ''}`}
+              aria-label={`${formatDay(day)}, ${formatWeekday(day)}${items.length ? `, ${items.length} esemény` : ''}${frostText ? `, ${frostText.toLowerCase()}` : ''}`}
               onClick={() => onSelect(day)}
             >
               <span className={s.cellHead}>
@@ -61,7 +59,7 @@ export function MonthGrid({ month, tasks, selected, today, frost, compact, onSel
               {compact ? (
                 <span className={s.dots}>
                   {items.slice(0, 4).map((t) => (
-                    <i key={t.key} className={t.done_on ? s.dotDone : undefined} style={{ '--c': CATEGORY_COLOR[t.category] } as CSSProperties} />
+                    <i key={t.key} className={t.done ? s.dotDone : undefined} style={{ '--c': EVENT_COLOR[t.group] } as CSSProperties} />
                   ))}
                 </span>
               ) : (
@@ -69,8 +67,8 @@ export function MonthGrid({ month, tasks, selected, today, frost, compact, onSel
                   {items.slice(0, MAX_EVENTS).map((t) => (
                     <span
                       key={t.key}
-                      className={`${s.event} ${t.done_on ? s.eventDone : ''}`}
-                      style={{ '--c': CATEGORY_COLOR[t.category] } as CSSProperties}
+                      className={`${s.event} ${t.done ? s.eventDone : ''} ${t.group === 'naplo' ? s.eventJournal : ''}`}
+                      style={{ '--c': EVENT_COLOR[t.group] } as CSSProperties}
                     >
                       {t.title}
                     </span>

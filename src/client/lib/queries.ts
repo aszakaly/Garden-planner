@@ -4,11 +4,13 @@ import type { Settings } from '@shared/settings.ts';
 import type { CompanionPair } from '@shared/domain/companions.ts';
 import { ROTATION_LOOKBACK_YEARS } from '@shared/domain/rotation.ts';
 import type { TaskItem } from '@shared/domain/tasks.ts';
+import type { JournalType } from '@shared/labels.ts';
 import type {
   Bed,
   BedListItem,
   CropGroup,
   Garden,
+  JournalEntry,
   PlantDetail,
   PlantFamily,
   PlantListItem,
@@ -41,7 +43,24 @@ export const qk = {
   tasks: ['plantings', 'tasks'] as const,
   taskRange: (from: string, to: string) => ['plantings', 'tasks', from, to] as const,
   planting: (id: number) => ['plantings', 'egy', id] as const,
+  cultivation: (kind: 'noveny' | 'fajta', id: number) => ['plantings', 'tortenet', kind, id] as const,
+  journal: ['journal'] as const,
+  journalList: (filter: JournalFilter) => ['journal', 'lista', filter] as const,
+  journalCount: (year: number) => ['journal', 'db', year] as const,
 };
+
+/** Naplószűrő (a lekérdezés paraméterei). */
+export interface JournalFilter {
+  q?: string;
+  type?: JournalType;
+  planting_id?: number;
+  plant_id?: number;
+  variety_id?: number;
+  bed_id?: number;
+  year?: number;
+  from?: string;
+  to?: string;
+}
 
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: () => api.get<Settings>('/settings') });
 export const usePlants = () =>
@@ -88,6 +107,31 @@ export const usePlanting = (id: number | null) =>
 /** A két nap közé eső feladatok (generált és saját). */
 export const useTasks = (from: string, to: string) =>
   useQuery({ queryKey: qk.taskRange(from, to), queryFn: () => api.get<TaskItem[]>(`/tasks?from=${from}&to=${to}`) });
+
+/** Egy növény vagy fajta összes ültetése minden évből (tudásbázis). */
+export const useCultivation = (by: { plantId: number } | { varietyId: number }) => {
+  const [kind, id] = 'plantId' in by ? (['noveny', by.plantId] as const) : (['fajta', by.varietyId] as const);
+  return useQuery({
+    queryKey: qk.cultivation(kind, id),
+    queryFn: () => api.get<PlantingListItem[]>(`/plantings/history?${kind === 'noveny' ? 'plant_id' : 'variety_id'}=${id}`),
+    enabled: id > 0,
+  });
+};
+
+export const useJournal = (filter: JournalFilter, enabled = true) =>
+  useQuery({
+    queryKey: qk.journalList(filter),
+    queryFn: () => {
+      const params = new URLSearchParams(
+        Object.entries(filter).flatMap(([k, v]) => (v === undefined || v === '' ? [] : [[k, String(v)]])),
+      );
+      return api.get<JournalEntry[]>(`/journal?${params}`);
+    },
+    enabled,
+  });
+
+export const useJournalCount = (year: number) =>
+  useQuery({ queryKey: qk.journalCount(year), queryFn: () => api.get<{ count: number }>(`/journal/count?year=${year}`) });
 
 export const useCompanions = () =>
   useQuery({ queryKey: qk.companions, queryFn: () => api.get<CompanionPair[]>('/companions'), staleTime: Infinity });

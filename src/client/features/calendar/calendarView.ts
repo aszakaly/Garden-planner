@@ -1,4 +1,7 @@
-import { MONTHS_HU } from '@shared/labels.ts';
+import { JOURNAL_TYPE_LABEL, MONTHS_HU } from '@shared/labels.ts';
+import { TASK_CATEGORIES, TASK_CATEGORY_LABEL, type TaskCategory, type TaskItem } from '@shared/domain/tasks.ts';
+import type { JournalEntry } from '@shared/types.ts';
+import { CATEGORY_COLOR } from '../tasks/taskView.ts';
 import { addDaysISO } from '@shared/domain/isoDate.ts';
 import type { Settings } from '@shared/settings.ts';
 
@@ -41,3 +44,28 @@ export function frostLabel(day: string, frost: Pick<Settings, 'lastFrost' | 'fir
   if (md === frost.firstFrost) return 'Várható első őszi fagy';
   return null;
 }
+
+/** A naptár eseménycsoportjai: a feladattípusok és a napló. */
+export const EVENT_GROUPS = [...TASK_CATEGORIES, 'naplo'] as const;
+export type EventGroup = TaskCategory | 'naplo';
+export const EVENT_COLOR: Record<EventGroup, string> = { ...CATEGORY_COLOR, naplo: 'var(--c-brown)' };
+export const EVENT_GROUP_LABEL: Record<EventGroup, string> = { ...TASK_CATEGORY_LABEL, naplo: 'Napló' };
+
+/** Egy nap eseménye a naptárban (feladat vagy naplóbejegyzés). */
+export interface CalendarEvent {
+  key: string;
+  date: string;
+  title: string;
+  group: EventGroup;
+  done: boolean;
+}
+
+export const taskEvent = (t: TaskItem): CalendarEvent => ({ key: t.key, date: t.date, title: t.title, group: t.category, done: t.done_on !== null });
+
+export const journalEvent = (e: JournalEntry): CalendarEvent => ({
+  key: `naplo:${e.id}`,
+  date: e.entry_date,
+  title: `${JOURNAL_TYPE_LABEL[e.entry_type]}${e.plant_name ? `: ${e.plant_name.toLocaleLowerCase('hu')}` : ''}`,
+  group: 'naplo',
+  done: false,
+});

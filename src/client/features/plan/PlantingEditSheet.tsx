@@ -70,6 +70,8 @@ import { BedDiagram, type Strip } from '../garden/BedDiagram.tsx';
 import { companionChecks, companionIssue, rotationChecks, rotationHistory } from '@shared/domain/plantingChecks.ts';
 import { axisLabel, blankPlanting, placedInBed, plantingTitle } from './plantingView.ts';
 import { useChecksContext } from './useChecks.ts';
+import { actualFromPlanting, actualPayload, PlantingActualPanel, type ActualForm } from './PlantingActualPanel.tsx';
+import { PlantingJournalPanel } from './PlantingJournalPanel.tsx';
 import s from './PlantingEditSheet.module.css';
 
 const NEW_VARIETY = -1;
@@ -218,10 +220,17 @@ interface Props {
   bedId?: number;
   plantId?: number;
   year: number;
+  /** Meglévő ültetésnél a nyitó fül */
+  initialTab?: SheetTab;
 }
 
-export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, year }: Props) {
+type SheetTab = 'terv' | 'teny' | 'naplo';
+
+export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, year, initialTab = 'terv' }: Props) {
   const [form, setForm] = useState<Form>(() => emptyForm(year));
+  const [tab, setTab] = useState<SheetTab>(initialTab);
+  const [actual, setActual] = useState<ActualForm | null>(null);
+  const actualInitial = useRef<string | null>(null);
   const { data: plants = [] } = usePlants();
   const { data: settings } = useSettings();
   // Az ütközéseket és a szabad helyet az ültetés saját évében nézzük (az évet a lapon is át lehet állítani)
@@ -256,10 +265,15 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     const key = String(planting?.id ?? 'uj');
     if (!ready || initialized.current === key) return;
     initialized.current = key;
+    setTab(planting ? initialTab : 'terv');
     if (planting) {
       setForm(fromPlanting(planting, beds.find((b) => b.id === planting.bed_id)));
+      const a = actualFromPlanting(planting);
+      setActual(a);
+      actualInitial.current = JSON.stringify(actualPayload(a));
       return;
     }
+    setActual(null);
     let f: Form = { ...emptyForm(year), bed_id: bedId ?? null };
     const plant = plants.find((p) => p.id === plantId);
     if (plant) f = withPlant(f, plant);
@@ -502,10 +516,16 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     };
     if (planting) {
       const { series: _series, ...update } = body;
-      return api.put(`/plantings/${planting.id}`, update);
+      await api.put(`/plantings/${planting.id}`, update);
+      // A megvalósulás csak akkor megy, ha változott
+      const payload = actual ? actualPayload(actual) : null;
+      if (payload && JSON.stringify(payload) !== actualInitial.current) {
+        await api.patch(`/plantings/${planting.id}/actual`, payload);
+      }
+      return;
     }
     return api.post('/plantings', body);
-  }, invalidate);
+  }, [...invalidate, qk.journal]);
   const remove = useApiMutation(
     (whole: boolean) => api.delete(`/plantings/${planting!.id}${whole ? '?series=1' : ''}`),
     invalidate,
@@ -556,289 +576,311 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
       busy={save.isPending}
       error={errorMessage(save.error ?? remove.error)}
     >
-      <FormGroup>
-        <FormRow label="Növény">
-          <Select value={form.plant_id ?? ''} onChange={(e) => choosePlant(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">Válassz…</option>
-            {plants.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name_hu}
-              </option>
-            ))}
-          </Select>
-        </FormRow>
-        {plant && (
-          <FormRow label="Fajta">
-            <Select
-              value={form.variety_id ?? ''}
-              onChange={(e) => chooseVariety(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">Fajta nélkül</option>
-              {varieties.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-              <option value={NEW_VARIETY}>＋ Új fajta…</option>
-            </Select>
-          </FormRow>
-        )}
-        {form.variety_id === NEW_VARIETY && (
-          <FormRow label="Új fajta neve">
-            <TextInput value={form.newVarietyName} onChange={(e) => set('newVarietyName', e.target.value)} placeholder="pl. Ökörszív" />
-          </FormRow>
-        )}
-        {form.variety_id && form.variety_id !== NEW_VARIETY && usesSow(form.method) && stocks.length > 0 && (
-          <FormRow label="Vetőmag">
-            <Select value={form.seed_stock_id ?? ''} onChange={(e) => set('seed_stock_id', e.target.value ? Number(e.target.value) : null)}>
-              <option value="">Nincs megadva</option>
-              {stocks.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {[x.vintage_year ?? 'évjárat nélkül', x.supplier ?? SEED_ORIGIN_LABEL[x.origin_type]].join(' · ')}
-                  {x.in_stock ? '' : ' (elfogyott)'}
-                </option>
-              ))}
-            </Select>
-          </FormRow>
-        )}
-        <FormRow label="Év">
-          <Select value={form.year} onChange={(e) => changeYear(Number(e.target.value))}>
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </Select>
-        </FormRow>
-      </FormGroup>
-      <NoticeList items={seedIssues} />
-
-      {plant && (
+      {planting && (
+        <div className={s.tabs}>
+          <SegmentedControl<SheetTab>
+            label="Nézet"
+            value={tab}
+            options={[
+              { value: 'terv', label: 'Terv' },
+              { value: 'teny', label: 'Megvalósulás' },
+              { value: 'naplo', label: 'Napló' },
+            ]}
+            onChange={setTab}
+          />
+        </div>
+      )}
+      {planting && tab === 'teny' && actual && (
+        <PlantingActualPanel planting={planting} value={actual} onChange={setActual} beds={allBeds ?? []} />
+      )}
+      {planting && tab === 'naplo' && <PlantingJournalPanel planting={planting} />}
+      {tab === 'terv' && (
         <>
-          <FormGroup title="Időszak és módszer" footer={window?.notes ?? undefined}>
-            <FormRow label="Időszak">
-              <Select value={form.window_id ?? ''} onChange={(e) => chooseWindow(e.target.value ? Number(e.target.value) : null)}>
-                {windows.map(({ w, label }) => (
-                  <option key={w.id} value={w.id}>
-                    {label}
+          <FormGroup>
+            <FormRow label="Növény">
+              <Select value={form.plant_id ?? ''} onChange={(e) => choosePlant(e.target.value ? Number(e.target.value) : null)}>
+                <option value="">Válassz…</option>
+                {plants.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name_hu}
                   </option>
                 ))}
-                <option value="">Egyéni dátumok</option>
               </Select>
             </FormRow>
-            {!window && (
-              <FormRow label="Módszer">
-                <Select value={form.method} onChange={(e) => chooseMethod(e.target.value as PlantingMethod)}>
-                  {PLANTING_METHODS.map((m) => (
-                    <option key={m} value={m}>
-                      {PLANTING_METHOD_LABEL[m]}
+            {plant && (
+              <FormRow label="Fajta">
+                <Select
+                  value={form.variety_id ?? ''}
+                  onChange={(e) => chooseVariety(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">Fajta nélkül</option>
+                  {varieties.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+                  <option value={NEW_VARIETY}>＋ Új fajta…</option>
+                </Select>
+              </FormRow>
+            )}
+            {form.variety_id === NEW_VARIETY && (
+              <FormRow label="Új fajta neve">
+                <TextInput value={form.newVarietyName} onChange={(e) => set('newVarietyName', e.target.value)} placeholder="pl. Ökörszív" />
+              </FormRow>
+            )}
+            {form.variety_id && form.variety_id !== NEW_VARIETY && usesSow(form.method) && stocks.length > 0 && (
+              <FormRow label="Vetőmag">
+                <Select value={form.seed_stock_id ?? ''} onChange={(e) => set('seed_stock_id', e.target.value ? Number(e.target.value) : null)}>
+                  <option value="">Nincs megadva</option>
+                  {stocks.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {[x.vintage_year ?? 'évjárat nélkül', x.supplier ?? SEED_ORIGIN_LABEL[x.origin_type]].join(' · ')}
+                      {x.in_stock ? '' : ' (elfogyott)'}
                     </option>
                   ))}
                 </Select>
               </FormRow>
             )}
-          </FormGroup>
-          {window?.method === 'palanta' && (
-            <div className={s.segment}>
-              <SegmentedControl<PlantingMethod>
-                label="Palánta"
-                value={form.method}
-                options={[
-                  { value: 'palanta', label: 'Saját nevelés' },
-                  { value: 'vasarolt_palanta', label: 'Vásárolt palánta' },
-                ]}
-                onChange={chooseMethod}
-              />
-            </div>
-          )}
-
-          <FormGroup
-            title="Dátumok"
-            footer={`A javaslat az időszak elejéről indul${plant.frost_sensitive ? `, fagyérzékeny növénynél legkorábban az utolsó fagy napjától (${shortDate(frost.lastFrost)})` : ''}. Egy dátum módosítása a későbbieket is ugyanannyival tolja.`}
-          >
-            {usesSow(form.method) && (
-              <FormRow label={sowLabel}>
-                <DateInput value={form.dates.sow} onChange={(v) => setDate('sow', v)} />
-              </FormRow>
-            )}
-            {usesTransplant(form.method) && (
-              <FormRow label="Kiültetés">
-                <DateInput value={form.dates.transplant} onChange={(v) => setDate('transplant', v)} />
-              </FormRow>
-            )}
-            <FormRow label="Betakarítás kezdete">
-              <DateInput value={form.dates.harvestStart} onChange={(v) => setDate('harvestStart', v)} />
-            </FormRow>
-            <FormRow label={plant.perennial ? 'Terület felszabadul (évelő)' : 'Terület felszabadul'}>
-              <DateInput value={form.dates.end} onChange={(v) => setDate('end', v)} />
-            </FormRow>
-            {window && <FormButton onClick={resetDates}>Javasolt dátumok visszaállítása</FormButton>}
-          </FormGroup>
-          <NoticeList items={dateIssues} />
-
-          <FormGroup
-            title="Elhelyezés"
-            footer={
-              bed && axes
-                ? `A sávok az ágyás ${axisLabel(bed)} mentén (${axes.axis} cm) követik egymást; a kezdet az ágyás ${bed.row_direction === 'keresztben' ? 'elejétől' : 'hosszanti szélétől'} mért távolság.${rowSpacing ? ` Sortáv ${rowSpacing} cm` : ''}${inRowSpacing ? `, tőtáv ${inRowSpacing} cm.` : rowSpacing ? '.' : ''}`
-                : 'Ágyás nélkül az ültetés az „Elhelyezésre vár” listába kerül.'
-            }
-          >
-            <FormRow label="Ágyás">
-              <Select
-                value={form.bed_id ?? ''}
-                onChange={(e) =>
-                  apply((f) => ({ ...f, bed_id: e.target.value ? Number(e.target.value) : null, autoPlace: true }))
-                }
-              >
-                <option value="">Még nincs helye</option>
-                {beds.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
+            <FormRow label="Év">
+              <Select value={form.year} onChange={(e) => changeYear(Number(e.target.value))}>
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
                   </option>
                 ))}
               </Select>
             </FormRow>
-            {bed && axes && (
-              <>
-                <FormRow label="Sorok száma">
-                  <NumberInput
-                    value={form.rows}
-                    min={1}
-                    onChange={(v) => apply((f) => ({ ...f, rows: v, axis_span_cm: v ? spanForRows(v, rowSpacing) : f.axis_span_cm }))}
-                  />
+          </FormGroup>
+          <NoticeList items={seedIssues} />
+
+          {plant && (
+            <>
+              <FormGroup title="Időszak és módszer" footer={window?.notes ?? undefined}>
+                <FormRow label="Időszak">
+                  <Select value={form.window_id ?? ''} onChange={(e) => chooseWindow(e.target.value ? Number(e.target.value) : null)}>
+                    {windows.map(({ w, label }) => (
+                      <option key={w.id} value={w.id}>
+                        {label}
+                      </option>
+                    ))}
+                    <option value="">Egyéni dátumok</option>
+                  </Select>
                 </FormRow>
-                <FormRow label="Sáv szélessége">
-                  <NumberInput
-                    value={form.axis_span_cm}
-                    min={1}
-                    unit="cm"
-                    onChange={(v) => apply((f) => ({ ...f, axis_span_cm: v, rows: v ? rowsForSpan(v, rowSpacing) : f.rows }))}
+                {!window && (
+                  <FormRow label="Módszer">
+                    <Select value={form.method} onChange={(e) => chooseMethod(e.target.value as PlantingMethod)}>
+                      {PLANTING_METHODS.map((m) => (
+                        <option key={m} value={m}>
+                          {PLANTING_METHOD_LABEL[m]}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormRow>
+                )}
+              </FormGroup>
+              {window?.method === 'palanta' && (
+                <div className={s.segment}>
+                  <SegmentedControl<PlantingMethod>
+                    label="Palánta"
+                    value={form.method}
+                    options={[
+                      { value: 'palanta', label: 'Saját nevelés' },
+                      { value: 'vasarolt_palanta', label: 'Vásárolt palánta' },
+                    ]}
+                    onChange={chooseMethod}
                   />
+                </div>
+              )}
+
+              <FormGroup
+                title="Dátumok"
+                footer={`A javaslat az időszak elejéről indul${plant.frost_sensitive ? `, fagyérzékeny növénynél legkorábban az utolsó fagy napjától (${shortDate(frost.lastFrost)})` : ''}. Egy dátum módosítása a későbbieket is ugyanannyival tolja.`}
+              >
+                {usesSow(form.method) && (
+                  <FormRow label={sowLabel}>
+                    <DateInput value={form.dates.sow} onChange={(v) => setDate('sow', v)} />
+                  </FormRow>
+                )}
+                {usesTransplant(form.method) && (
+                  <FormRow label="Kiültetés">
+                    <DateInput value={form.dates.transplant} onChange={(v) => setDate('transplant', v)} />
+                  </FormRow>
+                )}
+                <FormRow label="Betakarítás kezdete">
+                  <DateInput value={form.dates.harvestStart} onChange={(v) => setDate('harvestStart', v)} />
                 </FormRow>
-                <FormRow label="Kezdete">
-                  <NumberInput
-                    value={form.axis_start_cm}
-                    min={0}
-                    unit="cm"
-                    onChange={(v) => setForm((f) => ({ ...f, axis_start_cm: v, autoPlace: false }))}
-                  />
+                <FormRow label={plant.perennial ? 'Terület felszabadul (évelő)' : 'Terület felszabadul'}>
+                  <DateInput value={form.dates.end} onChange={(v) => setDate('end', v)} />
                 </FormRow>
-                <FormRow label={`Teljes ${bed.row_direction === 'keresztben' ? 'szélességben' : 'hosszban'}`}>
-                  <Toggle
-                    label={`Teljes ${bed.row_direction === 'keresztben' ? 'szélességben' : 'hosszban'}`}
-                    checked={form.fullCross}
-                    onChange={(v) =>
-                      apply((f) => ({
-                        ...f,
-                        fullCross: v,
-                        cross_start_cm: v ? null : (f.cross_start_cm ?? 0),
-                        cross_span_cm: v ? null : (f.cross_span_cm ?? Math.round(axes.cross / 2)),
-                      }))
+                {window && <FormButton onClick={resetDates}>Javasolt dátumok visszaállítása</FormButton>}
+              </FormGroup>
+              <NoticeList items={dateIssues} />
+
+              <FormGroup
+                title="Elhelyezés"
+                footer={
+                  bed && axes
+                    ? `A sávok az ágyás ${axisLabel(bed)} mentén (${axes.axis} cm) követik egymást; a kezdet az ágyás ${bed.row_direction === 'keresztben' ? 'elejétől' : 'hosszanti szélétől'} mért távolság.${rowSpacing ? ` Sortáv ${rowSpacing} cm` : ''}${inRowSpacing ? `, tőtáv ${inRowSpacing} cm.` : rowSpacing ? '.' : ''}`
+                    : 'Ágyás nélkül az ültetés az „Elhelyezésre vár” listába kerül.'
+                }
+              >
+                <FormRow label="Ágyás">
+                  <Select
+                    value={form.bed_id ?? ''}
+                    onChange={(e) =>
+                      apply((f) => ({ ...f, bed_id: e.target.value ? Number(e.target.value) : null, autoPlace: true }))
                     }
-                  />
+                  >
+                    <option value="">Még nincs helye</option>
+                    {beds.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </Select>
                 </FormRow>
-                {!form.fullCross && (
+                {bed && axes && (
                   <>
-                    <FormRow label={bed.row_direction === 'keresztben' ? 'Szélességben kezdete' : 'Hosszában kezdete'}>
-                      <NumberInput value={form.cross_start_cm} min={0} unit="cm" onChange={(v) => set('cross_start_cm', v)} />
+                    <FormRow label="Sorok száma">
+                      <NumberInput
+                        value={form.rows}
+                        min={1}
+                        onChange={(v) => apply((f) => ({ ...f, rows: v, axis_span_cm: v ? spanForRows(v, rowSpacing) : f.axis_span_cm }))}
+                      />
                     </FormRow>
-                    <FormRow label={bed.row_direction === 'keresztben' ? 'Szélességben foglal' : 'Hosszában foglal'}>
-                      <NumberInput value={form.cross_span_cm} min={1} unit="cm" onChange={(v) => set('cross_span_cm', v)} />
+                    <FormRow label="Sáv szélessége">
+                      <NumberInput
+                        value={form.axis_span_cm}
+                        min={1}
+                        unit="cm"
+                        onChange={(v) => apply((f) => ({ ...f, axis_span_cm: v, rows: v ? rowsForSpan(v, rowSpacing) : f.rows }))}
+                      />
                     </FormRow>
+                    <FormRow label="Kezdete">
+                      <NumberInput
+                        value={form.axis_start_cm}
+                        min={0}
+                        unit="cm"
+                        onChange={(v) => setForm((f) => ({ ...f, axis_start_cm: v, autoPlace: false }))}
+                      />
+                    </FormRow>
+                    <FormRow label={`Teljes ${bed.row_direction === 'keresztben' ? 'szélességben' : 'hosszban'}`}>
+                      <Toggle
+                        label={`Teljes ${bed.row_direction === 'keresztben' ? 'szélességben' : 'hosszban'}`}
+                        checked={form.fullCross}
+                        onChange={(v) =>
+                          apply((f) => ({
+                            ...f,
+                            fullCross: v,
+                            cross_start_cm: v ? null : (f.cross_start_cm ?? 0),
+                            cross_span_cm: v ? null : (f.cross_span_cm ?? Math.round(axes.cross / 2)),
+                          }))
+                        }
+                      />
+                    </FormRow>
+                    {!form.fullCross && (
+                      <>
+                        <FormRow label={bed.row_direction === 'keresztben' ? 'Szélességben kezdete' : 'Hosszában kezdete'}>
+                          <NumberInput value={form.cross_start_cm} min={0} unit="cm" onChange={(v) => set('cross_start_cm', v)} />
+                        </FormRow>
+                        <FormRow label={bed.row_direction === 'keresztben' ? 'Szélességben foglal' : 'Hosszában foglal'}>
+                          <NumberInput value={form.cross_span_cm} min={1} unit="cm" onChange={(v) => set('cross_span_cm', v)} />
+                        </FormRow>
+                      </>
+                    )}
+                    <FormRow label="Tőszám">
+                      <NumberInput
+                        value={form.plant_count}
+                        min={0}
+                        placeholder={estimate ? `kb. ${estimate}` : undefined}
+                        onChange={(v) => set('plant_count', v)}
+                      />
+                    </FormRow>
+                    {!form.autoPlace && (
+                      <FormButton onClick={() => apply((f) => ({ ...f, autoPlace: true }))}>Első szabad helyre</FormButton>
+                    )}
                   </>
                 )}
-                <FormRow label="Tőszám">
-                  <NumberInput
-                    value={form.plant_count}
-                    min={0}
-                    placeholder={estimate ? `kb. ${estimate}` : undefined}
-                    onChange={(v) => set('plant_count', v)}
+              </FormGroup>
+              {bed && strips.length > 0 && (
+                <div className={s.preview}>
+                  <BedDiagram
+                    lengthCm={bed.length_cm}
+                    widthCm={bed.width_cm}
+                    rowDirection={bed.row_direction}
+                    color={bed.color}
+                    strips={strips}
+                    maxHeight={130}
+                    caption={
+                      period
+                        ? hasOthers
+                          ? `Szürkével: ${shortDate(period.start)} – ${shortDate(period.end)} között itt álló más ültetések.`
+                          : `${shortDate(period.start)} – ${shortDate(period.end)} között nincs más ültetés ebben az ágyásban.`
+                        : false
+                    }
                   />
-                </FormRow>
-                {!form.autoPlace && (
-                  <FormButton onClick={() => apply((f) => ({ ...f, autoPlace: true }))}>Első szabad helyre</FormButton>
-                )}
-              </>
-            )}
-          </FormGroup>
-          {bed && strips.length > 0 && (
-            <div className={s.preview}>
-              <BedDiagram
-                lengthCm={bed.length_cm}
-                widthCm={bed.width_cm}
-                rowDirection={bed.row_direction}
-                color={bed.color}
-                strips={strips}
-                maxHeight={130}
-                caption={
-                  period
-                    ? hasOthers
-                      ? `Szürkével: ${shortDate(period.start)} – ${shortDate(period.end)} között itt álló más ültetések.`
-                      : `${shortDate(period.start)} – ${shortDate(period.end)} között nincs más ültetés ebben az ágyásban.`
-                    : false
-                }
-              />
-            </div>
-          )}
-          <NoticeList items={placementIssues} />
-          <NoticeList title="Vetésforgó és szomszédok" items={rotationNotices} />
+                </div>
+              )}
+              <NoticeList items={placementIssues} />
+              <NoticeList title="Vetésforgó és szomszédok" items={rotationNotices} />
 
-          {!planting && (
-            <FormGroup
-              title="Újravetés"
-              footer={
-                creatingSeries && form.dates.sow
-                  ? `Vetések: ${offsets.map((o) => shortDate(addDaysISO(form.dates.sow!, o))).join(', ')} – mindegyik a következő szabad sávba kerül.`
-                  : window?.succession_days
-                    ? `${withArticle(plant.name_hu.toLowerCase(), true)} ${window.succession_days} naponta újravetve folyamatosan szedhető.`
-                    : undefined
-              }
-            >
-              <FormRow label="Újravetés-sorozat">
-                <Toggle checked={form.seriesOn} onChange={(v) => set('seriesOn', v)} label="Újravetés-sorozat" />
-              </FormRow>
-              {form.seriesOn && (
-                <>
-                  <FormRow label="Vetések száma">
-                    <NumberInput value={form.seriesCount} min={2} max={20} onChange={(v) => set('seriesCount', v ?? 2)} />
+              {!planting && (
+                <FormGroup
+                  title="Újravetés"
+                  footer={
+                    creatingSeries && form.dates.sow
+                      ? `Vetések: ${offsets.map((o) => shortDate(addDaysISO(form.dates.sow!, o))).join(', ')} – mindegyik a következő szabad sávba kerül.`
+                      : window?.succession_days
+                        ? `${withArticle(plant.name_hu.toLowerCase(), true)} ${window.succession_days} naponta újravetve folyamatosan szedhető.`
+                        : undefined
+                  }
+                >
+                  <FormRow label="Újravetés-sorozat">
+                    <Toggle checked={form.seriesOn} onChange={(v) => set('seriesOn', v)} label="Újravetés-sorozat" />
                   </FormRow>
-                  <FormRow label="Időköz">
-                    <NumberInput value={form.seriesInterval} min={1} unit="nap" onChange={(v) => set('seriesInterval', v ?? 14)} />
-                  </FormRow>
-                </>
+                  {form.seriesOn && (
+                    <>
+                      <FormRow label="Vetések száma">
+                        <NumberInput value={form.seriesCount} min={2} max={20} onChange={(v) => set('seriesCount', v ?? 2)} />
+                      </FormRow>
+                      <FormRow label="Időköz">
+                        <NumberInput value={form.seriesInterval} min={1} unit="nap" onChange={(v) => set('seriesInterval', v ?? 14)} />
+                      </FormRow>
+                    </>
+                  )}
+                </FormGroup>
+              )}
+            </>
+          )}
+
+          <FormGroup title="Megjegyzés">
+            <FormRow label="Megjegyzés" stacked hideLabel>
+              <TextArea rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
+            </FormRow>
+          </FormGroup>
+
+          {planting && (
+            <FormGroup>
+              <FormButton
+                destructive
+                onClick={() => confirm('Törlöd ezt az ültetést?') && remove.mutate(false, { onSuccess: onClose })}
+              >
+                Ültetés törlése
+              </FormButton>
+              {(planting.series_size ?? 0) > 1 && (
+                <FormButton
+                  destructive
+                  onClick={() =>
+                    confirm(`Törlöd a teljes újravetés-sorozatot (${planting.series_size} ültetés)?`) &&
+                    remove.mutate(true, { onSuccess: onClose })
+                  }
+                >
+                  A teljes sorozat törlése ({planting.series_size} ültetés)
+                </FormButton>
               )}
             </FormGroup>
           )}
         </>
-      )}
-
-      <FormGroup title="Megjegyzés">
-        <FormRow label="Megjegyzés" stacked hideLabel>
-          <TextArea rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
-        </FormRow>
-      </FormGroup>
-
-      {planting && (
-        <FormGroup>
-          <FormButton
-            destructive
-            onClick={() => confirm('Törlöd ezt az ültetést?') && remove.mutate(false, { onSuccess: onClose })}
-          >
-            Ültetés törlése
-          </FormButton>
-          {(planting.series_size ?? 0) > 1 && (
-            <FormButton
-              destructive
-              onClick={() =>
-                confirm(`Törlöd a teljes újravetés-sorozatot (${planting.series_size} ültetés)?`) &&
-                remove.mutate(true, { onSuccess: onClose })
-              }
-            >
-              A teljes sorozat törlése ({planting.series_size} ültetés)
-            </FormButton>
-          )}
-        </FormGroup>
       )}
     </Sheet>
   );

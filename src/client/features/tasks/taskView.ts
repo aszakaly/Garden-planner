@@ -7,7 +7,7 @@ export const CATEGORY_COLOR: Record<TaskCategory, string> = {
   vetes: 'var(--c-green)',
   kiultetes: 'var(--c-teal)',
   betakaritas: 'var(--c-orange)',
-  felszabadul: 'var(--c-brown)',
+  felszabadul: 'var(--c-gray)',
   sajat: 'var(--c-blue)',
 };
 

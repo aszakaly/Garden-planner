@@ -1,6 +1,7 @@
 import type {
   BedType,
   DataStatus,
+  JournalType,
   ListColorName,
   NutrientGroup,
   PlantingMethod,
@@ -245,4 +246,28 @@ export interface PlantingListItem extends Planting {
   has_seed: boolean;
   /** Az újravetés-sorozat tagjainak száma */
   series_size: number | null;
+}
+
+export interface JournalEntry {
+  id: number;
+  entry_date: string;
+  entry_type: JournalType;
+  planting_id: number | null;
+  plant_id: number | null;
+  variety_id: number | null;
+  bed_id: number | null;
+  body: string;
+  amount: number | null;
+  unit: string | null;
+  quality: number | null;
+  /** Vesszővel elválasztott címkék */
+  tags: string;
+  created_at: string;
+  updated_at: string;
+  plant_name: string | null;
+  variety_name: string | null;
+  bed_name: string | null;
+  bed_color: ListColorName | null;
+  /** A kapcsolódó ültetés éve */
+  planting_year: number | null;
 }

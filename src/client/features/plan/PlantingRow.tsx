@@ -3,8 +3,10 @@ import type { CSSProperties } from 'react';
 import { LEVEL_RANK, type IssueLevel, type PlantingIssue } from '@shared/domain/plantingChecks.ts';
 import type { Bed, PlantingListItem } from '@shared/types.ts';
 import { Chip } from '../../components/ui/Chip.tsx';
+import { StarRating } from '../../components/ui/StarRating.tsx';
+import { PLANTING_STATUS_LABEL } from '@shared/labels.ts';
 import { cropColor } from '../../lib/cropColors.ts';
-import { datesSummary, placementSummary, plantingTitle } from './plantingView.ts';
+import { datesSummary, placementSummary, plantingTitle, STATUS_TONE } from './plantingView.ts';
 import s from './PlantingRow.module.css';
 
 const TONE: Record<IssueLevel, 'bad' | 'warn' | 'info' | 'good'> = {
@@ -57,6 +59,12 @@ export function PlantingRow({ planting: p, year, bed, showBed, issues = [], onOp
             {(p.series_size ?? 0) > 1 && (
               <Chip tone="neutral">
                 Újravetés {p.series_index}/{p.series_size}
+              </Chip>
+            )}
+            {!p.is_history && p.status !== 'terv' && <Chip tone={STATUS_TONE[p.status]}>{PLANTING_STATUS_LABEL[p.status]}</Chip>}
+            {p.eval_success && (
+              <Chip tone="neutral">
+                <StarRating value={p.eval_success} label="Siker" size={11} />
               </Chip>
             )}
             {p.year < year && <Chip>Előző évről</Chip>}

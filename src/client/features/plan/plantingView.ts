@@ -1,4 +1,4 @@
-import { PLANTING_METHOD_LABEL } from '@shared/labels.ts';
+import { PLANTING_METHOD_LABEL, type PlantingStatus } from '@shared/labels.ts';
 import { bedStart } from '@shared/domain/dates.ts';
 import { effectiveBedId, effectiveDates, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
 import { bedAxes, estimatePlantCount, type BedGeometry, type Occupant } from '@shared/domain/geometry.ts';
@@ -43,7 +43,11 @@ export function datesSummary(p: PlantingListItem, year: number): string {
     parts.push(`${verb} ${f(d.sow)}`);
   }
   if (d.transplant) parts.push(`kiültetés ${f(d.transplant)}`);
-  if (d.harvestStart) parts.push(`szedés ${f(d.harvestStart)}${d.end ? `–${f(d.end)}` : ' után'}`);
+  if (d.harvestStart) {
+    // Az azonos évre eső záró dátumnál az évet nem ismételjük
+    const end = d.end ? (d.end.slice(0, 4) === d.harvestStart.slice(0, 4) ? shortDate(d.end) : f(d.end)) : null;
+    parts.push(`szedés ${f(d.harvestStart)}${end ? `–${end}` : ' után'}`);
+  }
   if (!d.sow && !d.transplant && !d.harvestStart) parts.push(p.method ? `${PLANTING_METHOD_LABEL[p.method]}, dátum nélkül` : 'dátum nélkül');
   const text = parts.join(' · ');
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -89,3 +93,12 @@ export function axisLabel(bed: BedGeometry): string {
 
 export { bedAxes };
 
+
+/** A státuszcímke színe. */
+export const STATUS_TONE: Record<PlantingStatus, 'neutral' | 'info' | 'good' | 'warn' | 'bad'> = {
+  terv: 'neutral',
+  folyamatban: 'info',
+  lezart: 'good',
+  elmaradt: 'warn',
+  sikertelen: 'bad',
+};

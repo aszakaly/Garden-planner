@@ -15,6 +15,9 @@ interface Props {
   children: ReactNode;
 }
 
+/** A nyitott lapok sorrendje: a billentyűket mindig csak a legfelső kezeli. */
+const openSheets: symbol[] = [];
+
 /** Apple-stílusú modális lap: asztalon középre igazított ablak, telefonon alulról felcsúszó lap. */
 export function Sheet({
   title,
@@ -35,7 +38,10 @@ export function Sheet({
 
   useEffect(() => {
     if (!open) return;
+    const id = Symbol('sheet');
+    openSheets.push(id);
     const onKey = (e: KeyboardEvent) => {
+      if (openSheets.at(-1) !== id) return;
       const { onClose, onConfirm, confirmDisabled } = latest.current;
       if (e.key === 'Escape') onClose();
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && onConfirm && !confirmDisabled) onConfirm();
@@ -45,6 +51,7 @@ export function Sheet({
     document.body.style.overflow = 'hidden';
     panelRef.current?.querySelector<HTMLElement>('input:not([type=hidden]), select, textarea')?.focus();
     return () => {
+      openSheets.splice(openSheets.indexOf(id), 1);
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
     };

@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import type { TaskItem } from '@shared/domain/tasks.ts';
+import { todayISO } from '../../lib/format.ts';
 import { usePlanting } from '../../lib/queries.ts';
+import { useJournalSheet } from '../journal/useJournalSheet.tsx';
 import { PlantingEditSheet } from '../plan/PlantingEditSheet.tsx';
 import { CustomTaskSheet } from './CustomTaskSheet.tsx';
 import { TaskDetailSheet } from './TaskDetailSheet.tsx';
@@ -19,6 +21,7 @@ export function useTaskSheets(): TaskSheets {
   const [draft, setDraft] = useState<{ date: string; bedId?: number | null } | null>(null);
   const [plantingId, setPlantingId] = useState<number | null>(null);
   const { data: planting } = usePlanting(plantingId);
+  const journal = useJournalSheet();
 
   const sheets = (
     <>
@@ -31,10 +34,19 @@ export function useTaskSheets(): TaskSheets {
             setTask(null);
             setPlantingId(id);
           }}
+          onJournal={(t) => {
+            setTask(null);
+            journal.create({
+              planting_id: t.planting_id,
+              entry_type: t.slot === 'betakaritas' ? 'termes' : 'megfigyeles',
+              entry_date: t.done_on ?? (t.date <= todayISO() ? t.date : todayISO()),
+            });
+          }}
         />
       )}
       {task?.slot === 'sajat' && <CustomTaskSheet key={task.key} task={task} onClose={() => setTask(null)} />}
       {draft && <CustomTaskSheet date={draft.date} bedId={draft.bedId} onClose={() => setDraft(null)} />}
+      {journal.sheet}
       <PlantingEditSheet
         open={plantingId !== null && planting?.id === plantingId}
         onClose={() => setPlantingId(null)}

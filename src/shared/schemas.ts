@@ -2,8 +2,11 @@ import { z } from 'zod';
 import {
   BED_TYPES,
   DATA_STATUS,
+  EVAL_RECOMMEND,
+  JOURNAL_TYPES,
   LIST_COLOR_NAMES,
   PLANTING_METHODS,
+  PLANTING_STATUSES,
   ROTATION_STAGES,
   ROW_DIRECTIONS,
   SEASONS,
@@ -237,3 +240,41 @@ export const customTaskInput = z.object({
   done_at: isoDate.nullish(),
 });
 export type CustomTaskInput = z.infer<typeof customTaskInput>;
+
+const optId = z.number().int().positive().nullish();
+
+/** Az ültetés tényleges megvalósulása és szezonvégi értékelése (csak a megadott mezők változnak). */
+export const plantingActualInput = z.object({
+  status: z.enum(PLANTING_STATUSES).optional(),
+  actual_sow_date: isoDate.nullish(),
+  actual_transplant_date: isoDate.nullish(),
+  actual_harvest_start: isoDate.nullish(),
+  actual_end_date: isoDate.nullish(),
+  actual_bed_id: optId,
+  actual_axis_start_cm: cm.nullish(),
+  actual_axis_span_cm: cm.positive().nullish(),
+  actual_cross_start_cm: cm.nullish(),
+  actual_cross_span_cm: cm.positive().nullish(),
+  eval_success: z.number().int().min(1).max(5).nullish(),
+  eval_yield: optText(200),
+  eval_recommend: z.enum(EVAL_RECOMMEND).nullish(),
+  eval_notes: optText(4000),
+});
+export type PlantingActualInput = z.infer<typeof plantingActualInput>;
+
+export const journalInput = z
+  .object({
+    entry_date: isoDate,
+    entry_type: z.enum(JOURNAL_TYPES).default('megfigyeles'),
+    planting_id: optId,
+    plant_id: optId,
+    variety_id: optId,
+    bed_id: optId,
+    body: z.string().trim().max(10_000).default(''),
+    amount: z.number().min(0).max(1_000_000).nullish(),
+    unit: optText(20),
+    quality: z.number().int().min(1).max(5).nullish(),
+    tags: z.string().max(500).default(''),
+  })
+  .refine((e) => e.body !== '' || e.amount != null, { message: 'Írj szöveget vagy adj meg mennyiséget', path: ['body'] });
+export type JournalInput = z.input<typeof journalInput>;
