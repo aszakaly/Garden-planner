@@ -88,7 +88,7 @@ A homokozóban nyugodtan lehet kísérletezni: a saját adatbázisát használja
 
 A társítási adatok (`seed/companions.json`) a [Wind River Greens Plant Variety Database](https://plants.windrivergreens.com) ([bripatch/plant-variety-database](https://github.com/bripatch/plant-variety-database)) adatain alapulnak, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) licenc alatt. Az eredeti, fajtaszintű angol adatokat faj szintre vontuk össze, és az indoklásokat magyarra fordítottuk; a feldolgozást a [scripts/build-companions.ts](scripts/build-companions.ts) végzi.
 
-A vetési időpontok általános magyar vetési naptárértékek, ellenőrzésre szorulnak.
+A vetési, kiültetési és betakarítási időszakok általános magyar vetési naptárakból valók (kertvar.hu, agroinform.hu, kertlap.hu). A tő- és sortáv és a tenyészidő általános kertészeti alapérték, amelyet – ahol volt adat – összevetettünk a Rédei Kertimag tasakadataival (oazis.hu), az [origo.hu házikerti helyigény-táblázatával](https://www.origo.hu/attached/20130219helyigeny-zoldseg-fuszer.pdf) és a [kertforum.hu tenyészidő-táblázatával](https://www.kertforum.hu/tenyeszido-cop1/). Tájékoztató jellegűek: a fajták között nagy az eltérés, a vetőmag tasakján lévő értéket érdemes a fajtánál megadni.
 
 ## Licenc
 

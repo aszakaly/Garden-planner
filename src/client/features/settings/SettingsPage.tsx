@@ -123,6 +123,25 @@ export function SettingsPage() {
             </a>
             ). Tájékoztató jellegűek – a növény adatlapján „Ellenőriztem” jelöléssel véglegesítheted őket.
           </Source>
+          <Source title="Tő- és sortáv, tenyészidő">
+            Általános kertészeti alapértékek, amelyeket – ahol volt adat – összevetettünk a{' '}
+            <a
+              href="https://oazis.hu/termekek/vetomagok-hagymak-palantak-es-kellekeik/vetomagok-zoldsegfajtak-szerint.html"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Rédei Kertimag tasakadataival
+            </a>
+            , az{' '}
+            <a href="https://www.origo.hu/attached/20130219helyigeny-zoldseg-fuszer.pdf" target="_blank" rel="noreferrer">
+              origo.hu házikerti helyigény-táblázatával
+            </a>{' '}
+            (Zöldségtermesztők kézikönyve, Édenkert Magazin, Hermesmag Kft. adatai) és a{' '}
+            <a href="https://www.kertforum.hu/tenyeszido-cop1/" target="_blank" rel="noreferrer">
+              kertforum.hu tenyészidő-táblázatával
+            </a>
+            . A fajták között nagy az eltérés: a vetőmag tasakján lévő értéket érdemes a fajtánál megadni.
+          </Source>
         </div>
       </FormGroup>
 

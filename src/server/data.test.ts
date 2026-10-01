@@ -37,7 +37,7 @@ describe('JSON export és visszatöltés', () => {
     const res = await app.inject({ url: '/api/export' });
     expect(res.headers['content-disposition']).toMatch(/^attachment; filename="kerttervezo-\d{4}-\d{2}-\d{2}\.json"$/);
     exported = res.json();
-    expect(exported).toMatchObject({ format: 'kerttervezo-export', schema: '003_carry_over.sql' });
+    expect(exported).toMatchObject({ format: 'kerttervezo-export', schema: expect.stringMatching(/^\d{3}_.+\.sql$/) });
     expect(exported.tables.bed).toHaveLength(1);
     expect(exported.tables.plant!.length).toBeGreaterThan(50);
     expect(exported.tables.journal_entry![0]).toMatchObject({ body: 'Első szedés, bőséges' });

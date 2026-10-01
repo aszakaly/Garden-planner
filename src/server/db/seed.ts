@@ -43,8 +43,11 @@ interface SeedPlant {
 
 const read = <T>(file: string): T => JSON.parse(readFileSync(join(SEED_DIR, file), 'utf8'));
 
+/** A kezdő növényadatok forrása (a 004-es migráció a meglévő adatbázisokban is erre cseréli a korábbi szöveget). */
 export const PLANT_DATA_SOURCE =
-  'Alapadat: magyar vetési naptárak (kertvar.hu, agroinform.hu, kertlap.hu) alapján összeállítva';
+  'Vetési, kiültetési és betakarítási időszak: magyar vetési naptárak (kertvar.hu, agroinform.hu, kertlap.hu). ' +
+  'Tő- és sortáv, tenyészidő: általános kertészeti alapérték, ahol volt adat, összevetve a Rédei Kertimag tasakadataival, ' +
+  'az origo.hu házikerti helyigény-táblázatával és a kertforum.hu tenyészidő-táblázatával.';
 export const COMPANION_SOURCE = 'windrivergreens';
 
 /** Üres adatbázisba betölti a kezdő törzsadatokat. Visszaadja, hogy történt-e betöltés. */

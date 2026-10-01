@@ -100,7 +100,10 @@ export function PlantDetailPage() {
         <div className={s.banner}>
           <div>
             <strong>{DATA_STATUS_LABEL.alapertek}</strong>
-            <p>Az időpontok és méretek általános magyar vetési naptárakból származnak. Nézd át, és igazítsd a saját kertedhez.</p>
+            <p>
+              A vetési időszakok magyar vetési naptárakból valók, a tő- és sortáv és a tenyészidő általános kertészeti alapérték.
+              Nézd át, és igazítsd a saját kertedhez.
+            </p>
           </div>
           <button type="button" className={s.bannerButton} onClick={() => verify.mutate(undefined)}>
             <CheckCircle2 size={16} /> Ellenőriztem
