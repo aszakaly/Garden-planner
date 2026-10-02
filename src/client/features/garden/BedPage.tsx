@@ -39,8 +39,8 @@ export function BedPage() {
   const { data: bed, isLoading, error } = useBed(id);
   const { data: plantings = [] } = usePlantings(year);
   const { data: settings } = useSettings();
-  const [editing, setEditing] = useState(false);
-  const [copying, setCopying] = useState(false);
+  // Ugyanaz a lap szerkeszt (az ágyás maga) vagy másol (az ágyás mintaként egy új ágyáshoz)
+  const [bedSheet, setBedSheet] = useState<'edit' | 'copy' | null>(null);
   const [plantingEdit, setPlantingEdit] = useState<PlantingListItem | 'new' | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const checks = useYearChecks(year);
@@ -100,10 +100,10 @@ export function BedPage() {
         subtitle={`${BED_TYPE_LABEL[bed.bed_type]} · ${formatDimensions(bed.length_cm, bed.width_cm)} · ${formatArea(bed.length_cm, bed.width_cm)}`}
         actions={
           <>
-            <ToolbarButton label="Másolás" onClick={() => setCopying(true)}>
+            <ToolbarButton label="Másolás" onClick={() => setBedSheet('copy')}>
               <Copy size={17} strokeWidth={2.2} />
             </ToolbarButton>
-            <ToolbarButton label="Szerkesztés" onClick={() => setEditing(true)}>
+            <ToolbarButton label="Szerkesztés" onClick={() => setBedSheet('edit')}>
               <Pencil size={17} strokeWidth={2.2} />
             </ToolbarButton>
           </>
@@ -231,8 +231,12 @@ export function BedPage() {
       )}
 
       {journal.sheet}
-      <BedEditSheet open={editing} onClose={() => setEditing(false)} bed={bed} />
-      <BedEditSheet open={copying} onClose={() => setCopying(false)} template={bed} />
+      <BedEditSheet
+        open={bedSheet !== null}
+        onClose={() => setBedSheet(null)}
+        bed={bedSheet === 'edit' ? bed : undefined}
+        template={bedSheet === 'copy' ? bed : undefined}
+      />
       <HistorySheet open={historyYear !== null} onClose={() => setHistoryYear(null)} bed={bed} year={historyYear ?? year - 1} />
       <SuggestionSheet
         open={suggesting}

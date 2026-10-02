@@ -38,4 +38,14 @@ describe('ágyásnevek sorszámozása', () => {
     expect(numberedNames('E1', 2, ['E1'])).toEqual(['E2', 'E3']);
     expect(numberedNames('  Sor 5 ', 2, [])).toEqual(['Sor 5', 'Sor 6']);
   });
+
+  it('nagyon hosszú sorszámnál is pontosan léptet, és nem akad el', () => {
+    // 2^53 fölött a Number már nem tudna egyesével lépni: a foglalt név végtelen ciklust okozott
+    expect(numberedNames('Ágyás 9007199254740992', 1, ['Ágyás 9007199254740992'])).toEqual(['Ágyás 9007199254740993']);
+    expect(numberedNames('Ágyás 99999999999999999999', 3, [])).toEqual([
+      'Ágyás 99999999999999999999',
+      'Ágyás 100000000000000000000',
+      'Ágyás 100000000000000000001',
+    ]);
+  });
 });

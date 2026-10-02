@@ -11,7 +11,7 @@ import {
   type RowDirection,
 } from '@shared/labels.ts';
 import { numberedNames } from '@shared/domain/beds.ts';
-import type { BedInput } from '@shared/schemas.ts';
+import { BED_NAME_MAX, type BedInput } from '@shared/schemas.ts';
 import type { Bed } from '@shared/types.ts';
 import { ColorPicker } from '../../components/ui/ColorPicker.tsx';
 import { FormButton, FormGroup, FormRow, NumberInput, Select, TextArea, TextInput } from '../../components/ui/Form.tsx';
@@ -45,7 +45,10 @@ const EMPTY: Form = {
   sort_order: 0,
 };
 
-/** Új ágyás egy meglévő adataiból: sorszámozott névvel; a helye és a sorrendje nem öröklődik. */
+/**
+ * Új ágyás egy meglévő adataiból, sorszámozott névvel. A helye, a sorrendje és a használati évei
+ * nem öröklődnek: az új ágyás most kezdi a „pályafutását”, akkor is, ha a minta már megszűnt.
+ */
 function fromTemplate(t: Bed, takenNames: string[]): Form {
   return {
     ...EMPTY,
@@ -60,8 +63,6 @@ function fromTemplate(t: Bed, takenNames: string[]): Form {
     soil: t.soil,
     irrigation: t.irrigation,
     notes: t.notes,
-    active_from_year: t.active_from_year,
-    active_to_year: t.active_to_year,
   };
 }
 
@@ -81,27 +82,11 @@ interface Props {
 export function BedEditSheet({ open, onClose, bed, template }: Props) {
   const navigate = useNavigate();
   const { year } = useYear();
-  const { data: beds = [] } = useBeds(year);
+  const { data: beds = [], isSuccess: bedsLoaded } = useBeds(year);
   const takenNames = beds.map((b) => b.name);
   const [form, setForm] = useState<Form>(EMPTY);
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [count, setCount] = useState<number | null>(1);
-  useEffect(() => {
-    if (!open) return;
-    if (bed) {
-      const { id: _id, garden_id: _g, ...rest } = bed;
-      setForm(rest);
-    } else setForm(template ? fromTemplate(template, takenNames) : EMPTY);
-    setTemplateId(template?.id ?? null);
-    setCount(1);
-  }, [open, bed?.id, template?.id]);
-
-  const pickTemplate = (id: number | null) => {
-    const t = beds.find((b) => b.id === id);
-    setTemplateId(t?.id ?? null);
-    setForm(t ? fromTemplate(t, takenNames) : EMPTY);
-  };
-
   const invalidate = [qk.beds, qk.plantings];
   const save = useApiMutation(
     (f: Form): Promise<Bed | Bed[]> =>
@@ -113,6 +98,27 @@ export function BedEditSheet({ open, onClose, bed, template }: Props) {
     invalidate,
   );
   const remove = useApiMutation(() => api.delete(`/beds/${bed!.id}`), invalidate);
+
+  // A minta sorszámozott nevéhez a teljes ágyáslista kell: ha nyitáskor még töltődött, betöltés után újraszámol
+  const namesReady = !template || bedsLoaded;
+  useEffect(() => {
+    if (!open) return;
+    if (bed) {
+      const { id: _id, garden_id: _g, ...rest } = bed;
+      setForm(rest);
+    } else setForm(template ? fromTemplate(template, takenNames) : EMPTY);
+    setTemplateId(template?.id ?? null);
+    setCount(1);
+    save.reset();
+    remove.reset();
+  }, [open, bed?.id, template?.id, namesReady]);
+
+  const pickTemplate = (id: number | null) => {
+    const t = beds.find((b) => b.id === id);
+    setTemplateId(t?.id ?? null);
+    setForm(t ? fromTemplate(t, takenNames) : EMPTY);
+  };
+
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = () =>
@@ -127,7 +133,16 @@ export function BedEditSheet({ open, onClose, bed, template }: Props) {
 
   const hasSize = !!form.length_cm && !!form.width_cm;
   const validCount = count != null && Number.isInteger(count) && count >= 1 && count <= 50;
-  const batchNames = !bed && validCount && count > 1 && form.name.trim() ? numberedNames(form.name, count, takenNames) : [];
+  const batch = !bed && validCount && count > 1;
+  const batchNames = batch && form.name.trim() ? numberedNames(form.name, count, takenNames) : [];
+  const namesTooLong = batchNames.some((n) => n.length > BED_NAME_MAX);
+  const countFooter = !validCount
+    ? 'A darabszám 1 és 50 közötti egész szám lehet.'
+    : namesTooLong
+      ? `A sorszámozott név legfeljebb ${BED_NAME_MAX} karakter lehet. Rövidítsd a nevet.`
+      : batchNames.length > 1
+        ? `${batchNames.length} ágyás jön létre: ${previewNames(batchNames)}.`
+        : 'Több egyforma ágyásnál add meg, hányat hozzon létre; a nevük sorszámot kap.';
 
   return (
     <Sheet
@@ -135,7 +150,7 @@ export function BedEditSheet({ open, onClose, bed, template }: Props) {
       open={open}
       onClose={onClose}
       onConfirm={submit}
-      confirmDisabled={!form.name.trim() || !hasSize || (!bed && !validCount)}
+      confirmDisabled={!form.name.trim() || !hasSize || (!bed && (!validCount || namesTooLong))}
       busy={save.isPending}
       error={errorMessage(save.error ?? remove.error)}
     >
@@ -164,13 +179,7 @@ export function BedEditSheet({ open, onClose, bed, template }: Props) {
       </FormGroup>
 
       {!bed && (
-        <FormGroup
-          footer={
-            batchNames.length > 1
-              ? `${batchNames.length} ágyás jön létre: ${previewNames(batchNames)}.`
-              : 'Több egyforma ágyásnál add meg, hányat hozzon létre; a nevük sorszámot kap.'
-          }
-        >
+        <FormGroup footer={countFooter}>
           <FormRow label="Darabszám">
             <NumberInput value={count} onChange={setCount} unit="db" min={1} max={50} />
           </FormRow>
@@ -247,13 +256,24 @@ export function BedEditSheet({ open, onClose, bed, template }: Props) {
         </FormRow>
       </FormGroup>
 
-      <FormGroup title="Elhelyezkedés a kertben" footer="A későbbi grafikus kerttérképhez – most nem kötelező. A kert bal felső sarkától mérve.">
-        <FormRow label="Vízszintesen (X)">
-          <NumberInput value={form.pos_x_cm} onChange={(v) => set('pos_x_cm', v)} unit="cm" placeholder="—" />
-        </FormRow>
-        <FormRow label="Függőlegesen (Y)">
-          <NumberInput value={form.pos_y_cm} onChange={(v) => set('pos_y_cm', v)} unit="cm" placeholder="—" />
-        </FormRow>
+      <FormGroup
+        title="Elhelyezkedés a kertben"
+        footer={
+          batch
+            ? 'Több ágyás egyszerre nem kerülhet ugyanarra a helyre: a helyüket utána, ágyásonként add meg.'
+            : 'A későbbi grafikus kerttérképhez – most nem kötelező. A kert bal felső sarkától mérve.'
+        }
+      >
+        {!batch && (
+          <>
+            <FormRow label="Vízszintesen (X)">
+              <NumberInput value={form.pos_x_cm} onChange={(v) => set('pos_x_cm', v)} unit="cm" placeholder="—" />
+            </FormRow>
+            <FormRow label="Függőlegesen (Y)">
+              <NumberInput value={form.pos_y_cm} onChange={(v) => set('pos_y_cm', v)} unit="cm" placeholder="—" />
+            </FormRow>
+          </>
+        )}
         <FormRow label="Elforgatás">
           <NumberInput value={form.rotation_deg} onChange={(v) => set('rotation_deg', v ?? 0)} unit="°" min={0} max={359} />
         </FormRow>

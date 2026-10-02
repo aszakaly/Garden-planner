@@ -155,10 +155,13 @@ export const gardenInput = z.object({
 });
 export type GardenInput = z.infer<typeof gardenInput>;
 
+/** Az ágyásnév leghosszabb megengedett hossza; a sorszámozott nevekre is vonatkozik. */
+export const BED_NAME_MAX = 100;
+
 export const bedInput = z
   .object({
     garden_id: z.number().int().optional(),
-    name: text(100).min(1, 'Név megadása kötelező'),
+    name: text(BED_NAME_MAX).min(1, 'Név megadása kötelező'),
     color: z.enum(LIST_COLOR_NAMES).default('green'),
     length_cm: z.number({ error: 'A hossz megadása kötelező' }).int().min(10, 'Legalább 10 cm').max(100_000),
     width_cm: z.number({ error: 'A szélesség megadása kötelező' }).int().min(10, 'Legalább 10 cm').max(100_000),

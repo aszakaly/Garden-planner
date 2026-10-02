@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { openDatabase, type DB } from './db/index.ts';
 import { seedIfEmpty } from './db/seed.ts';
 import { buildApp } from './app.ts';
-import type { BedListItem, PlantDetail, PlantListItem, SeedStockListItem } from '../shared/types.ts';
+import type { Bed, BedListItem, PlantDetail, PlantListItem, SeedStockListItem } from '../shared/types.ts';
 
 let db: DB;
 let app: FastifyInstance;
@@ -135,5 +135,31 @@ describe('ágyások', () => {
       payload: { bed: { name: 'X', length_cm: 100, width_cm: 100 }, count: 1 },
     });
     expect(single.statusCode).toBe(400);
+  });
+
+  it('a tömegesen létrehozott ágyások nem kapják meg a helyet: két ágyás nem állhat ugyanott', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/beds/batch',
+      payload: { bed: { name: 'Fólia A1', length_cm: 600, width_cm: 300, pos_x_cm: 100, pos_y_cm: 200 }, count: 2 },
+    });
+    expect(res.statusCode).toBe(201);
+    const created: Bed[] = res.json();
+    expect(created.map((b) => [b.pos_x_cm, b.pos_y_cm])).toEqual([
+      [null, null],
+      [null, null],
+    ]);
+  });
+
+  it('túl hosszú sorszámozott névnél egy ágyás sem jön létre', async () => {
+    const before = ((await app.inject({ url: '/api/beds' })).json() as BedListItem[]).length;
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/beds/batch',
+      payload: { bed: { name: 'x'.repeat(100), length_cm: 100, width_cm: 100 }, count: 3 },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/legfeljebb 100 karakter/);
+    expect(((await app.inject({ url: '/api/beds' })).json() as BedListItem[]).length).toBe(before);
   });
 });

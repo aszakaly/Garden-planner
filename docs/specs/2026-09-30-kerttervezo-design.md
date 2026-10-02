@@ -192,17 +192,20 @@ Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változat
 ### Ágyás másolása (2026-10-01)
 **Cél:** több egyforma ágyás (pl. 11 emelt ágyás) gyors felvétele, egyenkénti kitöltés helyett.
 - **Felület:** az „Új ágyás” lapon „Minta” választó (egy meglévő ágyás) és „Darabszám” mező (1–50), a létrejövő nevek előnézetével. Az ágyás oldalán a „Másolás” gomb ugyanezt a lapot nyitja meg, az adott ágyással mintaként.
-- **Mi másolódik:** méret, szín, típus, sorok iránya, elforgatás, adottságok, megjegyzés, használati évek.
+- **Mi másolódik:** méret, szín, típus, sorok iránya, elforgatás, adottságok, megjegyzés.
 - **Mi nem másolódik:**
   - ültetések, előzmények, napló – ezek az adott ágyás történetéhez tartoznak, és a vetésforgó-ellenőrzés is ágyásonként számol;
-  - a kertbeli hely (`pos_x`, `pos_y`), mert két ágyás nem állhat ugyanott.
+  - a kertbeli hely (`pos_x`, `pos_y`), mert két ágyás nem állhat ugyanott. Több ágyásnál a lap el is rejti a hely mezőit, és a szerver is üresen hagyja;
+  - a használati évek: az új ágyás az idei évtől használatban van, akkor is, ha a minta régebbi vagy már megszűnt.
 - **Névsorszámozás** (`src/shared/domain/beds.ts`, `numberedNames`):
   - a név utolsó olyan számát lépteti, amelyet nem követ betű: „Emelt ágyás 7.” → „8.”, „1. ágyás” → „2. ágyás”, de „E2E ágyás” → „E2E ágyás 2”;
   - megtartja a nullákkal kitöltött szélességet („Á-09” → „Á-10”);
+  - a sorszámot BigInt-ként lépteti, így tetszőlegesen hosszú szám is pontosan nő, és a nevek mindig különbözők;
   - a foglalt neveket kis- és nagybetűtől függetlenül kihagyja;
   - a felület előnézete és a szerver ugyanezt a függvényt használja;
   - egyetlen ágyásnál a beírt név marad: az ágyásnév továbbra sem kötelezően egyedi.
 - **API:** `POST /api/beds/batch` `{ bed, count }`, ahol a `count` 2–50. Egyetlen ágyás továbbra is a `POST /api/beds` végponton jön létre.
   - Egy tranzakcióban hozza létre az ágyásokat: vagy mind létrejön, vagy egy sem.
+  - Ha egy sorszámozott név hosszabb lenne 100 karakternél (a névmező korlátja), 400-as hibával egy sem jön létre; a felület ezt előre jelzi.
   - Mindegyik saját, növekvő `sort_order`-t kap a lista végén, így a létrehozás sorrendjében jelennek meg (a névsor szerinti rendezés a „10”-et a „2” elé tenné).
-- **Tesztek:** egységtesztek a sorszámozásra, API-teszt a tömeges létrehozásra, és a végponttól végpontig tartó folyamat 11. lépése (másolás három példányban).
+- **Tesztek:** egységtesztek a sorszámozásra (nagyon hosszú sorszámmal is), API-tesztek a tömeges létrehozásra (hely nélkül, túl hosszú névnél semmi), és a végponttól végpontig tartó folyamat 11. lépése (másolás három példányban).

@@ -2,6 +2,14 @@
 
 A felületen látható változások, a legújabb elöl. A részletes fejlesztési előzmény a git logban van, a tervezési döntések a [design dokumentumban](docs/specs/2026-09-30-kerttervezo-design.md).
 
+## 2026-10-02 – Ágyás másolása: javítások
+
+- A másolat a használati éveket nem veszi át: az új ágyás az idei évtől használatban van, akkor is, ha a minta már megszűnt.
+- Több ágyás egyszerre nem kap kertbeli helyet (a lap el is rejti a mezőit), mert nem állhatnak ugyanott.
+- Érvénytelen darabszámnál (pl. 60) és túl hosszú sorszámozott névnél a lap kiírja, mi a gond.
+- Mentés közben a Cmd+Enter már nem küldi el másodszor a lapot (korábban így kétszer jöhetett létre egy adag ágyás).
+- Nagyon hosszú sorszámú névnél a sorszámozás nem fagy le.
+
 ## 2026-10-01 – Ágyás másolása
 
 - **Minta új ágyáshoz:** az „Új ágyás” lapon egy meglévő ágyás kiválasztásával betöltődik annak mérete, típusa és adottságai. Az ültetései, az előzményei, a naplója és a kertbeli helye nem másolódnak.

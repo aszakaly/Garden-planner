@@ -33,8 +33,8 @@ export function Sheet({
   const panelRef = useRef<HTMLDivElement>(null);
   // A billentyűkezelő mindig a legfrissebb függvényeket lássa, de a hatás csak nyitáskor fusson le:
   // különben minden leütés utáni újrarenderelés visszaugratná a fókuszt az első mezőre.
-  const latest = useRef({ onClose, onConfirm, confirmDisabled });
-  latest.current = { onClose, onConfirm, confirmDisabled };
+  const latest = useRef({ onClose, onConfirm, confirmDisabled, busy });
+  latest.current = { onClose, onConfirm, confirmDisabled, busy };
 
   useEffect(() => {
     if (!open) return;
@@ -42,9 +42,10 @@ export function Sheet({
     openSheets.push(id);
     const onKey = (e: KeyboardEvent) => {
       if (openSheets.at(-1) !== id) return;
-      const { onClose, onConfirm, confirmDisabled } = latest.current;
+      const { onClose, onConfirm, confirmDisabled, busy } = latest.current;
       if (e.key === 'Escape') onClose();
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && onConfirm && !confirmDisabled) onConfirm();
+      // Mentés közben ne küldje el újra (a gombhoz hasonlóan): különben pl. a tömeges ágyásfelvétel kétszer futna le
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && onConfirm && !confirmDisabled && !busy) onConfirm();
     };
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;

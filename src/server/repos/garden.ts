@@ -2,7 +2,7 @@ import type { DB } from '../db/index.ts';
 import { transaction } from '../db/index.ts';
 import { HttpError, insert, notFound, remove, update } from '../db/helpers.ts';
 import { numberedNames } from '../../shared/domain/beds.ts';
-import type { BedInput, GardenInput } from '../../shared/schemas.ts';
+import { BED_NAME_MAX, type BedInput, type GardenInput } from '../../shared/schemas.ts';
 import type { Bed, BedListItem, Garden } from '../../shared/types.ts';
 
 // --- Kert -------------------------------------------------------------------
@@ -56,11 +56,18 @@ export function createBed(db: DB, input: BedInput): Bed {
   return getBed(db, insert(db, 'bed', { ...input, garden_id, sort_order }));
 }
 
-/** `count` egyforma ágyás sorszámozott névvel, a lista végére, egy tranzakcióban. */
+/**
+ * `count` egyforma ágyás sorszámozott névvel, a lista végére, egy tranzakcióban.
+ * A kertbeli helyet nem kapják meg: két ágyás nem állhat ugyanott.
+ */
 export function createBeds(db: DB, input: BedInput, count: number): Bed[] {
   return transaction(db, () => {
     const taken = (db.prepare('SELECT name FROM bed').all() as { name: string }[]).map((r) => r.name);
-    return numberedNames(input.name, count, taken).map((name) => createBed(db, { ...input, name, sort_order: 0 }));
+    const names = numberedNames(input.name, count, taken);
+    if (names.some((n) => n.length > BED_NAME_MAX)) {
+      throw new HttpError(400, `A sorszámozott név legfeljebb ${BED_NAME_MAX} karakter lehet. Rövidítsd a nevet.`);
+    }
+    return names.map((name) => createBed(db, { ...input, name, pos_x_cm: null, pos_y_cm: null, sort_order: 0 }));
   });
 }
 
