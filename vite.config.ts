@@ -15,6 +15,8 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // Telefonról a Mac Bonjour-nevén (<gépnév>.local) is elérhető legyen, ne csak IP-címen; bármilyen gépnévvel működik
+    allowedHosts: ['.local'],
     // Az API portja a szerverével azonos környezeti változóból jön (homokozóhoz)
     proxy: { '/api': `http://localhost:${process.env.KERT_PORT ?? 4321}` },
   },
