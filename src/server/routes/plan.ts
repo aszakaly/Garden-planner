@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import type { DB } from '../db/index.ts';
 import * as plantings from '../repos/plantings.ts';
-import { plantingActualInput, plantingCreateInput, plantingInput } from '../../shared/schemas.ts';
+import { plantingActualInput, plantingBatchInput, plantingCreateInput, plantingInput } from '../../shared/schemas.ts';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 const listQuery = z.object({
@@ -35,6 +35,7 @@ export const planRoutes =
     app.post('/plantings', async (req, reply) =>
       reply.status(201).send(plantings.createPlantings(db, plantingCreateInput.parse(req.body))),
     );
+    app.post('/plantings/batch', async (req) => plantings.savePlantingBatch(db, plantingBatchInput.parse(req.body)));
     app.put('/plantings/:id', async (req) => plantings.updatePlanting(db, id(req), plantingInput.parse(req.body)));
     app.delete('/plantings/:id', async (req, reply) => {
       const series = z.object({ series: z.enum(['0', '1']).optional() }).parse(req.query).series === '1';

@@ -232,6 +232,19 @@ export const plantingCreateInput = plantingInput.extend({
 });
 export type PlantingCreateInput = z.infer<typeof plantingCreateInput>;
 
+/** Tömeges mentés a kiosztás-szerkesztőből: egy tranzakcióban, vagy minden bekerül, vagy semmi. */
+export const plantingBatchInput = z
+  .object({
+    create: z.array(plantingInput).default([]),
+    update: z.array(z.object({ id: z.number().int().positive(), data: plantingInput })).default([]),
+    delete: z.array(z.number().int().positive()).default([]),
+  })
+  .refine((b) => b.create.length + b.update.length + b.delete.length > 0, { message: 'Nincs mit menteni.' })
+  .refine((b) => b.create.length + b.update.length + b.delete.length <= 200, {
+    message: 'Egyszerre legfeljebb 200 módosítás menthető.',
+  });
+export type PlantingBatchInput = z.infer<typeof plantingBatchInput>;
+
 /** Generált vagy saját feladat állapotának módosítása (csak a megadott mezők változnak). */
 export const taskStatePatch = z.object({
   /** Elvégezve ezen a napon; null: visszavonás */

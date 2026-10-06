@@ -117,3 +117,49 @@ describe('ültetések', () => {
     expect(after.filter((p) => p.plant_name === 'Retek')).toEqual([]);
   });
 });
+
+describe('tömeges mentés', () => {
+  const batch = (payload: object) => app.inject({ method: 'POST', url: '/api/plantings/batch', payload });
+  const basil = (o: object = {}) => ({
+    year: 2029, plant_id: plantId('bazsalikom'), bed_id: bed.id, method: 'palanta', axis_span_cm: 30,
+    plan_transplant_date: '2029-05-15', plan_end_date: '2029-09-20', ...o,
+  });
+  const listed = async (): Promise<PlantingListItem[]> =>
+    (await app.inject({ url: `/api/plantings?year=2029&bed_id=${bed.id}` })).json();
+
+  it('létrehozás, módosítás és törlés egy kérésben', async () => {
+    const [keep]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
+    const [drop]: PlantingListItem[] = (await post(basil({ axis_start_cm: 30 }))).json();
+    const res = await batch({
+      create: [basil({ axis_start_cm: 60, plant_id: plantId('paradicsom') })],
+      update: [{ id: keep!.id, data: basil({ axis_start_cm: 10 }) }],
+      delete: [drop!.id],
+    });
+    expect(res.statusCode).toBe(200);
+    const { created } = res.json() as { created: number[] };
+    expect(created).toHaveLength(1);
+    const list = await listed();
+    expect(list.find((p) => p.id === keep!.id)?.axis_start_cm).toBe(10);
+    // az azonosító újra kiosztódhat, ezért a törölt sáv helye alapján ellenőrzünk
+    expect(list.some((p) => p.axis_start_cm === 30)).toBe(false);
+    expect(list).toHaveLength(2);
+    expect(list.find((p) => p.id === created[0])?.plant_name).toBe('Paradicsom');
+  });
+
+  it('egy hibás elemnél semmi sem változik', async () => {
+    const before = await listed();
+    const missing = await batch({ create: [basil({ axis_start_cm: 0 })], update: [{ id: 999_999, data: basil() }] });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json().error).toBe('Az ültetés nem található');
+    const badPlant = await batch({ create: [basil(), basil({ plant_id: 999_999 })] });
+    expect(badPlant.statusCode).toBe(400);
+    expect(badPlant.json().error).toBe('A növény nem található.');
+    expect(await listed()).toEqual(before);
+  });
+
+  it('üres kérést elutasít', async () => {
+    const res = await batch({});
+    expect(res.statusCode).toBe(400);
+    expect(res.json().issues).toContainEqual({ path: '', message: 'Nincs mit menteni.' });
+  });
+});
