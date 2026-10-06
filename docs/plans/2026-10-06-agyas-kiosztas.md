@@ -2469,9 +2469,10 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, original, synced]);
 
+  // A napló is frissül: a törölt ültetés naplókapcsolata megszűnik, az azonosítója újra kiosztható
   const save = useApiMutation(
     (b: PlantingBatchInput) => api.post<{ created: number[] }>('/plantings/batch', b),
-    [qk.plantings, qk.beds],
+    [qk.plantings, qk.beds, qk.journal],
   );
 
   const items = draft?.items ?? [];
