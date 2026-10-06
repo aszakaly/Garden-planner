@@ -3,6 +3,7 @@ import { bedStart } from '@shared/domain/dates.ts';
 import { effectiveBedId, effectiveDates, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
 import { bedAxes, estimatePlantCount, type BedGeometry, type Occupant } from '@shared/domain/geometry.ts';
 import { shortDate } from '@shared/domain/isoDate.ts';
+import type { PlantingInput } from '@shared/schemas.ts';
 import type { Bed, PlantingListItem } from '@shared/types.ts';
 
 export { effectiveBedId };
@@ -10,6 +11,31 @@ export { blankPlanting } from '@shared/domain/plantings.ts';
 
 export const plantingTitle = (p: Pick<PlantingListItem, 'plant_name' | 'variety_name'>) =>
   p.variety_name ? `${p.plant_name} – ${p.variety_name}` : p.plant_name;
+
+/** Az ültetés terv szerinti adatai a PUT és a tömeges mentés bemeneteként (teljes csere). */
+export function plantingInputOf(p: PlantingListItem): PlantingInput {
+  return {
+    year: p.year,
+    plant_id: p.plant_id,
+    variety_id: p.variety_id,
+    seed_stock_id: p.seed_stock_id,
+    bed_id: p.bed_id,
+    axis_start_cm: p.axis_start_cm,
+    axis_span_cm: p.axis_span_cm,
+    cross_start_cm: p.cross_start_cm,
+    cross_span_cm: p.cross_span_cm,
+    rows: p.rows,
+    plant_count: p.plant_count,
+    method: p.method,
+    window_id: p.window_id,
+    plan_sow_date: p.plan_sow_date,
+    plan_transplant_date: p.plan_transplant_date,
+    plan_harvest_start: p.plan_harvest_start,
+    plan_end_date: p.plan_end_date,
+    is_history: p.is_history,
+    notes: p.notes,
+  };
+}
 
 /** Az ágyásba kerülés napja (rendezéshez); dátum nélkül null. */
 export function startOf(p: PlantingListItem): string | null {
