@@ -302,10 +302,24 @@ export function deletePlanting(db: DB, id: number, wholeSeries = false): number 
 /**
  * Tömeges mentés a kiosztás-szerkesztőből: törlés, módosítás, majd létrehozás egyetlen
  * tranzakcióban – egy hibás elemnél semmi sem változik. A létrehozottak azonosítói a kérés sorrendjében.
+ * A közben máshol már törölt ültetések törlését kihagyja; megkezdett vagy rögzített ültetés nem törölhető.
+ * Egy létrehozott azonosító egyezhet ugyanebben a kérésben törölttel (a `planting.id` nem AUTOINCREMENT);
+ * ez biztonságos, mert a törölt azonosítóra mutató minden hivatkozás (feladatállapot, kapcsolt sorok) előbb törlődik.
  */
 export function savePlantingBatch(db: DB, input: PlantingBatchInput): { created: number[] } {
   return transaction(db, () => {
-    for (const id of input.delete) removePlantings(db, id, false);
+    for (const id of input.delete) {
+      const row = db.prepare('SELECT * FROM planting WHERE id = ?').get(id) as Row | undefined;
+      if (!row) continue; // máshol már törölték
+      const started =
+        row.is_history ||
+        row.status !== 'terv' ||
+        [row.actual_sow_date, row.actual_transplant_date, row.actual_harvest_start, row.actual_end_date, row.actual_axis_start_cm].some(
+          (v) => v != null,
+        );
+      if (started) throw bad('Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.');
+      removePlantings(db, id, false);
+    }
     for (const u of input.update) replacePlanting(db, u.id, u.data);
     return { created: input.create.flatMap((c) => insertPlantings(db, { ...c, series: null })) };
   });

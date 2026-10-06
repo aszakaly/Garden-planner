@@ -162,4 +162,55 @@ describe('tömeges mentés', () => {
     expect(res.statusCode).toBe(400);
     expect(res.json().issues).toContainEqual({ path: '', message: 'Nincs mit menteni.' });
   });
+
+  it('hibás módosítás visszagörgeti a törlést is', async () => {
+    const [p]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
+    const res = await batch({ delete: [p!.id], update: [{ id: 999_999, data: basil() }] });
+    expect(res.statusCode).toBe(404);
+    expect((await listed()).some((x) => x.id === p!.id)).toBe(true);
+  });
+
+  it('az újra kiosztott azonosítóhoz nem marad feladatállapot', async () => {
+    const [p]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
+    const maxId = (db.prepare('SELECT MAX(id) AS m FROM planting').get() as { m: number }).m;
+    db.prepare('INSERT INTO task_state (task_key, note) VALUES (?, ?)').run(`kiultetes:${maxId}`, 'régi jegyzet');
+    const res = await batch({ delete: [maxId], create: [basil({ axis_start_cm: 0 })] });
+    expect(res.statusCode).toBe(200);
+    expect((res.json() as { created: number[] }).created).toEqual([maxId]);
+    expect(db.prepare('SELECT 1 FROM task_state WHERE task_key LIKE ?').get(`%:${maxId}`)).toBeUndefined();
+    expect(p).toBeDefined();
+  });
+
+  it('ismétlődő azonosítót elutasít', async () => {
+    const [p]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
+    const msg = 'Egy ültetés csak egyszer szerepelhet a mentésben.';
+    for (const payload of [
+      { delete: [p!.id, p!.id] },
+      { update: [{ id: p!.id, data: basil() }, { id: p!.id, data: basil() }] },
+      { update: [{ id: p!.id, data: basil() }], delete: [p!.id] },
+    ]) {
+      const res = await batch(payload);
+      expect(res.statusCode).toBe(400);
+      expect(res.json().issues).toContainEqual({ path: '', message: msg });
+    }
+  });
+
+  it('már törölt azonosító törlése nem akadályozza a mentést', async () => {
+    const [p]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
+    const res = await batch({ delete: [999_999], update: [{ id: p!.id, data: basil({ axis_start_cm: 20 }) }] });
+    expect(res.statusCode).toBe(200);
+    expect((await listed()).find((x) => x.id === p!.id)?.axis_start_cm).toBe(20);
+  });
+
+  it('megkezdett ültetés nem törölhető, semmi sem változik', async () => {
+    const [keep]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
+    const [done]: PlantingListItem[] = (await post(basil({ axis_start_cm: 30 }))).json();
+    const patch = await app.inject({ method: 'PATCH', url: `/api/plantings/${done!.id}/actual`, payload: { actual_transplant_date: '2029-05-16' } });
+    expect(patch.statusCode).toBe(200);
+    const before = await listed();
+    const res = await batch({ delete: [keep!.id, done!.id] });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe('Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.');
+    expect(await listed()).toEqual(before);
+  });
 });

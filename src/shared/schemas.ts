@@ -240,6 +240,13 @@ export const plantingBatchInput = z
     delete: z.array(z.number().int().positive()).default([]),
   })
   .refine((b) => b.create.length + b.update.length + b.delete.length > 0, { message: 'Nincs mit menteni.' })
+  .refine(
+    (b) => {
+      const ids = [...b.update.map((u) => u.id), ...b.delete];
+      return new Set(ids).size === ids.length;
+    },
+    { message: 'Egy ültetés csak egyszer szerepelhet a mentésben.' },
+  )
   .refine((b) => b.create.length + b.update.length + b.delete.length <= 200, {
     message: 'Egyszerre legfeljebb 200 módosítás menthető.',
   });
