@@ -1,8 +1,8 @@
-import { completeDates, EMPTY_DATES, shiftDates, usesSow, usesTransplant, type FrostDates } from '@shared/domain/dates.ts';
+import { completeDates, EMPTY_DATES, usesSow, usesTransplant, type FrostDates } from '@shared/domain/dates.ts';
 import { bedAxes, rowsForSpan, spanForRows, type Placement } from '@shared/domain/geometry.ts';
-import { pickWindowForDay, samePlacement, type ClashFix, type LayoutStrip } from '@shared/domain/layout.ts';
+import { applyClashFix, pickWindowForDay, samePlacement, type ClashFix, type LayoutStrip } from '@shared/domain/layout.ts';
 import { isConfirmed } from '@shared/domain/plantingChecks.ts';
-import { blankPlanting, effectiveBedId, occupancyPeriod, placementOf, planDates } from '@shared/domain/plantings.ts';
+import { blankPlanting, effectiveBedId, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
 import type { PlantingBatchInput } from '@shared/schemas.ts';
 import type { Bed, PlantListItem, PlantingListItem } from '@shared/types.ts';
 import { plantingInputOf } from '../plan/plantingView.ts';
@@ -165,12 +165,7 @@ export const removeItem = (draft: LayoutDraft, id: number): LayoutDraft => ({
 export function applyFix(draft: LayoutDraft, fix: ClashFix): LayoutDraft {
   return {
     ...draft,
-    items: draft.items.map((p) => {
-      if (p.id !== fix.plantingId) return p;
-      if (fix.kind === 'elozo_vege') return { ...p, plan_end_date: fix.date };
-      const d = shiftDates(planDates(p), fix.days);
-      return { ...p, plan_sow_date: d.sow, plan_transplant_date: d.transplant, plan_harvest_start: d.harvestStart, plan_end_date: d.end };
-    }),
+    items: draft.items.map((p) => (p.id === fix.plantingId ? applyClashFix(p, fix) : p)),
   };
 }
 

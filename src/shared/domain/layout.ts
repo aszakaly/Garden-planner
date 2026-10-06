@@ -3,6 +3,7 @@ import type { GrowingWindow, PlantingListItem } from '../types.ts';
 import {
   bedStart,
   methodsForWindow,
+  shiftDates,
   suggestDates,
   usesSow,
   usesTransplant,
@@ -10,9 +11,9 @@ import {
   type FrostDates,
   type PlantingDates,
 } from './dates.ts';
-import { placementsOverlap, rangesOverlap, type Period, type Placement } from './geometry.ts';
+import { periodsOverlap, placementsOverlap, rangesOverlap, type Period, type Placement } from './geometry.ts';
 import { addDaysISO, diffDays, isoFromMonthDay } from './isoDate.ts';
-import { effectiveBedId, effectiveDates, occupancyPeriod } from './plantings.ts';
+import { effectiveBedId, effectiveDates, occupancyPeriod, planDates } from './plantings.ts';
 
 /**
  * A kiosztás-szerkesztő tiszta logikája. Minden érték cm, a `geometry.ts` koordinátáiban:
@@ -379,14 +380,24 @@ export function placeInFree(free: [number, number][], span: number, crossLength:
     cross_start_cm: 0,
     cross_span_cm: crossLength,
   });
-  const fits = free.find(([s, e]) => e - s + EPS >= span);
+  // a szakaszok a rácsra igazodnak (eleje felfelé, vége lefelé); a minimumnál rövidebb nem számít
+  const ranges = free
+    .map(([s, e]): [number, number] => [
+      Math.ceil(s / LAYOUT_GRID_CM) * LAYOUT_GRID_CM,
+      Math.floor(e / LAYOUT_GRID_CM) * LAYOUT_GRID_CM,
+    ])
+    .filter(([s, e]) => e - s >= LAYOUT_MIN_CM - EPS);
+  const fits = ranges.find(([s, e]) => e - s + EPS >= span);
   if (fits) return full(fits[0], span);
-  const largest = [...free].sort((a, b) => b[1] - b[0] - (a[1] - a[0]))[0];
-  if (!largest || largest[1] - largest[0] < LAYOUT_MIN_CM - EPS) return null;
-  return full(largest[0], largest[1] - largest[0]);
+  const largest = [...ranges].sort((a, b) => b[1] - b[0] - (a[1] - a[0]))[0];
+  return largest ? full(largest[0], largest[1] - largest[0]) : null;
 }
 
-/** Hely híján: az új sáv a cél sáv végére kerül, a cél sáv pedig enged neki (a minimális méretéig). */
+/**
+ * Hely híján: az új sáv a cél sáv végére kerül, a cél sáv pedig enged neki (a minimális
+ * méretéig, rácsra kerekítve). Csak a pillanatkép napján látható sávokat ismeri; az időbeli
+ * ütközések az ütközéslistában jelennek meg.
+ */
 export function makeRoom(
   strips: LayoutStrip[],
   targetKey: number,
@@ -395,7 +406,7 @@ export function makeRoom(
   const target = strips.find((s) => s.key === targetKey);
   if (!target || target.fixed) return null;
   const p = target.placement;
-  const take = Math.min(span, p.axis_span_cm - LAYOUT_MIN_CM);
+  const take = Math.floor(Math.min(span, p.axis_span_cm - LAYOUT_MIN_CM) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM;
   if (take < LAYOUT_MIN_CM - EPS) return null;
   const end = endOf(p, 'axis');
   return {
@@ -463,10 +474,13 @@ const PLAN_DATE_KEYS = ['plan_sow_date', 'plan_transplant_date', 'plan_harvest_s
 
 /**
  * Kapcsolt ültetések: ugyanabban az ágyásban és évben, azonos növény, fajta, módszer és
- * mind a négy tervezett dátum. Az elmaradt, a gyors előzmény és a dátum nélküli nem számít.
+ * mind a négy tervezett dátum. Nem számít az elmaradt, a sikertelen, a lezárt, a tényleges
+ * véggel rendelkező és a gyors előzmény; a folyamatban lévő igen. Vetési vagy ültetési
+ * dátum nélküli ültetés (pl. az előző évről átvitt évelő) soha nem kapcsolódik.
  */
 export function linkedPlantings(p: PlantingListItem, all: PlantingListItem[]): PlantingListItem[] {
-  const eligible = (x: PlantingListItem) => !x.is_history && x.status !== 'elmaradt';
+  const eligible = (x: PlantingListItem) =>
+    !x.is_history && !['elmaradt', 'sikertelen', 'lezart'].includes(x.status) && !x.actual_end_date;
   const bed = effectiveBedId(p);
   if (!eligible(p) || bed == null || !(p.plan_sow_date || p.plan_transplant_date)) return [];
   return all.filter(
@@ -488,25 +502,52 @@ export type ClashFix =
   /** A későbbi ültetés minden tervezett dátuma ennyi nappal később */
   | { kind: 'kesobbi_eltolas'; plantingId: number; days: number; date: string };
 
+/** A javítás alkalmazása egy ültetés tervezett dátumaira. */
+export function applyClashFix(p: PlantingListItem, fix: ClashFix): PlantingListItem {
+  if (fix.kind === 'elozo_vege') return { ...p, plan_end_date: fix.date };
+  const d = shiftDates(planDates(p), fix.days);
+  return { ...p, plan_sow_date: d.sow, plan_transplant_date: d.transplant, plan_harvest_start: d.harvestStart, plan_end_date: d.end };
+}
+
 /**
- * Javítások két, ugyanott és egyszerre álló ültetésre. Az előző vége csak akkor hozható
- * előre, ha még nincs tényleges vége, és nem kerül a betakarítás kezdete elé; a későbbi
- * csak akkor tolható, ha még nem került az ágyásba.
+ * Javítások két, ugyanott és egyszerre álló ültetésre. Csak olyat kínál, amelynek
+ * alkalmazása után az időszakok tényleg nem fedik egymást. Az előző vége csak akkor hozható
+ * előre, ha még nincs tényleges vége, a betakarítás kezdete ismert, és a vég nem kerül elé;
+ * a későbbi csak akkor tolható, ha még nem került az ágyásba, a kezdete a tervezett
+ * dátumból jön, az előző vége valódi dátum, és az eltolt kezdet még az évben marad.
+ * Azonos kezdőnapon a korábbi az, amelyik már az ágyásban áll, majd a mentett ültetés
+ * (pozitív azonosító) az új sáv (negatív) előtt, végül az alacsonyabb azonosítójú.
  */
 export function clashFixes(x: PlantingListItem, y: PlantingListItem): ClashFix[] {
   const px = occupancyPeriod(x);
   const py = occupancyPeriod(y);
   if (!px || !py) return [];
-  const xFirst = px.start < py.start || (px.start === py.start && x.id < y.id);
-  const [a, pa, b, pb] = xFirst ? [x, px, y, py] : [y, py, x, px];
+  const inBed = (p: PlantingListItem) =>
+    bedStart(p.method, { sow: p.actual_sow_date, transplant: p.actual_transplant_date, harvestStart: null, end: null }) != null;
+  const earlier = (): boolean => {
+    if (px.start !== py.start) return px.start < py.start;
+    if (inBed(x) !== inBed(y)) return inBed(x);
+    if (x.id > 0 !== y.id > 0) return x.id > 0;
+    return x.id < y.id;
+  };
+  const [a, pa, b, pb] = earlier() ? [x, px, y, py] : [y, py, x, px];
   const out: ClashFix[] = [];
   const harvestA = effectiveDates(a).harvestStart;
-  if (!a.actual_end_date && pb.start > pa.start && (!harvestA || pb.start >= harvestA)) {
-    out.push({ kind: 'elozo_vege', plantingId: a.id, date: pb.start });
+  if (!a.actual_end_date && harvestA && pb.start > pa.start && pb.start >= harvestA) {
+    const fix: ClashFix = { kind: 'elozo_vege', plantingId: a.id, date: pb.start };
+    if (removesClash(a, fix, pb)) out.push(fix);
   }
-  const bInBed = bedStart(b.method, { sow: b.actual_sow_date, transplant: b.actual_transplant_date, harvestStart: null, end: null });
-  if (!bInBed && pa.end > pb.start) {
-    out.push({ kind: 'kesobbi_eltolas', plantingId: b.id, days: diffDays(pb.start, pa.end), date: pa.end });
+  const plannedStart = bedStart(b.method, planDates(b));
+  if (!inBed(b) && plannedStart && effectiveDates(a).end && pa.end > pb.start) {
+    const days = diffDays(pb.start, pa.end);
+    const fix: ClashFix = { kind: 'kesobbi_eltolas', plantingId: b.id, days, date: pa.end };
+    if (addDaysISO(plannedStart, days) < `${b.year}-12-31` && removesClash(b, fix, pa)) out.push(fix);
   }
   return out;
+}
+
+/** A javított ültetés időszaka már nem fedi a másikét. */
+function removesClash(p: PlantingListItem, fix: ClashFix, other: Period): boolean {
+  const period = occupancyPeriod(applyClashFix(p, fix));
+  return period != null && !periodsOverlap(period, other);
 }
