@@ -31,11 +31,13 @@ const nf = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 1 });
 export function LayoutRowList({ rows, strips, reorderable, selected, onSelect, onMoveRow, onResizeRow, detail }: Props) {
   const refs = useRef<(HTMLDivElement | null)[]>([]);
   const startY = useRef(0);
+  /** A sorok téglalapjai a húzás kezdetekor, még elmozdítás nélkül */
+  const startBoxes = useRef<(DOMRect | undefined)[]>([]);
   const [dragging, setDragging] = useState<{ index: number; dy: number } | null>(null);
 
   /** Hányadik helyre kerül a húzott sor: a közepe mely sorok közepén jutott túl. */
   const targetIndex = (index: number, dy: number) => {
-    const boxes = refs.current.map((el) => el?.getBoundingClientRect());
+    const boxes = startBoxes.current;
     const me = boxes[index];
     if (!me) return index;
     const center = me.top + me.height / 2 + dy;
@@ -66,6 +68,7 @@ export function LayoutRowList({ rows, strips, reorderable, selected, onSelect, o
                   onPointerDown={(e) => {
                     e.currentTarget.setPointerCapture(e.pointerId);
                     startY.current = e.clientY;
+                    startBoxes.current = refs.current.map((el) => el?.getBoundingClientRect());
                     setDragging({ index, dy: 0 });
                   }}
                   onPointerMove={(e) => {
