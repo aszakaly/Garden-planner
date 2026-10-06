@@ -45,6 +45,8 @@
 
 ### 1. lépés: sávműveletek a domainben
 
+> A kódátnézés után javítva (9dc652a: húzás megállása az akadálynál, zsugorítás szélesebb szomszéd mellett, sarokfogantyú, sorléptető, régi adatok). A végleges kód a repóban van; az alábbi a kiinduló változat.
+
 **Fájlok:**
 - Létrehozás: `src/shared/domain/layout.ts`
 - Teszt: `src/shared/domain/layout.test.ts`
@@ -1859,7 +1861,7 @@ A `Sheet.module.css`-ben a `.panel { … }` szabály után (a `@media` blokk el�
 ```tsx
 import { useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { bedAxes, type Placement } from '@shared/domain/geometry.ts';
-import { moveStrip, resizeStrip, type Boundary, type Edge, type LayoutStrip } from '@shared/domain/layout.ts';
+import { LAYOUT_GRID_CM, moveStrip, resizeStrip, type Boundary, type Edge, type LayoutStrip } from '@shared/domain/layout.ts';
 import type { Bed } from '@shared/types.ts';
 import s from './BedLayout.module.css';
 
@@ -1913,6 +1915,8 @@ interface Drag {
   x0: number;
   y0: number;
   orig: LayoutStrip[];
+  /** Történt-e már módosítás ebben a húzásban */
+  moved: boolean;
 }
 
 /**
@@ -1944,7 +1948,7 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
     onSelect(key);
     if (strips.find((x) => x.key === key)?.fixed) return;
     const { x, y } = pointCm(e);
-    drag.current = { key, edges, x0: x, y0: y, orig: strips.map(({ key, placement, fixed }) => ({ key, placement, fixed })) };
+    drag.current = { key, edges, x0: x, y0: y, orig: strips.map(({ key, placement, fixed }) => ({ key, placement, fixed })), moved: false };
     svgRef.current!.setPointerCapture(e.pointerId);
   };
 
@@ -1953,8 +1957,17 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
     if (!d) return;
     const { x, y } = pointCm(e);
     const delta = across ? { axis: x - d.x0, cross: y - d.y0 } : { axis: y - d.y0, cross: x - d.x0 };
+    // Remegés ellen: a rácsköz felénél kisebb elmozdulás még nem módosít (a rácson kívüli régi élek sem ugranak el)
+    if (Math.abs(delta.axis) < LAYOUT_GRID_CM / 2 && Math.abs(delta.cross) < LAYOUT_GRID_CM / 2) {
+      if (d.moved) onChange(d.orig);
+      d.moved = false;
+      return;
+    }
     const next = d.edges ? resizeStrip(d.orig, d.key, d.edges, delta, size) : moveStrip(d.orig, d.key, delta, size);
-    if (next) onChange(next);
+    if (next) {
+      d.moved = true;
+      onChange(next);
+    }
   };
 
   const end = () => {
