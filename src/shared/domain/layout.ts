@@ -1,4 +1,18 @@
-import { placementsOverlap, rangesOverlap, type Placement } from './geometry.ts';
+import type { LayoutPhase, PlantingMethod } from '../labels.ts';
+import type { GrowingWindow, PlantingListItem } from '../types.ts';
+import {
+  bedStart,
+  methodsForWindow,
+  suggestDates,
+  usesSow,
+  usesTransplant,
+  type CropTiming,
+  type FrostDates,
+  type PlantingDates,
+} from './dates.ts';
+import { placementsOverlap, rangesOverlap, type Period, type Placement } from './geometry.ts';
+import { addDaysISO, diffDays, isoFromMonthDay } from './isoDate.ts';
+import { effectiveBedId, effectiveDates, occupancyPeriod } from './plantings.ts';
 
 /**
  * A kiosztás-szerkesztő tiszta logikája. Minden érték cm, a `geometry.ts` koordinátáiban:
@@ -347,6 +361,152 @@ export function boundaries(strips: LayoutStrip[]): Boundary[] {
         if (to - from > EPS) out.push({ a: a.key, b: b.key, dim: d, at: endOf(a.placement, d), from, to });
       }
     }
+  }
+  return out;
+}
+
+// --- Új sáv ------------------------------------------------------------------
+
+/**
+ * Új sáv helye a szabad szakaszok közül (a hívó a `freeAxisRanges`-szel számolja az új
+ * ültetés teljes időszakára, teljes hosszban): az első, ahová a kért szélesség befér;
+ * ilyen híján a legnagyobb, legalább minimális szakasz, kitöltve. null: nincs szabad hely.
+ */
+export function placeInFree(free: [number, number][], span: number, crossLength: number): Placement | null {
+  const full = (start: number, width: number) => ({
+    axis_start_cm: start,
+    axis_span_cm: width,
+    cross_start_cm: 0,
+    cross_span_cm: crossLength,
+  });
+  const fits = free.find(([s, e]) => e - s + EPS >= span);
+  if (fits) return full(fits[0], span);
+  const largest = [...free].sort((a, b) => b[1] - b[0] - (a[1] - a[0]))[0];
+  if (!largest || largest[1] - largest[0] < LAYOUT_MIN_CM - EPS) return null;
+  return full(largest[0], largest[1] - largest[0]);
+}
+
+/** Hely híján: az új sáv a cél sáv végére kerül, a cél sáv pedig enged neki (a minimális méretéig). */
+export function makeRoom(
+  strips: LayoutStrip[],
+  targetKey: number,
+  span: number,
+): { strips: LayoutStrip[]; placement: Placement } | null {
+  const target = strips.find((s) => s.key === targetKey);
+  if (!target || target.fixed) return null;
+  const p = target.placement;
+  const take = Math.min(span, p.axis_span_cm - LAYOUT_MIN_CM);
+  if (take < LAYOUT_MIN_CM - EPS) return null;
+  const end = endOf(p, 'axis');
+  return {
+    strips: strips.map((s) => (s.key === targetKey ? { ...s, placement: withRange(p, 'axis', p.axis_start_cm, end - take) } : s)),
+    placement: withRange(p, 'axis', end - take, end),
+  };
+}
+
+// --- Időpontok és vetési ablak --------------------------------------------------
+
+/** Az elő-, fő- és utóvetemény pillanatképének napja: utolsó fagy − 4 hét, július 1., első fagy − 4 hét. */
+export function phaseDays(year: number, frost: FrostDates): Record<LayoutPhase, string> {
+  return {
+    elo: addDaysISO(isoFromMonthDay(year, frost.lastFrost), -28),
+    fo: `${year}-07-01`,
+    uto: addDaysISO(isoFromMonthDay(year, frost.firstFrost), -28),
+  };
+}
+
+export interface WindowChoice {
+  window: GrowingWindow;
+  method: PlantingMethod;
+  dates: PlantingDates;
+  period: Period;
+}
+
+/**
+ * Melyik vetési ablakból jöjjön az új sáv: amelyikben a növény a napon az ágyásban áll
+ * (több közül a legkésőbb kezdődő); ha egyik sem, a nap utáni legközelebbi, végül a nap előtti.
+ */
+export function pickWindowForDay(
+  windows: GrowingWindow[],
+  day: string,
+  opts: { year: number; crop: CropTiming; frost: FrostDates },
+): WindowChoice | null {
+  const choices = windows.flatMap((w) => {
+    const method = methodsForWindow(w.method)[0]!;
+    const dates = suggestDates({ year: opts.year, window: w, method, crop: opts.crop, frost: opts.frost });
+    const period = occupancyPeriod({
+      year: opts.year,
+      method,
+      status: 'terv',
+      perennial: opts.crop.perennial,
+      plan_sow_date: usesSow(method) ? dates.sow : null,
+      plan_transplant_date: usesTransplant(method) ? dates.transplant : null,
+      plan_harvest_start: dates.harvestStart,
+      plan_end_date: dates.end,
+      actual_sow_date: null,
+      actual_transplant_date: null,
+      actual_harvest_start: null,
+      actual_end_date: null,
+    });
+    return period ? [{ window: w, method, dates, period }] : [];
+  });
+  const byStartDesc = (a: WindowChoice, b: WindowChoice) => b.period.start.localeCompare(a.period.start);
+  const containing = choices.filter((c) => c.period.start <= day && day < c.period.end).sort(byStartDesc);
+  const after = choices.filter((c) => c.period.start > day).sort((a, b) => a.period.start.localeCompare(b.period.start));
+  const before = choices.filter((c) => c.period.end <= day).sort(byStartDesc);
+  return containing[0] ?? after[0] ?? before[0] ?? null;
+}
+
+// --- Kapcsolt ültetések és ütközésjavítás ------------------------------------------
+
+const PLAN_DATE_KEYS = ['plan_sow_date', 'plan_transplant_date', 'plan_harvest_start', 'plan_end_date'] as const;
+
+/**
+ * Kapcsolt ültetések: ugyanabban az ágyásban és évben, azonos növény, fajta, módszer és
+ * mind a négy tervezett dátum. Az elmaradt, a gyors előzmény és a dátum nélküli nem számít.
+ */
+export function linkedPlantings(p: PlantingListItem, all: PlantingListItem[]): PlantingListItem[] {
+  const eligible = (x: PlantingListItem) => !x.is_history && x.status !== 'elmaradt';
+  const bed = effectiveBedId(p);
+  if (!eligible(p) || bed == null || !(p.plan_sow_date || p.plan_transplant_date)) return [];
+  return all.filter(
+    (x) =>
+      x.id !== p.id &&
+      eligible(x) &&
+      x.year === p.year &&
+      effectiveBedId(x) === bed &&
+      x.plant_id === p.plant_id &&
+      x.variety_id === p.variety_id &&
+      x.method === p.method &&
+      PLAN_DATE_KEYS.every((k) => x[k] === p[k]),
+  );
+}
+
+export type ClashFix =
+  /** Az előző ültetés helye ezen a napon szabadul fel */
+  | { kind: 'elozo_vege'; plantingId: number; date: string }
+  /** A későbbi ültetés minden tervezett dátuma ennyi nappal később */
+  | { kind: 'kesobbi_eltolas'; plantingId: number; days: number; date: string };
+
+/**
+ * Javítások két, ugyanott és egyszerre álló ültetésre. Az előző vége csak akkor hozható
+ * előre, ha még nincs tényleges vége, és nem kerül a betakarítás kezdete elé; a későbbi
+ * csak akkor tolható, ha még nem került az ágyásba.
+ */
+export function clashFixes(x: PlantingListItem, y: PlantingListItem): ClashFix[] {
+  const px = occupancyPeriod(x);
+  const py = occupancyPeriod(y);
+  if (!px || !py) return [];
+  const xFirst = px.start < py.start || (px.start === py.start && x.id < y.id);
+  const [a, pa, b, pb] = xFirst ? [x, px, y, py] : [y, py, x, px];
+  const out: ClashFix[] = [];
+  const harvestA = effectiveDates(a).harvestStart;
+  if (!a.actual_end_date && pb.start > pa.start && (!harvestA || pb.start >= harvestA)) {
+    out.push({ kind: 'elozo_vege', plantingId: a.id, date: pb.start });
+  }
+  const bInBed = bedStart(b.method, { sow: b.actual_sow_date, transplant: b.actual_transplant_date, harvestStart: null, end: null });
+  if (!bInBed && pa.end > pb.start) {
+    out.push({ kind: 'kesobbi_eltolas', plantingId: b.id, days: diffDays(pb.start, pa.end), date: pa.end });
   }
   return out;
 }

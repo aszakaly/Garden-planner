@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import type { CropTiming } from './dates.ts';
+import { blankPlanting } from './plantings.ts';
+import type { GrowingWindow, PlantingListItem } from '../types.ts';
 import {
   boundaries,
+  clashFixes,
   layoutRows,
   layoutValid,
+  linkedPlantings,
+  makeRoom,
   moveRow,
   moveStrip,
+  phaseDays,
+  pickWindowForDay,
+  placeInFree,
   resizeRow,
   resizeStrip,
   rowsReorderable,
@@ -251,5 +260,108 @@ describe('határok', () => {
     expect(boundaries([strip(1, 0, 30, 0, 100), strip(2, 0, 30, 100, 100)])).toEqual([
       { a: 1, b: 2, dim: 'cross', at: 100, from: 0, to: 30 },
     ]);
+  });
+});
+
+describe('új sáv helye', () => {
+  it('az első szabad szakasz, ahová befér', () => {
+    expect(placeInFree([[0, 20], [50, 80]], 30, 200)).toEqual({ axis_start_cm: 50, axis_span_cm: 30, cross_start_cm: 0, cross_span_cm: 200 });
+  });
+
+  it('ha sehová nem fér be, a legnagyobb szabad szakasz (kitöltve)', () => {
+    expect(placeInFree([[0, 20], [60, 72]], 30, 200)).toMatchObject({ axis_start_cm: 0, axis_span_cm: 20 });
+    expect(placeInFree([[0, 5]], 30, 200)).toBeNull();
+  });
+
+  it('hely híján a cél sáv enged az új sávnak', () => {
+    const room = makeRoom(three(), 3, 30);
+    expect(at(room!.strips, 3)).toMatchObject({ axis_start_cm: 50, axis_span_cm: 10 });
+    expect(room!.placement).toEqual({ axis_start_cm: 60, axis_span_cm: 20, cross_start_cm: 0, cross_span_cm: 200 });
+    expect(makeRoom([strip(1, 0, 15)], 1, 30)).toBeNull();
+  });
+});
+
+describe('időpontok és vetési ablak', () => {
+  const frost = { lastFrost: '05-10', firstFrost: '10-20' };
+  const win = (id: number, method: GrowingWindow['method'], w: Partial<GrowingWindow>): GrowingWindow => ({
+    id, plant_id: 1, variety_id: null, season: 'tavaszi', method, sow_start: null, sow_end: null, seedling_weeks: null,
+    transplant_start: null, transplant_end: null, harvest_start: null, harvest_end: null, harvest_year_offset: 0,
+    succession_days: null, notes: null, ...w,
+  });
+  const lettuce: CropTiming = { daysToHarvest: 50, harvestDurationDays: 20, frostSensitive: false, perennial: false };
+  // ágyásban: 1. márc. 20.–máj. 29.; 2. márc. 15.–máj. 24.; 3. máj. 1.–júl. 10.; 4. aug. 15.–okt. 24.
+  const windows = [
+    win(1, 'palanta', { sow_start: '02-01', seedling_weeks: 6, transplant_start: '03-20' }),
+    win(2, 'helyrevetes', { sow_start: '03-15' }),
+    win(3, 'helyrevetes', { season: 'nyari', sow_start: '05-01' }),
+    win(4, 'helyrevetes', { season: 'oszi', sow_start: '08-15' }),
+  ];
+  const pick = (day: string) => pickWindowForDay(windows, day, { year: 2027, crop: lettuce, frost });
+
+  it('az elő-, fő- és utóvetemény napja a fagyhatárokból', () => {
+    expect(phaseDays(2027, frost)).toEqual({ elo: '2027-04-12', fo: '2027-07-01', uto: '2027-09-22' });
+  });
+
+  it('azt az ablakot választja, amelyikben a növény a napon az ágyásban áll (a legkésőbb kezdődőt)', () => {
+    expect(pick('2027-04-12')).toMatchObject({ window: { id: 1 }, method: 'palanta', dates: { transplant: '2027-03-20' } });
+    // máj. 26-án az 1. és a 3. is ott áll: a később kezdődő
+    expect(pick('2027-05-26')!.window.id).toBe(3);
+  });
+
+  it('ha egyik sem áll ott, a nap utáni legközelebbit, végül a nap előttit', () => {
+    expect(pick('2027-07-20')!.window.id).toBe(4);
+    expect(pick('2027-12-01')!.window.id).toBe(4);
+    expect(pickWindowForDay([], '2027-04-12', { year: 2027, crop: lettuce, frost })).toBeNull();
+  });
+});
+
+const planting = (id: number, o: Partial<PlantingListItem> = {}): PlantingListItem => ({
+  ...blankPlanting(),
+  id, year: 2027, plant_id: 7, plant_name: 'Paradicsom', bed_id: 1, method: 'palanta',
+  plan_sow_date: '2027-03-15', plan_transplant_date: '2027-05-10', plan_harvest_start: '2027-07-14', plan_end_date: '2027-10-12',
+  ...o,
+});
+
+describe('kapcsolt ültetések', () => {
+  it('ugyanabban az ágyásban, azonos növény, módszer és tervezett dátumok', () => {
+    const all = [
+      planting(1),
+      planting(2),
+      planting(3, { plan_end_date: '2027-10-01' }),
+      planting(4, { bed_id: 2 }),
+      planting(5, { is_history: true }),
+      planting(6, { actual_bed_id: 2 }),
+      planting(7, { variety_id: 3 }),
+    ];
+    expect(linkedPlantings(all[0]!, all).map((p) => p.id)).toEqual([2]);
+  });
+
+  it('dátum nélküli ültetésnek nincs kapcsolt párja', () => {
+    const blank = { plan_sow_date: null, plan_transplant_date: null, plan_harvest_start: null, plan_end_date: null };
+    expect(linkedPlantings(planting(1, blank), [planting(1, blank), planting(2, blank)])).toEqual([]);
+  });
+});
+
+describe('ütközésjavítás', () => {
+  const salad = (o: Partial<PlantingListItem> = {}) =>
+    planting(10, {
+      plant_id: 8, plant_name: 'Saláta', method: 'helyrevetes',
+      plan_sow_date: '2027-03-20', plan_transplant_date: null, plan_harvest_start: '2027-05-09', plan_end_date: '2027-06-05',
+      ...o,
+    });
+
+  it('az előző korábban szabadítja fel a helyet, vagy az új később jön', () => {
+    expect(clashFixes(planting(1), salad())).toEqual([
+      { kind: 'elozo_vege', plantingId: 10, date: '2027-05-10' },
+      { kind: 'kesobbi_eltolas', plantingId: 1, days: 26, date: '2027-06-05' },
+    ]);
+  });
+
+  it('a betakarítás kezdete elé nem hozza a véget', () => {
+    expect(clashFixes(planting(1), salad({ plan_harvest_start: '2027-05-20' })).map((f) => f.kind)).toEqual(['kesobbi_eltolas']);
+  });
+
+  it('már az ágyásba került ültetést nem told el', () => {
+    expect(clashFixes(planting(1, { actual_transplant_date: '2027-05-10' }), salad()).map((f) => f.kind)).toEqual(['elozo_vege']);
   });
 });
