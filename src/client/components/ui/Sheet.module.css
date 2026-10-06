@@ -21,6 +21,10 @@
   animation: pop 0.28s var(--ease-out);
 }
 
+.wide {
+  width: min(900px, 100%);
+}
+
 .header {
   display: grid;
   grid-template-columns: 1fr auto 1fr;

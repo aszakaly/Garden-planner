@@ -12,6 +12,8 @@ interface Props {
   confirmDisabled?: boolean;
   busy?: boolean;
   error?: string | null;
+  /** Szélesebb ablak asztalon (pl. a kiosztás-szerkesztőhöz); telefonon nincs különbség */
+  wide?: boolean;
   children: ReactNode;
 }
 
@@ -28,6 +30,7 @@ export function Sheet({
   confirmDisabled,
   busy,
   error,
+  wide,
   children,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -62,7 +65,7 @@ export function Sheet({
 
   return createPortal(
     <div className={s.backdrop} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={panelRef} className={s.panel} role="dialog" aria-modal="true" aria-label={title}>
+      <div ref={panelRef} className={`${s.panel} ${wide ? s.wide : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <header className={s.header}>
           <button type="button" className={s.cancel} onClick={onClose}>
             {onConfirm ? 'Mégse' : 'Bezárás'}
