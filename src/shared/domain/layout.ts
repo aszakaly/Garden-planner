@@ -17,7 +17,10 @@ export type Edge = 'axisStart' | 'axisEnd' | 'crossStart' | 'crossEnd';
 export interface LayoutStrip {
   key: number;
   placement: Placement;
-  /** Nem mozdítható (más évhez tartozik, már megtörtént (tény adat), vagy tényleges helye van): a szomszédja sem tolhatja el */
+  /**
+   * Nem mozdítható: más évhez tartozik, már megtörtént (tény adat), vagy tényleges helye van.
+   * A szomszédja sem tolhatja el.
+   */
   fixed?: boolean;
 }
 
@@ -57,7 +60,7 @@ export const samePlacement = (a: Placement, b: Placement) =>
 export function layoutValid(before: LayoutStrip[], after: LayoutStrip[], size: LayoutSize): boolean {
   const prev = new Map(before.map((s) => [s.key, s.placement]));
   // a korábbi méret az adott irányban (új sávnál nincs: a minimum érvényes)
-  const prevPlacement = (key: number, d: Dim) => {
+  const prevSpan = (key: number, d: Dim) => {
     const p = prev.get(key);
     return p ? spanOf(p, d) : Infinity;
   };
@@ -72,7 +75,7 @@ export function layoutValid(before: LayoutStrip[], after: LayoutStrip[], size: L
           (d) =>
             startOf(s.placement, d) >= -EPS &&
             endOf(s.placement, d) <= size[d] + EPS &&
-            spanOf(s.placement, d) >= Math.min(LAYOUT_MIN_CM, prevPlacement(s.key, d)) - EPS,
+            spanOf(s.placement, d) >= Math.min(LAYOUT_MIN_CM, prevSpan(s.key, d)) - EPS,
         ) && after.every((o) => o.key === s.key || !placementsOverlap(o.placement, s.placement)),
     );
 }
@@ -113,9 +116,11 @@ function moveEdge(
         : Math.max(far(x) - LAYOUT_MIN_CM, e0)
       : near(x),
   );
+  // a minimumnál keskenyebb régi sáv nem nőhet meg pusztán attól, hogy hozzáérnek (mint a layoutValid)
+  const minSpan = Math.min(LAYOUT_MIN_CM, e0 - s0);
   const value = atStart
-    ? clamp(snapCm(s0 + delta), Math.max(0, ...limits), e0 - LAYOUT_MIN_CM)
-    : clamp(snapCm(e0 + delta), s0 + LAYOUT_MIN_CM, Math.min(length, ...limits));
+    ? clamp(snapCm(s0 + delta), Math.max(0, ...limits), e0 - minSpan)
+    : clamp(snapCm(e0 + delta), s0 + minSpan, Math.min(length, ...limits));
   const retreating = atStart ? value > s0 : value < e0;
   return items.map((x) => {
     const p = x.placement;

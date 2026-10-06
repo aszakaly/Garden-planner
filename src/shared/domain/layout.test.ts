@@ -210,19 +210,32 @@ describe('sorok', () => {
 });
 
 describe('sor léptetése több sávval', () => {
-  it('a sor sávjai együtt maradnak: ha a vége megosztaná, az eleje mozdul', () => {
-    const s = [
-      strip(1, 0, 30),
-      strip(2, 30, 20, 0, 100),
-      strip(4, 30, 20, 100, 100),
-      strip(5, 50, 30, 0, 100, true),
-      strip(6, 50, 30, 100, 100),
-    ];
-    const row = layoutRows(s).find((r) => r.keys.includes(2))!;
-    const out = resizeRow(s, row, 5, size);
-    expect(at(out, 2)).toMatchObject({ axis_start_cm: 25, axis_span_cm: 25 });
-    expect(at(out, 4)).toMatchObject({ axis_start_cm: 25, axis_span_cm: 25 });
-    expect(at(out, 1)).toMatchObject({ axis_start_cm: 0, axis_span_cm: 25 });
+  const rowStrips = () => [
+    strip(1, 0, 30),
+    strip(2, 30, 20, 0, 100),
+    strip(4, 30, 20, 100, 100),
+    strip(5, 50, 30, 0, 100, true),
+    strip(6, 50, 30, 100, 100),
+  ];
+  // mindkét tömbsorrend: az akadályos és a szabad szomszédú fél van elöl
+  for (const [név, sorrend] of [
+    ['akadályos fél elöl', (s: LayoutStrip[]) => s],
+    ['szabad szomszédú fél elöl', (s: LayoutStrip[]) => [s[0]!, s[2]!, s[1]!, s[4]!, s[3]!]],
+  ] as const) {
+    it(`a sor sávjai együtt maradnak: ha a vége megosztaná, az eleje mozdul (${név})`, () => {
+      const s = sorrend(rowStrips());
+      const row = layoutRows(s).find((r) => r.keys.includes(2))!;
+      const out = resizeRow(s, row, 5, size);
+      expect(at(out, 2)).toMatchObject({ axis_start_cm: 25, axis_span_cm: 25 });
+      expect(at(out, 4)).toMatchObject({ axis_start_cm: 25, axis_span_cm: 25 });
+      expect(at(out, 1)).toMatchObject({ axis_start_cm: 0, axis_span_cm: 25 });
+    });
+  }
+
+  it('a 10 cm-nél keskenyebb régi sor a léptetéstől nem szélesedik', () => {
+    const s = [strip(1, 0, 30), strip(2, 30, 8), strip(3, 38, 42)];
+    const out = resizeRow(s, layoutRows(s)[1]!, -5, size);
+    if (out) expect(at(out, 2).axis_span_cm).toBeLessThanOrEqual(8);
   });
 });
 
