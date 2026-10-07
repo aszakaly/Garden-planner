@@ -69,7 +69,8 @@ import {
 } from '../../lib/queries.ts';
 import { BedDiagram, type Strip } from '../garden/BedDiagram.tsx';
 import { companionChecks, companionIssue, rotationChecks, rotationHistory } from '@shared/domain/plantingChecks.ts';
-import { axisLabel, blankPlanting, placedInBed, plantingTitle } from './plantingView.ts';
+import { linkedPlantings } from '@shared/domain/layout.ts';
+import { axisLabel, blankPlanting, placedInBed, plantingInputOf, plantingTitle } from './plantingView.ts';
 import { useChecksContext } from './useChecks.ts';
 import { actualFromPlanting, actualPayload, PlantingActualPanel, type ActualForm } from './PlantingActualPanel.tsx';
 import { PlantingJournalPanel } from './PlantingJournalPanel.tsx';
@@ -237,6 +238,8 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
   const [tab, setTab] = useState<SheetTab>(initialTab);
   const [suggesting, setSuggesting] = useState(false);
   const [actual, setActual] = useState<ActualForm | null>(null);
+  // A kapcsolt sávokra (azonos ágyás, növény, fajta, módszer és dátumok) is átvezetjük a módosítást
+  const [linkOn, setLinkOn] = useState(true);
   const actualInitial = useRef<string | null>(null);
   const { data: plants = [] } = usePlants();
   const { data: settings } = useSettings();
@@ -253,6 +256,12 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     [allBeds, planting?.bed_id, bedId],
   );
   const others = useMemo(() => (plantings ?? []).filter((p) => p.id !== planting?.id), [plantings, planting?.id]);
+  // A módosítás előtti állapot alapján: a mentett ültetés párjai. Másik növényre váltva az ültetés kiválik
+  // közülük (a fajta és az időszak a párok növényéhez nem illene); másik évre váltva a lista már az új évé, így üres.
+  const linked = useMemo(
+    () => (planting && form.plant_id === planting.plant_id ? linkedPlantings(planting, plantings ?? []) : []),
+    [planting, plantings, form.plant_id],
+  );
   const othersIn = (id: number | null) => {
     const bed = beds.find((b) => b.id === id);
     return bed ? placedInBed(others, bed) : [];
@@ -274,6 +283,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     initialized.current = key;
     setTab(planting ? initialTab : 'terv');
     if (planting) {
+      setLinkOn(true);
       setForm(fromPlanting(planting, beds.find((b) => b.id === planting.bed_id)));
       const a = actualFromPlanting(planting);
       setActual(a);
@@ -540,7 +550,30 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     };
     if (planting) {
       const { series: _series, ...update } = body;
-      await api.put(`/plantings/${planting.id}`, update);
+      if (linkOn && linked.length) {
+        // A párok helye, sorai, tőszáma és megjegyzése marad; a fajta, a vetőmag, a módszer és a dátumok követik
+        await api.post('/plantings/batch', {
+          update: [
+            { id: planting.id, data: update },
+            ...linked.map((x) => ({
+              id: x.id,
+              data: {
+                ...plantingInputOf(x),
+                variety_id: update.variety_id,
+                seed_stock_id: update.seed_stock_id,
+                window_id: update.window_id,
+                method: update.method,
+                plan_sow_date: update.plan_sow_date,
+                plan_transplant_date: update.plan_transplant_date,
+                plan_harvest_start: update.plan_harvest_start,
+                plan_end_date: update.plan_end_date,
+              },
+            })),
+          ],
+        });
+      } else {
+        await api.put(`/plantings/${planting.id}`, update);
+      }
       // A megvalósulás csak akkor megy, ha változott
       const payload = actual ? actualPayload(actual) : null;
       if (payload && JSON.stringify(payload) !== actualInitial.current) {
@@ -679,6 +712,13 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
             )}
           </FormGroup>
           <NoticeList items={seedIssues} />
+          {planting && linked.length > 0 && (
+            <FormGroup footer="Ugyanebben az ágyásban, ugyanilyen dátumokkal álló sávok. A fajta, a vetőmag, a módszer és a dátumok változása rájuk is átkerül; a helyük nem változik.">
+              <FormRow label={`Kapcsolt sávokon is (${linked.length})`}>
+                <Toggle checked={linkOn} onChange={setLinkOn} label="Kapcsolt sávokon is" />
+              </FormRow>
+            </FormGroup>
+          )}
 
           {plant && (
             <>
