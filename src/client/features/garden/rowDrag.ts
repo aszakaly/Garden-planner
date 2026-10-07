@@ -13,12 +13,19 @@ const mid = (b: RowBox) => b.top + b.height / 2;
  * ahány másik sor közepén túljutott a húzott sor közepe. Pontosan egy sor közepén még nem
  * cserélnek helyet. A `boxes` a húzás kezdetekor, még elmozdítás nélkül mért helyek, a `dy`
  * a mutató elmozdulása azóta (az elmozdított sort újramérve a `dy` kétszer számítana).
+ * A nem mért sor a húzotthoz képest a helyén marad.
  */
 export function targetIndex(boxes: readonly (RowBox | undefined)[], index: number, dy: number): number {
   const me = boxes[index];
   if (!me) return index;
   const center = mid(me) + dy;
-  return boxes.filter((b, i) => b && i !== index && (i < index ? center >= mid(b) : center > mid(b))).length;
+  let to = 0;
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    if (i === index) continue;
+    if (i < index ? !b || center >= mid(b) : b && center > mid(b)) to++;
+  }
+  return to;
 }
 
 /**

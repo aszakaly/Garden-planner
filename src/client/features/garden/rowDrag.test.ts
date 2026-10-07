@@ -48,6 +48,16 @@ describe('targetIndex', () => {
   it('mérés nélküli sornál a helyén marad', () => {
     expect(targetIndex([undefined, { top: 44, height: 44 }], 0, 100)).toBe(0);
   });
+
+  it('a nem mért szomszéd a húzott sorhoz képest a helyén marad', () => {
+    const me = { top: 44, height: 44 };
+    const below = { top: 88, height: 44 };
+    expect(targetIndex([undefined, me, below], 1, 0)).toBe(1);
+    expect(targetIndex([undefined, me, below], 1, 1000)).toBe(2);
+    expect(targetIndex([undefined, me, below], 1, -1000)).toBe(1);
+    expect(targetIndex([{ top: 0, height: 44 }, me, undefined], 1, 1000)).toBe(1);
+    expect(targetIndex([{ top: 0, height: 44 }, me, undefined], 1, -1000)).toBe(0);
+  });
 });
 
 describe('keyTarget', () => {

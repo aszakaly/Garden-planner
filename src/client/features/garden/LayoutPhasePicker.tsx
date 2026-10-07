@@ -23,8 +23,9 @@ export function LayoutPhasePicker({ bed, year, days, day, previews, onChange }: 
   const across = bed.row_direction === 'keresztben';
   // A félig begépelt nap csak a mezőben látszik: a Chrome az évet számjegyenként jelenti
   // (0002-07-01, 0020-07-01 …), ezért csak a tervezési év napja jut tovább. Az elhagyott,
-  // éven kívüli érték visszaáll a választott napra. null: a választott nap látszik.
-  const [draft, setDraft] = useState<string | null>(null);
+  // éven kívüli érték visszaáll a választott napra. A piszkozat ahhoz a naphoz tartozik,
+  // amelyikből kiindult: ha a nap közben máshonnan változik, az új nap látszik.
+  const [draft, setDraft] = useState<{ base: string; value: string } | null>(null);
   return (
     <div className={s.phases}>
       {LAYOUT_PHASES.map((phase) => {
@@ -52,14 +53,14 @@ export function LayoutPhasePicker({ bed, year, days, day, previews, onChange }: 
       <label className={s.dayPick}>
         <span>Nap</span>
         <DateInput
-          value={draft ?? day}
+          value={draft?.base === day ? draft.value : day}
           min={`${year}-01-01`}
           max={`${year}-12-31`}
           onChange={(v) => {
             if (v?.startsWith(`${year}-`)) {
               setDraft(null);
               onChange(v);
-            } else setDraft(v ?? '');
+            } else setDraft({ base: day, value: v ?? '' });
           }}
           onBlur={() => setDraft(null)}
         />

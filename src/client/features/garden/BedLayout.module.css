@@ -226,6 +226,7 @@
 }
 .range {
   min-width: 74px;
+  white-space: nowrap;
   font-size: 12px;
   color: var(--label-2);
   font-variant-numeric: tabular-nums;
@@ -237,10 +238,12 @@
   gap: 6px;
   min-width: 0;
 }
+/* Hosszú név: a gomb a sorban marad, a név végét három pont helyettesíti */
 .stripButton {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
   padding: 5px 9px;
   border-radius: 8px;
   background: var(--fill-4);
@@ -259,11 +262,20 @@
   background: var(--sc);
 }
 .stripTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 500;
 }
 .stripLength {
+  flex: none;
+  white-space: nowrap;
   font-size: 12px;
   color: var(--label-2);
+}
+.stripButton svg {
+  flex: none;
 }
 .stepper {
   display: inline-flex;
@@ -282,7 +294,7 @@
   background: var(--fill-3);
   color: var(--tint);
 }
-.stepper button:disabled {
+.stepper button[aria-disabled='true'] {
   background: var(--fill-4);
   color: var(--label-3);
   cursor: default;
@@ -365,12 +377,15 @@
   font-size: 13px;
 }
 
-/* Érintőképernyőn legalább 40 képpontos fogantyú és léptetőgombok */
+/* Érintőképernyőn legalább 40 képpontos fogantyú, sávgombok és léptetőgombok */
 @media (pointer: coarse) {
   .rowList {
     --grip-w: 40px;
   }
   .grip {
+    min-height: 40px;
+  }
+  .stripButton {
     min-height: 40px;
   }
   .stepper button {
@@ -388,8 +403,17 @@
     flex-direction: row;
     align-items: center;
   }
+  /* keskeny képernyőn a sávok külön sorba kerülnek a tartomány alá, a léptető jobbra */
   .rowMain {
     flex-wrap: wrap;
+  }
+  .rowStrips {
+    order: 1;
+    flex-basis: 100%;
+    padding-left: calc(var(--grip-w) + 8px);
+  }
+  .stepper {
+    margin-left: auto;
   }
   .detail {
     padding-left: 14px;
