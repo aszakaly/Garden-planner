@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { LAYOUT_PHASES, LAYOUT_PHASE_LABEL, type LayoutPhase } from '@shared/labels.ts';
 import { shortDate } from '@shared/domain/isoDate.ts';
 import type { Placement } from '@shared/domain/geometry.ts';
@@ -20,6 +21,10 @@ interface Props {
 /** Elő-, fő- és utóvetemény kis előnézettel, valamint tetszőleges nap. */
 export function LayoutPhasePicker({ bed, year, days, day, previews, onChange }: Props) {
   const across = bed.row_direction === 'keresztben';
+  // A félig begépelt nap csak a mezőben látszik: a Chrome az évet számjegyenként jelenti
+  // (0002-07-01, 0020-07-01 …), ezért csak a tervezési év napja jut tovább. Az elhagyott,
+  // éven kívüli érték visszaáll a választott napra. null: a választott nap látszik.
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <div className={s.phases}>
       {LAYOUT_PHASES.map((phase) => {
@@ -46,7 +51,18 @@ export function LayoutPhasePicker({ bed, year, days, day, previews, onChange }: 
       })}
       <label className={s.dayPick}>
         <span>Nap</span>
-        <DateInput value={day} min={`${year}-01-01`} max={`${year}-12-31`} onChange={(v) => v && onChange(v)} />
+        <DateInput
+          value={draft ?? day}
+          min={`${year}-01-01`}
+          max={`${year}-12-31`}
+          onChange={(v) => {
+            if (v?.startsWith(`${year}-`)) {
+              setDraft(null);
+              onChange(v);
+            } else setDraft(v ?? '');
+          }}
+          onBlur={() => setDraft(null)}
+        />
       </label>
     </div>
   );
