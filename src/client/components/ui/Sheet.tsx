@@ -65,7 +65,7 @@ export function Sheet({
 
   return createPortal(
     <div className={s.backdrop} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={panelRef} className={`${s.panel} ${wide ? s.wide : ''}`} role="dialog" aria-modal="true" aria-label={title}>
+      <div ref={panelRef} className={wide ? `${s.panel} ${s.wide}` : s.panel} role="dialog" aria-modal="true" aria-label={title}>
         <header className={s.header}>
           <button type="button" className={s.cancel} onClick={onClose}>
             {onConfirm ? 'Mégse' : 'Bezárás'}

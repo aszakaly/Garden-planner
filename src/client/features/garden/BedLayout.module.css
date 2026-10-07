@@ -59,14 +59,19 @@
   border-radius: 10px;
   background: var(--bg-grouped-2);
 }
+/* A kép egysége egy CSS-képpont; a magasságot (legfeljebb 380 px) a LayoutCanvas számolja */
 .canvas {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 380px;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Húzás közben a kép saját mutatója érvényes (pl. grabbing), nem az alatta lévő elemé */
+.dragging * {
+  cursor: inherit !important;
 }
 .bed {
   fill: var(--bg-grouped);
@@ -104,6 +109,12 @@
 .fixed rect {
   fill: color-mix(in srgb, var(--c-gray) 14%, white);
   stroke: color-mix(in srgb, var(--c-gray) 55%, white);
+}
+/* Kijelölt rögzített sáv: keret, fogantyúk nélkül */
+.fixed.selected rect {
+  fill: color-mix(in srgb, var(--c-gray) 24%, white);
+  stroke: var(--tint);
+  stroke-width: 2;
 }
 .issueDot {
   fill: var(--c-orange);

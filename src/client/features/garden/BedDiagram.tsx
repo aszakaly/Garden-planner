@@ -2,6 +2,7 @@ import { useId, type CSSProperties, type ReactNode } from 'react';
 import type { RowDirection } from '@shared/labels.ts';
 import type { Placement } from '@shared/domain/geometry.ts';
 import { colorVar } from '../../lib/colors.ts';
+import { rectOf } from './canvasGeometry.ts';
 import s from './BedDiagram.module.css';
 
 /** Egy ültetés sávja felülnézetben. */
@@ -47,11 +48,6 @@ export function BedDiagram({ lengthCm, widthCm, rowDirection, color, rowSpacingC
   const rows = Math.max(1, Math.floor(axisLen / rowSpacingCm));
   const step = (across ? w : h) / rows;
 
-  const rectOf = (p: Placement) =>
-    across
-      ? { x: p.axis_start_cm * scale, y: p.cross_start_cm * scale, w: p.axis_span_cm * scale, h: p.cross_span_cm * scale }
-      : { x: p.cross_start_cm * scale, y: p.axis_start_cm * scale, w: p.cross_span_cm * scale, h: p.axis_span_cm * scale };
-
   return (
     <figure className={s.figure} style={{ '--c': colorVar(color) } as CSSProperties}>
       <svg
@@ -78,7 +74,7 @@ export function BedDiagram({ lengthCm, widthCm, rowDirection, color, rowSpacingC
           })}
           <g clipPath={`url(#${clipId})`}>
             {strips?.map((strip) => {
-              const r = rectOf(strip.placement);
+              const r = rectOf(strip.placement, across, scale);
               const vertical = r.w < 70 && r.h > r.w;
               const cx = r.x + r.w / 2;
               const cy = r.y + r.h / 2;
