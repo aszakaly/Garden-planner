@@ -135,12 +135,12 @@ export function handleZones(r: Rect, hit: number): HandleZone[] {
 /** Képpont helye (az ágyás bal felső sarkától) tengely- és keresztirányban; a `rectOf` párja. */
 export const axesOf = (x: number, y: number, across: boolean): LayoutSize => (across ? { axis: x, cross: y } : { axis: y, cross: x });
 
-/** Benne van-e a pont (cm) a sávban; az élei is beletartoznak. */
-const containsPoint = (p: Placement, pt: LayoutSize) =>
-  pt.axis >= p.axis_start_cm &&
-  pt.axis <= p.axis_start_cm + p.axis_span_cm &&
-  pt.cross >= p.cross_start_cm &&
-  pt.cross <= p.cross_start_cm + p.cross_span_cm;
+/** Benne van-e a pont (cm) a sávban, vagy legfeljebb `tolCm`-re kívüle; az élei is beletartoznak. */
+const containsPoint = (p: Placement, pt: LayoutSize, tolCm = 0) =>
+  pt.axis >= p.axis_start_cm - tolCm &&
+  pt.axis <= p.axis_start_cm + p.axis_span_cm + tolCm &&
+  pt.cross >= p.cross_start_cm - tolCm &&
+  pt.cross <= p.cross_start_cm + p.cross_span_cm + tolCm;
 
 /** A ponton (cm) álló sáv kulcsa, átfedésnél a később (felülre) rajzolté; `null`, ha ott nincs sáv. */
 export function stripAt(strips: LayoutStrip[], pt: LayoutSize): number | null {
@@ -152,11 +152,12 @@ export function stripAt(strips: LayoutStrip[], pt: LayoutSize): number | null {
  * A kijelölt sáv fogantyúján húzás nélkül véget ért koppintás célja. A fogantyúk kifelé a
  * szomszédra is rányúlnak (ujjal ~22 képpontnyira), ezért a sávon kívüli koppintás az ott álló
  * sávot jelöli ki, üres helyen pedig megszünteti a kijelölést (`null`).
- * `undefined`: a koppintás a kijelölt sávon belül volt, a kijelölés marad.
+ * `undefined`: a koppintás a kijelölt sávon belül vagy legfeljebb `tolCm`-re kívüle volt (az élre
+ * rajzolt pötty fele kilóg a sávból), a kijelölés marad.
  */
-export function handleTapTarget(strips: LayoutStrip[], selected: number, pt: LayoutSize): number | null | undefined {
+export function handleTapTarget(strips: LayoutStrip[], selected: number, pt: LayoutSize, tolCm = 0): number | null | undefined {
   const own = strips.find((x) => x.key === selected);
-  if (own && containsPoint(own.placement, pt)) return undefined;
+  if (own && containsPoint(own.placement, pt, tolCm)) return undefined;
   return stripAt(strips, pt);
 }
 

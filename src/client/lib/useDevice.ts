@@ -2,16 +2,19 @@ import { useSyncExternalStore } from 'react';
 
 /** Van-e ujjal kezelt mutató (érintőképernyős laptopon is, egér mellett) */
 const COARSE = '(any-pointer: coarse)';
+let coarseMql: MediaQueryList | null = null;
+/** Egyetlen, első használatkor létrehozott lekérdezés (nem minden pillanatképnél új) */
+const coarseQuery = () => (coarseMql ??= window.matchMedia(COARSE));
 
 function subscribeCoarse(cb: () => void) {
-  const mql = window.matchMedia(COARSE);
+  const mql = coarseQuery();
   mql.addEventListener('change', cb);
   return () => mql.removeEventListener('change', cb);
 }
 
 /** Ujjal is kezelhető eszköz-e (nagyobb érintési terület kell). */
 export function useCoarsePointer(): boolean {
-  return useSyncExternalStore(subscribeCoarse, () => window.matchMedia(COARSE).matches, () => false);
+  return useSyncExternalStore(subscribeCoarse, () => coarseQuery().matches, () => false);
 }
 
 function subscribeResize(cb: () => void) {

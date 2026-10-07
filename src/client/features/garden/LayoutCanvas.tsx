@@ -17,6 +17,7 @@ import {
   canvasMaxH,
   dimsOf,
   dragStep,
+  exceeds,
   handleTapTarget,
   handleZones,
   rectOf,
@@ -61,10 +62,15 @@ const ISSUE_TITLE: Record<NonNullable<CanvasStrip['issue']>, string> = {
 };
 /** A méréséig feltételezett szélesség (asztali lap) */
 const FALLBACK_WIDTH = 848;
-/** A fogantyúk érintési sávjának fele képpontban: ujjal 44, egérrel 22 px széles sáv az él körül */
+/**
+ * A fogantyúk érintési sávjának fele képpontban: ujjal 44, egérrel 22 px széles sáv az él körül.
+ * A `2 * hit`-nél keskenyebb irányban a sáv csak kifelé nyúlik (lásd `handleZones`).
+ */
 const HIT_PX = { coarse: 22, fine: 11 };
 /** A fogantyúk pöttyének sugara képpontban */
 const DOT_PX = { coarse: 5, fine: 4 };
+/** A pötty körüli tűrés képpontban: a pöttyön (és ennyivel mellette) a koppintás a kijelölt sávé marad */
+const DOT_TOL_PX = 3;
 /** Ekkora elmozdulás (képpont) még koppintás, nem húzás */
 const SLOP_PX = { mouse: 3, touch: 8 };
 const nf = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 2 });
@@ -126,6 +132,7 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
   const across = bed.row_direction === 'keresztben';
   const size = bedAxes(bed);
   const hit = coarse ? HIT_PX.coarse : HIT_PX.fine;
+  const dot = coarse ? DOT_PX.coarse : DOT_PX.fine;
   const { scale, w, h, viewW, viewH, left, top } = canvasFit(width ?? FALLBACK_WIDTH, bed.length_cm, bed.width_cm, { hit, maxH });
 
   const edgeOf = (side: Side): Edge =>
@@ -144,7 +151,8 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
     e.stopPropagation();
     dropStale(e);
     if (drag.current || e.button !== 0) return;
-    onSelect(key);
+    // a fogantyú a már kijelölt sávé: nincs mit újra kijelölni
+    if (key !== selected) onSelect(key);
     if (strips.find((x) => x.key === key)?.fixed) return;
     const svg = svgRef.current!;
     const ctm = svg.getScreenCTM()!;
@@ -185,10 +193,10 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
    * Árva húzás elengedése: ha egy új elsődleges mutató (új érintés, kattintás) vagy ugyanaz a mutató
    * újra lenyomódik, a régi húzás felengedése elveszett, és nem akadályozhatja a további érintéseket.
    */
-  function dropStale(e: ReactPointerEvent) {
+  const dropStale = (e: ReactPointerEvent) => {
     const d = drag.current;
     if (d && (d.pointerId === e.pointerId || e.isPrimary)) end();
-  }
+  };
 
   const move = (e: ReactPointerEvent) => {
     const d = drag.current;
@@ -217,11 +225,13 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
   const up = (e: ReactPointerEvent) => {
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId) return;
+    const { x, y } = pointCm(e);
     end();
     // Fogantyún húzás nélkül véget ért koppintás: a fogantyúk kifelé a szomszédra is rányúlnak,
     // ezért a kijelölt sávon kívül az ott álló sáv kijelölése, üres helyen a kijelölés megszüntetése.
-    if (d.started || !d.edges) return;
-    const target = handleTapTarget(d.orig, d.key, axesOf(d.x0, d.y0, across));
+    // Az él irányára merőleges (méretezést nem indító) hosszú húzás nem koppintás.
+    if (d.started || !d.edges || exceeds(axesOf(x - d.x0, y - d.y0, across), ['axis', 'cross'], d.slopCm)) return;
+    const target = handleTapTarget(d.orig, d.key, axesOf(d.x0, d.y0, across), (dot + DOT_TOL_PX) / scale);
     if (target !== undefined) onSelect(target);
   };
 
@@ -324,7 +334,7 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
           <Handles
             rect={rectOf(sel.placement, across, scale)}
             hit={hit}
-            dot={coarse ? DOT_PX.coarse : DOT_PX.fine}
+            dot={dot}
             edgeOf={edgeOf}
             onStart={(e, edges, cursor) => begin(e, sel.key, edges, cursor)}
           />

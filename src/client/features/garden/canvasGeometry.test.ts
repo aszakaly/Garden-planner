@@ -156,6 +156,28 @@ describe('handleZones', () => {
     expect(handleZones(r, 11).find((z) => z.id === 'l')!.w).toBe(21);
   });
 
+  it('az ágyás szélén álló sáv fogantyúi is a képen belül maradnak (a margó legalább `hit`)', () => {
+    for (const hit of [11, 22])
+      for (const widthPx of [338, 848])
+        for (const [lengthCm, widthCm] of [[400, 80], [120, 120], [60, 200]] as const) {
+          const f = canvasFit(widthPx, lengthCm, widthCm, { hit });
+          // egy-egy sáv a bal felső és a jobb alsó sarokban, valamint a teljes ágyást kitöltő sáv
+          const rects: Rect[] = [
+            { x: 0, y: 0, w: f.w / 3, h: f.h / 2 },
+            { x: (f.w * 2) / 3, y: f.h / 2, w: f.w / 3, h: f.h / 2 },
+            { x: 0, y: 0, w: f.w, h: f.h },
+          ];
+          for (const r of rects)
+            for (const z of handleZones(r, hit)) {
+              const at = `${widthPx} px, ${lengthCm}×${widthCm} cm, hit ${hit}, ${z.id}`;
+              expect(f.left + z.x, at).toBeGreaterThanOrEqual(-1e-9);
+              expect(f.top + z.y, at).toBeGreaterThanOrEqual(-1e-9);
+              expect(f.left + z.x + z.w, at).toBeLessThanOrEqual(f.viewW + 1e-9);
+              expect(f.top + z.y + z.h, at).toBeLessThanOrEqual(f.viewH + 1e-9);
+            }
+        }
+  });
+
   it('a sarkok és az élek nem fedik át egymást', () => {
     const zones = handleZones({ x: 0, y: 0, w: 20, h: 12 }, 22);
     for (const a of zones)
@@ -197,6 +219,16 @@ describe('koppintás a fogantyún', () => {
   it('a kijelölt sávon belül (az élén is) a kijelölés marad', () => {
     expect(handleTapTarget(strips, 2, { axis: 32, cross: 40 })).toBeUndefined();
     expect(handleTapTarget(strips, 2, { axis: 30, cross: 40 })).toBeUndefined();
+  });
+
+  it('a tűrésen (az élre rajzolt pöttyön) belül a kijelölés marad, azon túl a szomszédé', () => {
+    // a pötty kilógó fele: 2 cm-re a 2. sáv bal élén kívül, a tűrés 3 cm
+    expect(handleTapTarget(strips, 2, { axis: 28, cross: 40 }, 3)).toBeUndefined();
+    expect(handleTapTarget(strips, 2, { axis: 27, cross: 40 }, 3)).toBeUndefined();
+    expect(handleTapTarget(strips, 2, { axis: 26.9, cross: 40 }, 3)).toBe(1);
+    // keresztirányban (a sarok pöttyénél) is
+    expect(handleTapTarget(strips, 3, { axis: 121, cross: 42 }, 3)).toBeUndefined();
+    expect(handleTapTarget(strips, 3, { axis: 90, cross: 44 }, 3)).toBe(null);
   });
 });
 
