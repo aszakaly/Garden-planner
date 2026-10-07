@@ -309,6 +309,11 @@ describe('új sáv helye', () => {
     expect(makeRoom([strip(1, 0, 15)], 1, 30)).toBeNull();
   });
 
+  it('a 20 cm-nél keskenyebb cél sáv nem enged (mindkét sáv legalább 10 cm maradna)', () => {
+    for (const span of [5, 10, 15]) expect(makeRoom([strip(1, 0, span)], 1, 10), `${span} cm`).toBeNull();
+    expect(makeRoom([strip(1, 0, 20)], 1, 10)!.placement).toMatchObject({ axis_start_cm: 10, axis_span_cm: 10 });
+  });
+
   it('a rácson kívül végződő cél sávnál a közös határ a rácsra kerül', () => {
     // 0–47 cm, 30 cm kérés: a határ 17 helyett 15
     const room = makeRoom([strip(1, 0, 47)], 1, 30);
@@ -555,6 +560,15 @@ describe('ütközésjavítás: ellenőrzött javítások', () => {
     expect(clashFixes(planting(1, { plan_end_date: '2027-12-31' }), next).map((f) => f.kind)).not.toContain('kesobbi_eltolas');
   });
 
+  it('módszer nélkül csak kiültetési dátummal is eltolható (ettől a naptól áll az ágyásban)', () => {
+    const next = planting(2, {
+      method: null, plan_sow_date: null, plan_transplant_date: '2027-06-01', plan_harvest_start: '2027-08-20', plan_end_date: '2027-10-01',
+    });
+    expect(clashFixes(planting(1, { plan_end_date: '2027-08-01' }), next)).toEqual([
+      { kind: 'kesobbi_eltolas', plantingId: 2, days: 61, date: '2027-08-01' },
+    ]);
+  });
+
   it('ismeretlen betakarítású korábbi ültetés végét nem hozza előre', () => {
     const a = planting(1, { plan_harvest_start: null, plan_end_date: '2027-10-12' });
     const b = planting(2, { plan_transplant_date: '2027-06-01', plan_sow_date: '2027-04-01' });
@@ -570,6 +584,10 @@ describe('ütközésjavítás: ellenőrzött javítások', () => {
       ['mentett és új', s(5), s(-1)],
       ['két új: a -1 előbb készült', s(-1), s(-2)],
       ['az ágyásban álló a kisebb azonosító előtt', s(5, { actual_sow_date: '2027-03-20' }), s(3)],
+      // módszer nélkül a kiültetéstől áll az ágyásban, mint a foglaltságnál
+      ['módszer nélkül a ténylegesen kiültetett az ágyásban áll', s(5, { method: null, plan_sow_date: null, actual_transplant_date: '2027-03-20' }), s(3)],
+      // a tálcába vetett palánta még nincs az ágyásban: a kisebb azonosítójú a korábbi
+      ['a tálcába vetett palánta még nincs az ágyásban', s(3), s(5, { method: 'palanta', plan_sow_date: '2027-02-01', actual_sow_date: '2027-02-01', plan_transplant_date: '2027-03-20' })],
     ];
     for (const [név, first, later] of cases) {
       expect(shifted(first, later), név).toEqual([later.id]);

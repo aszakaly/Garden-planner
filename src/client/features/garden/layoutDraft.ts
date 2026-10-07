@@ -8,8 +8,7 @@ import {
   type ClashFix,
   type LayoutStrip,
 } from '@shared/domain/layout.ts';
-import { isConfirmed } from '@shared/domain/plantingChecks.ts';
-import { blankPlanting, effectiveBedId, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
+import { blankPlanting, effectiveBedId, occupancyPeriod, placementOf, startedOrRecorded } from '@shared/domain/plantings.ts';
 import type { PlantingBatchInput } from '@shared/schemas.ts';
 import type { Bed, PlantListItem, PlantingListItem } from '@shared/types.ts';
 import { plantingInputOf } from '../plan/plantingView.ts';
@@ -33,13 +32,13 @@ export const draftFrom = (plantings: PlantingListItem[], bed: Pick<Bed, 'id'>): 
 });
 
 /**
- * Rögzített: más évhez tartozik (pl. ősszel ültetett fokhagyma), máshol valósult meg (tényleges
- * ágyás, akár hely nélkül: ekkor a terv szerinti, másik ágyásbeli koordinátáival látszik), tényleges
- * helye van, vagy már megtörtént (tény adat, előzmény). A szerkesztő nem mozdítja és nem törli;
- * ez csak a részletes lapon lehet.
+ * Rögzített: más évhez tartozik (pl. ősszel ültetett fokhagyma), vagy megkezdett, illetve rögzített
+ * (`startedOrRecorded`, ugyanaz, amit a szerver a törlésnél ellenőriz): előzmény, nem tervezett
+ * státusz, tény dátum, tényleges hely, vagy máshol valósult meg (tényleges ágyás, akár hely nélkül:
+ * ekkor a terv szerinti, másik ágyásbeli koordinátáival látszik). A szerkesztő nem mozdítja és nem
+ * törli; ez csak a részletes lapon lehet.
  */
-export const isFixed = (p: PlantingListItem, year: number) =>
-  p.year !== year || p.actual_bed_id != null || p.actual_axis_start_cm != null || isConfirmed(p);
+export const isFixed = (p: PlantingListItem, year: number) => p.year !== year || startedOrRecorded(p);
 
 /** A napon az ágyásban álló, elhelyezett ültetések sávjai. */
 export function stripsAt(draft: LayoutDraft, bed: Bed, year: number, day: string): LayoutStrip[] {
@@ -51,14 +50,23 @@ export function stripsAt(draft: LayoutDraft, bed: Bed, year: number, day: string
   });
 }
 
+/** Ennyin belül azonos két szélesség (cm). */
+const SAME_SPAN_CM = 0.5;
+
 /**
  * Az ültetés terv szerinti helye; teljes hosszú sávnál a keresztirányú mezők üresek, mint az
- * ültetési lapon. A megadott sorszám a szélességgel arányosan változik (a sűrűbb sorok sűrűk
- * maradnak); sorszám vagy korábbi szélesség nélkül a sortávból számol.
+ * ültetési lapon. Változatlan szélességnél (tisztán mozgatás vagy keresztirányú változás) a
+ * sorszám marad. Egyébként a sortávból számol, kivéve, ha a mentett állapot (`saved`) a
+ * sortávnál sűrűbb volt: ekkor a mentett sűrűséggel arányos, de legalább a sortáv szerinti.
+ * A mentett állapothoz mérve a sorszám nem függ attól, milyen lépésekben jutott ide a húzás.
  */
-export function placeItem(p: PlantingListItem, pl: Placement, bed: Bed): PlantingListItem {
+export function placeItem(
+  p: PlantingListItem,
+  pl: Placement,
+  bed: Bed,
+  saved?: Pick<PlantingListItem, 'rows' | 'axis_span_cm'>,
+): PlantingListItem {
   const full = isFullLength(pl, bedAxes(bed).cross);
-  const oldSpan = p.axis_span_cm;
   return {
     ...p,
     axis_start_cm: pl.axis_start_cm,
@@ -66,22 +74,34 @@ export function placeItem(p: PlantingListItem, pl: Placement, bed: Bed): Plantin
     cross_start_cm: full ? null : pl.cross_start_cm,
     cross_span_cm: full ? null : pl.cross_span_cm,
     rows:
-      p.rows && oldSpan && oldSpan > 0
-        ? Math.max(1, Math.round((p.rows * pl.axis_span_cm) / oldSpan))
-        : rowsForSpan(pl.axis_span_cm, p.row_spacing_cm),
+      p.axis_span_cm != null && Math.abs(pl.axis_span_cm - p.axis_span_cm) < SAME_SPAN_CM
+        ? p.rows
+        : rowsFor(pl.axis_span_cm, p.row_spacing_cm, saved),
   };
 }
 
-/** A szerkesztett sávok visszaírása (a rögzítettek és a változatlanok érintetlenek). */
-export function applyStrips(draft: LayoutDraft, strips: LayoutStrip[], bed: Bed): LayoutDraft {
+/** Sorszám a szélességhez: a sortáv szerinti, a sűrűbb mentett állapot arányában növelve. */
+function rowsFor(span: number, spacing: number | null, saved?: Pick<PlantingListItem, 'rows' | 'axis_span_cm'>): number {
+  const textbook = rowsForSpan(span, spacing);
+  if (!saved?.rows || !saved.axis_span_cm || saved.axis_span_cm <= 0) return textbook;
+  if (saved.rows <= rowsForSpan(saved.axis_span_cm, spacing)) return textbook;
+  return Math.max(textbook, Math.round((saved.rows * span) / saved.axis_span_cm));
+}
+
+/**
+ * A szerkesztett sávok visszaírása (a rögzítettek és a változatlanok érintetlenek). Az `original`
+ * a mentett állapot (mint a `toBatch`-nál): a sorszám ehhez képest változik a szélességgel.
+ */
+export function applyStrips(draft: LayoutDraft, strips: LayoutStrip[], bed: Bed, original: PlantingListItem[]): LayoutDraft {
   const byId = new Map(strips.map((s) => [s.key, s]));
+  const saved = new Map(original.map((p) => [p.id, p]));
   return {
     ...draft,
     items: draft.items.map((p) => {
       const s = byId.get(p.id);
       if (!s || s.fixed) return p;
       const before = placementOf(p, bed);
-      return before && samePlacement(before, s.placement) ? p : placeItem(p, s.placement, bed);
+      return before && samePlacement(before, s.placement) ? p : placeItem(p, s.placement, bed, saved.get(p.id));
     }),
   };
 }

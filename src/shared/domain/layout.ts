@@ -1,7 +1,6 @@
 import type { LayoutPhase, PlantingMethod } from '../labels.ts';
 import type { GrowingWindow, PlantingListItem } from '../types.ts';
 import {
-  bedStart,
   methodsForWindow,
   shiftDates,
   suggestDates,
@@ -13,7 +12,7 @@ import {
 } from './dates.ts';
 import { periodsOverlap, placementsOverlap, rangesOverlap, type Period, type Placement } from './geometry.ts';
 import { addDaysISO, diffDays, isoFromMonthDay } from './isoDate.ts';
-import { effectiveBedId, effectiveDates, occupancyPeriod, planDates } from './plantings.ts';
+import { bedStartField, effectiveBedId, effectiveDates, occupancyPeriod, planDates } from './plantings.ts';
 
 /**
  * A kiosztás-szerkesztő tiszta logikája. Minden érték cm, a `geometry.ts` koordinátáiban:
@@ -33,7 +32,8 @@ export interface LayoutStrip {
   key: number;
   placement: Placement;
   /**
-   * Nem mozdítható: más évhez tartozik, már megtörtént (tény adat), vagy tényleges helye van.
+   * Nem mozdítható: más évhez tartozik, vagy megkezdett, illetve rögzített (lásd `startedOrRecorded`:
+   * előzmény, nem tervezett státusz, tény dátum, tényleges hely, vagy máshol valósult meg).
    * A szomszédja sem tolhatja el.
    */
   fixed?: boolean;
@@ -410,8 +410,9 @@ export function makeRoom(
   const start = p.axis_start_cm;
   const end = endOf(p, 'axis');
   const want = Math.max(LAYOUT_MIN_CM, snapCm(span));
-  // a határ rácspontjai: a cél sáv megtartja a minimumot (a régi, keskenyebb a méretét), az új is legalább minimális
-  const lo = Math.ceil((start + Math.min(LAYOUT_MIN_CM, p.axis_span_cm) - EPS) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM;
+  // a határ rácspontjai: a cél sáv és az új is legalább minimális marad; ilyen pont híján
+  // (kb. 20 cm-nél keskenyebb cél sávnál) nincs hely
+  const lo = Math.ceil((start + LAYOUT_MIN_CM - EPS) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM;
   const hi = Math.floor((end - LAYOUT_MIN_CM + EPS) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM;
   if (hi < lo) return null;
   const cut = clamp(snapCm(end - want), lo, hi);
@@ -534,8 +535,11 @@ export function clashFixes(x: PlantingListItem, y: PlantingListItem): ClashFix[]
   const px = occupancyPeriod(x);
   const py = occupancyPeriod(y);
   if (!px || !py || !periodsOverlap(px, py)) return [];
-  const inBed = (p: PlantingListItem) =>
-    bedStart(p.method, { sow: p.actual_sow_date, transplant: p.actual_transplant_date, harvestStart: null, end: null }) != null;
+  // már az ágyásban áll: a foglaltság kezdőnapja (a terv és a tény közül az érvényes) tény dátum
+  const inBed = (p: PlantingListItem) => {
+    const field = bedStartField(p.method, effectiveDates(p));
+    return field != null && (field === 'sow' ? p.actual_sow_date : p.actual_transplant_date) != null;
+  };
   const earlier = (): boolean => {
     if (px.start !== py.start) return px.start < py.start;
     if (inBed(x) !== inBed(y)) return inBed(x);
@@ -550,7 +554,7 @@ export function clashFixes(x: PlantingListItem, y: PlantingListItem): ClashFix[]
     const fix: ClashFix = { kind: 'elozo_vege', plantingId: a.id, date: pb.start };
     if (removesClash(a, fix, pb)) out.push(fix);
   }
-  if (!inBed(b) && bedStart(b.method, planDates(b))) {
+  if (!inBed(b) && bedStartField(b.method, planDates(b))) {
     const fix: ClashFix = { kind: 'kesobbi_eltolas', plantingId: b.id, days: diffDays(pb.start, pa.end), date: pa.end };
     // a ténylegesen eltolt időszakkal (módszer nélkül pl. a kiültetéstől) számol
     const shifted = occupancyPeriod(applyClashFix(b, fix));

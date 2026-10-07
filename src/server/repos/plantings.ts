@@ -4,10 +4,10 @@ import { transaction } from '../db/index.ts';
 import { HttpError, insert, notFound, update } from '../db/helpers.ts';
 import { DATE_FIELDS, seriesOffsets, shiftDates, type DateField, type PlantingDates } from '../../shared/domain/dates.ts';
 import { bedAxes, type Occupant } from '../../shared/domain/geometry.ts';
-import { occupancyPeriod, placeSeries, placementOf } from '../../shared/domain/plantings.ts';
+import { occupancyPeriod, placeSeries, placementOf, startedOrRecorded } from '../../shared/domain/plantings.ts';
 import { ACTUAL_COLUMN, statusFromActuals, TASK_SLOTS, taskKey } from '../../shared/domain/tasks.ts';
 import type { PlantingActualInput, PlantingBatchInput, PlantingCreateInput, PlantingInput } from '../../shared/schemas.ts';
-import type { PlantingListItem } from '../../shared/types.ts';
+import type { Planting, PlantingListItem } from '../../shared/types.ts';
 import { getBed } from './garden.ts';
 
 type Row = Record<string, unknown>;
@@ -312,13 +312,10 @@ export function savePlantingBatch(db: DB, input: PlantingBatchInput): { created:
     for (const id of input.delete) {
       const row = db.prepare('SELECT * FROM planting WHERE id = ?').get(id) as Row | undefined;
       if (!row) continue; // máshol már törölték
-      const started =
-        row.is_history ||
-        row.status !== 'terv' ||
-        [row.actual_sow_date, row.actual_transplant_date, row.actual_harvest_start, row.actual_end_date, row.actual_axis_start_cm].some(
-          (v) => v != null,
-        );
-      if (started) throw bad('Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.');
+      // ugyanaz a feltétel, amivel a szerkesztő rögzítettnek mutatja (az SQLite 0/1-et ad a logikai mezőre)
+      if (startedOrRecorded({ ...(row as unknown as Planting), is_history: row.is_history === 1 })) {
+        throw bad('Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.');
+      }
       removePlantings(db, id, false);
     }
     for (const u of input.update) replacePlanting(db, u.id, u.data);

@@ -205,28 +205,31 @@ describe('tömeges mentés', () => {
 
   it('megkezdett vagy rögzített ültetés nem törölhető, semmi sem változik', async () => {
     const msg = 'Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.';
-    // tényleges dátum a tényadat-lapon keresztül (a státusz is folyamatban lesz)
-    const patchActual = async (id: number) => {
-      const patch = await app.inject({ method: 'PATCH', url: `/api/plantings/${id}/actual`, payload: { actual_transplant_date: '2029-05-16' } });
-      expect(patch.statusCode).toBe(200);
-    };
-    // a többi közvetlenül az adatbázisban: előzmény, csak státusz, tényleges hely dátum nélkül
+    const other: Bed = (
+      await app.inject({ method: 'POST', url: '/api/beds', payload: { name: 'Emelt 2', length_cm: 200, width_cm: 80, bed_type: 'emelt' } })
+    ).json();
+    // közvetlenül az adatbázisban, egyenként: a státusz „terv” marad, ha nem az a jel
     const setColumn = (set: string) => (id: number) => void db.prepare(`UPDATE planting SET ${set} WHERE id = ?`).run(id);
     for (const [név, mark] of [
-      ['tényleges dátum', patchActual],
+      ['tényleges dátum (tervezett státusszal)', setColumn("actual_end_date = '2029-09-01'")],
       ['gyors előzmény', setColumn('is_history = 1')],
       ['sikertelen', setColumn("status = 'sikertelen'")],
       ['elmaradt', setColumn("status = 'elmaradt'")],
       ['tényleges hely', setColumn('actual_axis_start_cm = 10')],
+      ['máshol valósult meg (tényleges ágyás, dátum és hely nélkül)', setColumn(`actual_bed_id = ${other.id}`)],
     ] as const) {
       const [keep]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
       const [fixed]: PlantingListItem[] = (await post(basil({ axis_start_cm: 30 }))).json();
-      await mark(fixed!.id);
+      mark(fixed!.id);
+      const status = (db.prepare('SELECT status FROM planting WHERE id = ?').get(fixed!.id) as { status: string }).status;
+      if (!['sikertelen', 'elmaradt'].includes(név)) expect(status, név).toBe('terv');
       const before = await listed();
       const res = await batch({ delete: [keep!.id, fixed!.id] });
       expect(res.statusCode, név).toBe(400);
       expect(res.json().error, név).toBe(msg);
       expect(await listed(), név).toEqual(before);
+      // a másik ágyásban megvalósult ültetés sem törlődött
+      expect(db.prepare('SELECT 1 FROM planting WHERE id = ?').get(fixed!.id), név).toBeDefined();
     }
   });
 });
