@@ -1,5 +1,5 @@
 import { completeDates, EMPTY_DATES, usesSow, usesTransplant, type FrostDates } from '@shared/domain/dates.ts';
-import { bedAxes, rowsForSpan, spanForRows, type Placement } from '@shared/domain/geometry.ts';
+import { bedAxes, EPS, rowsForSpan, spanForRows, type Placement } from '@shared/domain/geometry.ts';
 import {
   applyClashFix,
   isFullLength,
@@ -14,6 +14,15 @@ import type { Bed, PlantListItem, PlantingListItem } from '@shared/types.ts';
 import { plantingInputOf } from '../plan/plantingView.ts';
 
 /**
+ * A sorszám alapja: a sáv szélessége és sorszáma (üres is lehet), amikor a piszkozatba került.
+ * A sorköz (szélesség / sorszám) így a tankönyvi sortávnál sűrűbb vagy ritkább sorokat is megőrzi.
+ */
+export interface RowBase {
+  span: number;
+  rows: number | null;
+}
+
+/**
  * A kiosztás-szerkesztő piszkozata: az ágyásban álló ültetések (az újak negatív azonosítóval)
  * és a törlendők. Mentésig minden itt változik; a „Kész” a `toBatch` különbségét küldi.
  */
@@ -22,14 +31,30 @@ export interface LayoutDraft {
   deleted: number[];
   /** A következő új ültetés azonosítója (negatív) */
   nextId: number;
+  /**
+   * Ültetésenként a sorszám alapja (lásd `placeItem`); hely nélküli ültetésnél nincs, ekkor a
+   * sortáv számít. Felvételkor és cserekor áll be, a húzás nem változtatja; a mentéshez nem tartozik.
+   */
+  rowBase: Record<number, RowBase>;
+}
+
+const withoutKey = <T>(rec: Record<number, T>, id: number): Record<number, T> => {
+  const next = { ...rec };
+  delete next[id];
+  return next;
+};
+
+/** Az ültetés saját szélessége és sorszáma lesz az alapja (hely nélkül nincs alapja). */
+function withRowBase(base: Record<number, RowBase>, p: PlantingListItem): Record<number, RowBase> {
+  const rest = withoutKey(base, p.id);
+  return p.axis_span_cm != null && p.axis_span_cm > 0 ? { ...rest, [p.id]: { span: p.axis_span_cm, rows: p.rows } } : rest;
 }
 
 /** Az ágyás piszkozata; az első új ültetés azonosítója -1. */
-export const draftFrom = (plantings: PlantingListItem[], bed: Pick<Bed, 'id'>): LayoutDraft => ({
-  items: plantings.filter((p) => effectiveBedId(p) === bed.id),
-  deleted: [],
-  nextId: -1,
-});
+export function draftFrom(plantings: PlantingListItem[], bed: Pick<Bed, 'id'>): LayoutDraft {
+  const items = plantings.filter((p) => effectiveBedId(p) === bed.id);
+  return { items, deleted: [], nextId: -1, rowBase: items.reduce<Record<number, RowBase>>(withRowBase, {}) };
+}
 
 /**
  * Rögzített: más évhez tartozik (pl. ősszel ültetett fokhagyma), vagy megkezdett, illetve rögzített
@@ -50,22 +75,19 @@ export function stripsAt(draft: LayoutDraft, bed: Bed, year: number, day: string
   });
 }
 
-/** Ennyin belül azonos két szélesség (cm). */
-const SAME_SPAN_CM = 0.5;
+const sameSpan = (a: number, b: number) => Math.abs(a - b) < EPS;
 
 /**
  * Az ültetés terv szerinti helye; teljes hosszú sávnál a keresztirányú mezők üresek, mint az
- * ültetési lapon. Változatlan szélességnél (tisztán mozgatás vagy keresztirányú változás) a
- * sorszám marad. Egyébként a sortávból számol, kivéve, ha a mentett állapot (`saved`) a
- * sortávnál sűrűbb volt: ekkor a mentett sűrűséggel arányos, de legalább a sortáv szerinti.
- * A mentett állapothoz mérve a sorszám nem függ attól, milyen lépésekben jutott ide a húzás.
+ * ültetési lapon. A sorszám:
+ * - változatlan szélességnél (tisztán mozgatás vagy keresztirányú változás) marad, üresen is;
+ * - az alap (`base`) szélességén az alap sorszáma, üresen is;
+ * - egyébként annyi sor, amennyi az alap sorközével (szélesség / sorszám) elfér, ennek híján
+ *   (nincs alap, vagy nincs sorszáma) a sortávval.
+ * A sorszám így csak a szélességtől és az alaptól függ, attól nem, milyen lépésekben jutott ide
+ * a húzás; a kiinduló szélességre visszahúzva a kiinduló sorszám áll vissza.
  */
-export function placeItem(
-  p: PlantingListItem,
-  pl: Placement,
-  bed: Bed,
-  saved?: Pick<PlantingListItem, 'rows' | 'axis_span_cm'>,
-): PlantingListItem {
+export function placeItem(p: PlantingListItem, pl: Placement, bed: Bed, base?: RowBase): PlantingListItem {
   const full = isFullLength(pl, bedAxes(bed).cross);
   return {
     ...p,
@@ -73,35 +95,29 @@ export function placeItem(
     axis_span_cm: pl.axis_span_cm,
     cross_start_cm: full ? null : pl.cross_start_cm,
     cross_span_cm: full ? null : pl.cross_span_cm,
-    rows:
-      p.axis_span_cm != null && Math.abs(pl.axis_span_cm - p.axis_span_cm) < SAME_SPAN_CM
-        ? p.rows
-        : rowsFor(pl.axis_span_cm, p.row_spacing_cm, saved),
+    rows: rowsAt(p, pl.axis_span_cm, base),
   };
 }
 
-/** Sorszám a szélességhez: a sortáv szerinti, a sűrűbb mentett állapot arányában növelve. */
-function rowsFor(span: number, spacing: number | null, saved?: Pick<PlantingListItem, 'rows' | 'axis_span_cm'>): number {
-  const textbook = rowsForSpan(span, spacing);
-  if (!saved?.rows || !saved.axis_span_cm || saved.axis_span_cm <= 0) return textbook;
-  if (saved.rows <= rowsForSpan(saved.axis_span_cm, spacing)) return textbook;
-  return Math.max(textbook, Math.round((saved.rows * span) / saved.axis_span_cm));
+function rowsAt(p: PlantingListItem, span: number, base?: RowBase): number | null {
+  if (p.axis_span_cm != null && sameSpan(span, p.axis_span_cm)) return p.rows;
+  if (base && sameSpan(span, base.span)) return base.rows;
+  return rowsForSpan(span, base?.rows ? base.span / base.rows : p.row_spacing_cm);
 }
 
 /**
- * A szerkesztett sávok visszaírása (a rögzítettek és a változatlanok érintetlenek). Az `original`
- * a mentett állapot (mint a `toBatch`-nál): a sorszám ehhez képest változik a szélességgel.
+ * A szerkesztett sávok visszaírása; a rögzítettek, a változatlanok és a `strips`-ben nem
+ * szereplők érintetlenek. A sorszám a piszkozatbeli alaphoz (`rowBase`) igazodik.
  */
-export function applyStrips(draft: LayoutDraft, strips: LayoutStrip[], bed: Bed, original: PlantingListItem[]): LayoutDraft {
+export function applyStrips(draft: LayoutDraft, strips: LayoutStrip[], bed: Bed): LayoutDraft {
   const byId = new Map(strips.map((s) => [s.key, s]));
-  const saved = new Map(original.map((p) => [p.id, p]));
   return {
     ...draft,
     items: draft.items.map((p) => {
       const s = byId.get(p.id);
       if (!s || s.fixed) return p;
       const before = placementOf(p, bed);
-      return before && samePlacement(before, s.placement) ? p : placeItem(p, s.placement, bed, saved.get(p.id));
+      return before && samePlacement(before, s.placement) ? p : placeItem(p, s.placement, bed, draft.rowBase[p.id]);
     }),
   };
 }
@@ -189,12 +205,30 @@ export function copyPlanting(p: PlantingListItem, id: number): PlantingListItem 
   };
 }
 
-/** Felvétel a piszkozatba; új (negatív azonosítójú) ültetésnél a következő azonosító is lép. */
+/**
+ * Felvétel a piszkozatba, a felvett ültetés saját szélességével és sorszámával mint alappal (így a
+ * másolat és a megosztott sáv fele a forrás sűrűségét viszi tovább). Új (negatív azonosítójú)
+ * ültetésnél a következő azonosító is lép.
+ */
 export const addItem = (draft: LayoutDraft, p: PlantingListItem): LayoutDraft => ({
   ...draft,
   items: [...draft.items, p],
   nextId: p.id < 0 ? Math.min(draft.nextId, p.id - 1) : draft.nextId,
+  rowBase: withRowBase(draft.rowBase, p),
 });
+
+/**
+ * Csere az azonos azonosítójú ültetésre (pl. másik növény az új sávban); az alap is az új
+ * ültetésé lesz. A piszkozatban nem szereplő azonosítónál nem változik semmi.
+ */
+export function replaceItem(draft: LayoutDraft, p: PlantingListItem): LayoutDraft {
+  if (!draft.items.some((x) => x.id === p.id)) return draft;
+  return {
+    ...draft,
+    items: draft.items.map((x) => (x.id === p.id ? p : x)),
+    rowBase: withRowBase(draft.rowBase, p),
+  };
+}
 
 /** Eltávolítás; csak a piszkozatban lévő mentett ültetés kerül (egyszer) a törlendők közé. */
 export function removeItem(draft: LayoutDraft, id: number): LayoutDraft {
@@ -203,6 +237,7 @@ export function removeItem(draft: LayoutDraft, id: number): LayoutDraft {
     ...draft,
     items: draft.items.filter((p) => p.id !== id),
     deleted: id > 0 && present && !draft.deleted.includes(id) ? [...draft.deleted, id] : draft.deleted,
+    rowBase: withoutKey(draft.rowBase, id),
   };
 }
 
@@ -214,7 +249,7 @@ export function applyFix(draft: LayoutDraft, fix: ClashFix): LayoutDraft {
   };
 }
 
-/** A mentendő különbség: új ültetések, megváltozott tervek, törlések. */
+/** A mentendő különbség: új ültetések, megváltozott tervek, törlések (a sorszám alapja nem számít). */
 export function toBatch(original: PlantingListItem[], draft: LayoutDraft): PlantingBatchInput {
   const before = new Map(original.map((p) => [p.id, JSON.stringify(plantingInputOf(p))]));
   return {

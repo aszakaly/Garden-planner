@@ -31,7 +31,8 @@ export interface Occupant {
   period: Period;
 }
 
-const EPS = 0.5;
+/** Ennyin belül azonosnak számít két hossz (cm). */
+export const EPS = 0.5;
 
 export function bedAxes(bed: BedGeometry): { axis: number; cross: number } {
   return bed.row_direction === 'keresztben'

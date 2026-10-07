@@ -14,6 +14,7 @@ import {
   placeItem,
   plantingFor,
   removeItem,
+  replaceItem,
   stripsAt,
   toBatch,
   type LayoutDraft,
@@ -37,7 +38,9 @@ const garlic = item(3, {
   year: 2026, plant_id: 9, plant_name: 'Fokhagyma', method: 'ultetes', axis_start_cm: 40, axis_span_cm: 40,
   plan_sow_date: '2026-10-10', plan_harvest_start: '2027-06-01', plan_end_date: '2027-06-20',
 });
-const draft = (items: PlantingListItem[], o: Partial<LayoutDraft> = {}): LayoutDraft => ({ items, deleted: [], nextId: -1, ...o });
+const draft = (items: PlantingListItem[], o: Partial<LayoutDraft> = {}): LayoutDraft => ({
+  items, deleted: [], nextId: -1, rowBase: {}, ...o,
+});
 const pl = (axis_start_cm: number, axis_span_cm: number, cross_start_cm = 0, cross_span_cm = 200): Placement => ({
   axis_start_cm, axis_span_cm, cross_start_cm, cross_span_cm,
 });
@@ -91,72 +94,105 @@ describe('rögzített sávok', () => {
 describe('visszaírás', () => {
   // sűrű sorok: 3 sor 40 cm-en, bár a 20 cm-es sortávhoz csak 2 járna
   const dense = { ...salad, rows: 3 };
-  // egy visszaírás; a viszonyítási alap a mentett állapot (alapból maga az ültetés)
-  const put = (p: PlantingListItem, placement: Placement, original: PlantingListItem[] = [p]) =>
-    applyStrips(draft([p]), [{ key: p.id, placement }], bed, original).items[0]!;
-  // húzás, mint a szerkesztőben: minden lépés a már módosított piszkozatra kerül, a mentett ültetés változatlan
-  const drag = (p: PlantingListItem, spans: number[], original: PlantingListItem[] = [p]) =>
-    spans.reduce((d, span) => applyStrips(d, [{ key: p.id, placement: pl(0, span) }], bed, original), draft([p])).items[0]!;
+  // egy visszaírás a piszkozatba vett ültetésre
+  const put = (p: PlantingListItem, placement: Placement) =>
+    applyStrips(draftFrom([p], bed), [{ key: p.id, placement }], bed).items[0]!;
+  // húzás, mint a szerkesztőben: minden lépés a már módosított piszkozatra kerül
+  const drag = (d: LayoutDraft, id: number, spans: number[]) =>
+    spans.reduce((acc, span) => applyStrips(acc, [{ key: id, placement: pl(0, span) }], bed), d);
   const steps = (from: number, to: number) =>
     Array.from({ length: Math.abs(to - from) / 5 }, (_, i) => from + Math.sign(to - from) * 5 * (i + 1));
+  const rowsOf = (d: LayoutDraft, id: number) => d.items.find((p) => p.id === id)!.rows;
+  // az ágyás tengelye 80 cm (hosszában futó sorok)
+  const widths = Array.from({ length: 16 }, (_, i) => 5 * (i + 1));
 
   it('a teljes hosszú sávnál üres a keresztirány', () => {
     expect(put(salad, pl(0, 60))).toMatchObject({ axis_span_cm: 60, cross_start_cm: null, cross_span_cm: null });
   });
 
-  it('változatlan szélességnél a saját sorszám marad (tengely menti mozgatás, részleges hossz)', () => {
+  it('változatlan szélességnél a sorszám marad (tengely menti mozgatás, részleges hossz), üresen is', () => {
     expect(put(dense, pl(20, 40))).toMatchObject({ axis_start_cm: 20, axis_span_cm: 40, rows: 3 });
     expect(put(dense, pl(0, 40, 0, 100))).toMatchObject({ rows: 3, cross_start_cm: 0, cross_span_cm: 100 });
-    // a piszkozatbeli sorszám is marad, akkor is, ha eltér a mentettől
-    expect(put({ ...dense, rows: 5 }, pl(20, 40), [dense]).rows).toBe(5);
-    // új sávnál és sorszám nélkül is
-    expect(put(copyPlanting(dense, -1), pl(20, 40), []).rows).toBe(3);
     expect(put({ ...salad, rows: null }, pl(20, 40)).rows).toBeNull();
+    expect(put({ ...salad, rows: null }, pl(0, 40, 0, 100)).rows).toBeNull();
+    // a piszkozatbeli sorszám is marad, akkor is, ha eltér az alaptól
+    const edited = draft([{ ...dense, rows: 5 }], { rowBase: { 2: { span: 40, rows: 3 } } });
+    expect(applyStrips(edited, [{ key: 2, placement: pl(20, 40) }], bed).items[0]!.rows).toBe(5);
   });
 
-  it('a sűrű sáv a mentett sűrűséggel arányosan változik, legalább egy sor marad', () => {
-    expect(put(dense, pl(0, 80)).rows).toBe(6);
-    expect(put(dense, pl(0, 20)).rows).toBe(2);
-    expect(put(dense, pl(0, 10)).rows).toBe(1);
+  const cases: [string, PlantingListItem, Record<number, number | null>][] = [
+    ['sűrű (3 sor 40 cm-en, 20 cm-es sortáv)', dense, { 10: 1, 20: 1, 30: 2, 45: 3, 55: 4, 60: 4, 80: 6 }],
+    ['sortáv szerinti (2 sor 40 cm-en)', salad, { 10: 1, 30: 1, 45: 2, 60: 3, 80: 4 }],
+    ['ritka (1 sor 60 cm-en, 20 cm-es sortáv)', { ...salad, rows: 1, axis_span_cm: 60 }, { 20: 1, 40: 1, 65: 1, 80: 1 }],
+    ['sorszám nélküli (40 cm)', { ...salad, rows: null }, { 20: 1, 35: 1, 40: null, 45: 2, 60: 3, 80: 4 }],
+  ];
+  for (const [név, p, expected] of cases) {
+    const start = p.axis_span_cm!;
+
+    it(`${név}: a lépésenkénti húzás minden szélességen ugyanoda jut, mint az egy ugrás`, () => {
+      for (const w of widths) {
+        const stepped = rowsOf(drag(draftFrom([p], bed), p.id, steps(start, w)), p.id);
+        expect(stepped, `${w} cm`).toBe(put(p, pl(0, w)).rows);
+        if (w in expected) expect(stepped, `${w} cm`).toBe(expected[w]);
+      }
+    });
+
+    it(`${név}: oda-vissza húzva visszaáll a sorszám, és nincs mentendő változás`, () => {
+      for (const w of widths) {
+        const back = drag(draftFrom([p], bed), p.id, [...steps(start, w), ...steps(w, start)]);
+        expect(rowsOf(back, p.id), `${w} cm`).toBe(p.rows);
+        expect(isDirty([p], back), `${w} cm`).toBe(false);
+      }
+    });
+  }
+
+  it('a sűrű sáv másolata megtartja a sűrűséget', () => {
+    let d = draftFrom([dense], bed);
+    // „Még egy sáv ebből”: a másolat a forrás szélességével és sorszámával kerül be
+    const copy = copyPlanting(dense, d.nextId);
+    d = addItem(d, copy);
+    expect(applyStrips(d, [{ key: copy.id, placement: pl(40, 30) }], bed).items[1]!.rows).toBe(2);
+    expect(applyStrips(d, [{ key: copy.id, placement: pl(0, 80) }], bed).items[1]!.rows).toBe(6);
+    expect(applyStrips(d, [{ key: copy.id, placement: pl(40, 40) }], bed).items[1]!.rows).toBe(3);
+    // a sortáv szerint 1, illetve 4 sor lenne
+    expect(rowsForSpan(30, 20)).toBe(1);
+    expect(rowsForSpan(80, 20)).toBe(4);
   });
 
-  it('a lépésenkénti húzás ugyanoda jut, mint az egy ugrás', () => {
-    expect(drag(dense, steps(40, 80)).rows).toBe(6);
-    expect(drag(salad, steps(40, 80)).rows).toBe(put(salad, pl(0, 80)).rows);
-    expect(drag(tomato, steps(30, 80)).rows).toBe(put(tomato, pl(0, 80)).rows);
-    // minden köztes lépés is a mentett állapotból számol
-    for (const span of steps(40, 80)) expect(drag(dense, steps(40, span)).rows, `${span} cm`).toBe(put(dense, pl(0, span)).rows);
+  it('a megosztott sáv mindkét fele megtartja a sűrűséget', () => {
+    // 4 sor 40 cm-en (10 cm-es sorköz), a 20 cm-es sortávhoz csak 2 járna
+    const dense4 = { ...salad, rows: 4 };
+    let d = draftFrom([dense4], bed);
+    const half = copyPlanting(dense4, d.nextId);
+    d = applyStrips(addItem(d, half), [{ key: 2, placement: pl(0, 20) }, { key: half.id, placement: pl(20, 20) }], bed);
+    expect(d.items.map((p) => p.rows)).toEqual([2, 2]);
+    expect(rowsOf(drag(d, half.id, [25, 30]), half.id)).toBe(3);
   });
 
-  it('oda-vissza húzva visszaáll a mentett sorszám', () => {
-    expect(drag(dense, [...steps(40, 10), ...steps(10, 40)]).rows).toBe(3);
-    expect(drag(salad, [...steps(40, 10), ...steps(10, 40)]).rows).toBe(2);
+  it('a növény cseréje új alapot ad: a szélesítés az új növény sorközét követi', () => {
+    let d = draftFrom([tomato, dense], bed);
+    // a saláta helyén friss paradicsom ugyanazzal az azonosítóval, egy sorral, a saját sortávjával
+    const fresh = item(2, { plant_id: 7, plant_name: 'Paradicsom', method: 'palanta', row_spacing_cm: 35, rows: 1, axis_span_cm: 35 });
+    d = applyStrips(replaceItem(d, fresh), [{ key: 2, placement: pl(0, 40) }], bed);
+    expect(d.items[0]).toBe(tomato);
+    expect(d.items[1]).toMatchObject({ plant_id: 7, axis_span_cm: 40, rows: 1 });
+    // a saláta 40/3 cm-es sorközével 4, illetve 5 sor lenne
+    expect(rowsOf(drag(d, 2, [45, 50, 55, 60]), 2)).toBe(1);
+    expect(rowsOf(drag(d, 2, steps(40, 70)), 2)).toBe(2);
   });
 
-  it('az egysoros sáv szélesítése a sortávot követi', () => {
-    // 1 sor 30 cm-en, 35 cm-es sortáv: 80 cm-en 2 sor fér el (arányosan 3 lenne)
-    expect(put(tomato, pl(0, 80)).rows).toBe(2);
-    // 1 sor 10 cm-en, 20 cm-es sortáv: 15 cm-en sem lesz 7,5 cm-es sorköz
-    const narrow = { ...salad, rows: 1, axis_span_cm: 10 };
-    expect(put(narrow, pl(0, 15)).rows).toBe(1);
-    expect(drag(narrow, steps(10, 40)).rows).toBe(2);
+  it('a piszkozatban nem szereplő ültetés cseréje nem változtat', () => {
+    const d = draftFrom([tomato], bed);
+    expect(replaceItem(d, { ...salad, id: 99 })).toBe(d);
   });
 
-  it('a sortáv szerinti sűrűségű sáv a sortávot követi', () => {
-    expect(put(salad, pl(0, 60)).rows).toBe(3);
-    expect(put(salad, pl(0, 30)).rows).toBe(1);
-  });
-
-  it('a sűrű sáv sosem ritkább a sortáv szerintinél', () => {
-    const wide = { ...salad, rows: 3, axis_span_cm: 55 };
-    for (const span of [10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 65, 70, 75, 80]) {
-      expect(put(wide, pl(0, span)).rows, `${span} cm`).toBeGreaterThanOrEqual(rowsForSpan(span, 20));
-    }
-  });
-
-  it('mentett pár nélkül (új sáv) és sorszám nélkül a sortávból számol', () => {
-    expect(put(copyPlanting(dense, -1), pl(0, 80), []).rows).toBe(4);
-    expect(put({ ...salad, rows: null }, pl(0, 60)).rows).toBe(3);
+  it('új sáv beillesztésekor csak az új sáv kap helyet', () => {
+    const d = draftFrom([tomato, salad], bed);
+    const fresh = { ...copyPlanting(salad, d.nextId), axis_start_cm: null, axis_span_cm: 20, rows: 1 };
+    const out = applyStrips(addItem(d, fresh), [{ key: fresh.id, placement: pl(40, 40) }], bed);
+    expect(out.items[0]).toBe(tomato);
+    expect(out.items[1]).toBe(salad);
+    expect(out.items[2]).toMatchObject({ id: -1, axis_start_cm: 40, axis_span_cm: 40, rows: 2 });
   });
 
   it('a rögzített és a változatlan sávot érintetlenül hagyja', () => {
@@ -164,7 +200,6 @@ describe('visszaírás', () => {
       draft([tomato, garlic]),
       [{ key: 1, placement: pl(0, 30) }, { key: 3, fixed: true, placement: pl(0, 40) }],
       bed,
-      [tomato, garlic],
     );
     expect(out.items[0]).toBe(tomato);
     expect(out.items[1]).toBe(garlic);
@@ -233,12 +268,35 @@ describe('új sáv', () => {
 describe('felvétel és törlés', () => {
   it('a piszkozat kiosztja az új azonosítókat: egymás után felvéve különbözők', () => {
     let d = draftFrom([tomato, salad, item(9, { bed_id: 2 })], bed);
-    expect(d).toEqual({ items: [tomato, salad], deleted: [], nextId: -1 });
+    expect(d).toMatchObject({ items: [tomato, salad], deleted: [], nextId: -1 });
     d = addItem(d, copyPlanting(salad, d.nextId));
     d = addItem(d, copyPlanting(tomato, d.nextId));
     expect(d.items.map((p) => p.id)).toEqual([1, 2, -1, -2]);
     expect(d.nextId).toBe(-3);
     expect(toBatch([tomato, salad], d).create).toHaveLength(2);
+    // tetszőleges negatív azonosítóval felvéve is a még ki nem osztottal folytatja
+    d = addItem(d, copyPlanting(salad, -7));
+    expect(d.nextId).toBe(-8);
+    d = addItem(d, copyPlanting(salad, d.nextId));
+    expect(new Set(d.items.map((p) => p.id)).size).toBe(d.items.length);
+  });
+
+  it('a sorszám alapja a piszkozatba kerüléskori szélesség és sorszám', () => {
+    const noRows = { ...salad, id: 5, rows: null };
+    const unplaced = { ...salad, id: 6, axis_start_cm: null, axis_span_cm: null };
+    expect(draftFrom([tomato, salad, noRows, unplaced], bed).rowBase).toEqual({
+      1: { span: 30, rows: 1 },
+      2: { span: 40, rows: 2 },
+      5: { span: 40, rows: null },
+    });
+  });
+
+  it('felvételkor a saját szélessége és sorszáma lesz az alap, törléskor az alap is megszűnik', () => {
+    let d = addItem(draftFrom([tomato], bed), copyPlanting({ ...salad, rows: 3 }, -1));
+    expect(d.rowBase[-1]).toEqual({ span: 40, rows: 3 });
+    d = removeItem(d, -1);
+    expect(d.rowBase[-1]).toBeUndefined();
+    expect(removeItem(d, 1).rowBase).toEqual({});
   });
 
   it('mentett ültetés felvétele nem változtat a következő azonosítón', () => {

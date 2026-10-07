@@ -228,7 +228,7 @@ describe('tömeges mentés', () => {
       expect(res.statusCode, név).toBe(400);
       expect(res.json().error, név).toBe(msg);
       expect(await listed(), név).toEqual(before);
-      // a másik ágyásban megvalósult ültetés sem törlődött
+      // a rögzített ültetés megmaradt
       expect(db.prepare('SELECT 1 FROM planting WHERE id = ?').get(fixed!.id), név).toBeDefined();
     }
   });

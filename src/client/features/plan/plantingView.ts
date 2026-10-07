@@ -1,6 +1,5 @@
 import { PLANTING_METHOD_LABEL, type PlantingStatus } from '@shared/labels.ts';
-import { bedStart } from '@shared/domain/dates.ts';
-import { effectiveBedId, effectiveDates, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
+import { bedStartField, effectiveBedId, effectiveDates, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
 import { bedAxes, estimatePlantCount, type BedGeometry, type Occupant } from '@shared/domain/geometry.ts';
 import { shortDate } from '@shared/domain/isoDate.ts';
 import type { PlantingInput } from '@shared/schemas.ts';
@@ -37,10 +36,11 @@ export function plantingInputOf(p: PlantingListItem): PlantingInput {
   };
 }
 
-/** Az ágyásba kerülés napja (rendezéshez); dátum nélkül null. */
+/** Az ágyásba kerülés napja (rendezéshez), ugyanaz, amitől a foglaltság számít; dátum nélkül null. */
 export function startOf(p: PlantingListItem): string | null {
   const d = effectiveDates(p);
-  return (p.method ? bedStart(p.method, d) : null) ?? d.transplant ?? d.sow;
+  const field = bedStartField(p.method, d);
+  return field ? d[field] : null;
 }
 
 /** Az első teendő napja: palántánál a tálcás vetés. */
