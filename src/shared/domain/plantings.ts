@@ -1,5 +1,6 @@
+import type { PlantingMethod } from '../labels.ts';
 import type { Planting, PlantingListItem } from '../types.ts';
-import { bedStart, DEFAULT_HARVEST_DAYS, type PlantingDates } from './dates.ts';
+import { DEFAULT_HARVEST_DAYS, usesTransplant, type DateField, type PlantingDates } from './dates.ts';
 import { bedAxes, firstFreeStart, type BedGeometry, type Occupant, type Period, type Placement } from './geometry.ts';
 import { addDaysISO } from './isoDate.ts';
 
@@ -36,6 +37,16 @@ export function effectiveDates(p: Timed): PlantingDates {
 }
 
 /**
+ * Melyik dátumon kerül az ültetés az ágyásba: a módszer szerintin (palántánál a kiültetés,
+ * egyébként a vetés), ennek híján – módszer nélkül mindig – a kiültetésen, majd a vetésen.
+ * null: egyik sincs meg. A foglaltság és az ütközésjavítás is ezt használja.
+ */
+export function bedStartField(method: PlantingMethod | null, d: PlantingDates): Extract<DateField, 'sow' | 'transplant'> | null {
+  const order = method && !usesTransplant(method) ? (['sow', 'transplant'] as const) : (['transplant', 'sow'] as const);
+  return order.find((f) => d[f] != null) ?? null;
+}
+
+/**
  * Mettől meddig foglalja az ültetés az ágyást. Ha a vége nem ismert, a betakarítás
  * kezdete után még egy hónapig, ennek híján (és évelőnél mindig) az év végéig számolunk vele.
  * Az előző évből áthozott évelő január 1-jétől áll a helyén.
@@ -44,14 +55,47 @@ export function effectiveDates(p: Timed): PlantingDates {
 export function occupancyPeriod(p: Timed): Period | null {
   if (p.status === 'elmaradt') return null;
   const d = effectiveDates(p);
-  const start =
-    (p.method ? bedStart(p.method, d) : null) ?? d.transplant ?? d.sow ?? (p.carried_from_id ? `${p.year}-01-01` : null);
+  const field = bedStartField(p.method, d);
+  const start = (field ? d[field] : null) ?? (p.carried_from_id ? `${p.year}-01-01` : null);
   if (!start) return null;
   const end = d.end ?? (d.harvestStart && !p.perennial ? addDaysISO(d.harvestStart, DEFAULT_HARVEST_DAYS) : `${p.year}-12-31`);
   return { start, end: end < start ? start : end };
 }
 
 export const effectiveBedId = (p: Pick<Planting, 'bed_id' | 'actual_bed_id'>) => p.actual_bed_id ?? p.bed_id;
+
+type Recorded = Pick<
+  Planting,
+  | 'is_history'
+  | 'status'
+  | 'actual_sow_date'
+  | 'actual_transplant_date'
+  | 'actual_harvest_start'
+  | 'actual_end_date'
+  | 'actual_axis_start_cm'
+  | 'actual_bed_id'
+>;
+
+/**
+ * Megkezdett vagy rögzített ültetés: gyors előzmény, nem tervezett a státusza (folyamatban, lezárt,
+ * elmaradt, sikertelen), van tény dátuma vagy tényleges helye, vagy tényleges ágyásban – akár
+ * máshol, hely nélkül – valósult meg. A kiosztás-szerkesztő ilyet nem mozdít és nem töröl (a szerver
+ * sem engedi onnan törölni); ez csak a részletes lapon lehet.
+ */
+export function startedOrRecorded(p: Recorded): boolean {
+  return (
+    p.is_history ||
+    p.status !== 'terv' ||
+    [
+      p.actual_sow_date,
+      p.actual_transplant_date,
+      p.actual_harvest_start,
+      p.actual_end_date,
+      p.actual_axis_start_cm,
+      p.actual_bed_id,
+    ].some((v) => v != null)
+  );
+}
 
 type Placed = Pick<
   Planting,

@@ -2,6 +2,17 @@
 
 A felületen látható változások, a legújabb elöl. A részletes fejlesztési előzmény a git logban van, a tervezési döntések a [design dokumentumban](docs/specs/2026-09-30-kerttervezo-design.md).
 
+## 2026-10-07 – Ágyás kiosztása
+
+- **Kiosztás** az ágyás oldalán: a sorok húzással és ablakszerű fogantyúkkal méretezhetők; ha egy sáv a szomszédjába ütközik, a szomszéd enged.
+- Elő-, fő- és utóvetemény választó (vagy tetszőleges nap): a lap mindig azt mutatja, ami azon a napon az ágyásban áll.
+- Új sávhoz elég a növényt kiválasztani: a dátumok a vetési naptárból, a szélesség a sortávból jön. Ha nincs szabad hely, minden sor arányosan enged; a „Még egy sáv ebből” másolata a sorok végére kerül (így lesz paradicsom–bazsalikom–paradicsom).
+- Elővetemény a fővetemény helyén is felvehető: a helyütközést egykattintásos javítás oldja fel (a korábbi hamarabb szabadul fel, vagy a későbbi később kezdődik).
+- Szétvágás hosszában, sávlista léptetőkkel és áthúzható (billentyűvel is mozgatható) sorokkal, telefonon is.
+- A szomszédos sávok határán zöld vagy piros vonal jelzi a társítást.
+- A sorszám a sáv szélességével együtt változik, a sűrűbb sorok sűrűk maradnak.
+- Kapcsolt sávok: az ültetési lapon a fajta, a vetőmag, a módszer és a dátumok módosítása az azonos ágyásban, azonos dátumokkal álló sávokra is átkerül (kikapcsolható).
+
 ## 2026-10-02 – Ágyás másolása: javítások
 
 - A másolat a használati éveket nem veszi át: az új ágyás az idei évtől használatban van, akkor is, ha a minta már megszűnt.

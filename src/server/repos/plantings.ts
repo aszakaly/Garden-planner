@@ -4,10 +4,10 @@ import { transaction } from '../db/index.ts';
 import { HttpError, insert, notFound, update } from '../db/helpers.ts';
 import { DATE_FIELDS, seriesOffsets, shiftDates, type DateField, type PlantingDates } from '../../shared/domain/dates.ts';
 import { bedAxes, type Occupant } from '../../shared/domain/geometry.ts';
-import { occupancyPeriod, placeSeries, placementOf } from '../../shared/domain/plantings.ts';
+import { occupancyPeriod, placeSeries, placementOf, startedOrRecorded } from '../../shared/domain/plantings.ts';
 import { ACTUAL_COLUMN, statusFromActuals, TASK_SLOTS, taskKey } from '../../shared/domain/tasks.ts';
-import type { PlantingActualInput, PlantingCreateInput, PlantingInput } from '../../shared/schemas.ts';
-import type { PlantingListItem } from '../../shared/types.ts';
+import type { PlantingActualInput, PlantingBatchInput, PlantingCreateInput, PlantingInput } from '../../shared/schemas.ts';
+import type { Planting, PlantingListItem } from '../../shared/types.ts';
 import { getBed } from './garden.ts';
 
 type Row = Record<string, unknown>;
@@ -162,56 +162,62 @@ function occupantsInBed(db: DB, year: number, bedId: number): Occupant[] {
   });
 }
 
-/** Új ültetés; sorozatnál minden tag időben eltolva, a következő szabad sávba kerül. */
-export function createPlantings(db: DB, input: PlantingCreateInput): PlantingListItem[] {
-  const ids = transaction(db, () => {
-    const { series, ...fields } = normalize(db, input);
-    // A gyors előzmény már megtörtént ültetés
-    const base = { ...fields, status: fields.is_history ? ('lezart' as const) : ('terv' as const) };
-    if (!series) return [insert(db, 'planting', base)];
+/**
+ * Új ültetés(ek) tranzakció nélkül – a hívó fogja tranzakcióba. Sorozatnál minden tag
+ * időben eltolva, a következő szabad sávba kerül.
+ */
+function insertPlantings(db: DB, input: PlantingCreateInput): number[] {
+  const { series, ...fields } = normalize(db, input);
+  // A gyors előzmény már megtörtént ültetés
+  const base = { ...fields, status: fields.is_history ? ('lezart' as const) : ('terv' as const) };
+  if (!series) return [insert(db, 'planting', base)];
 
-    const offsets = seriesOffsets(series.count, series.interval_days);
-    let starts = offsets.map(() => base.axis_start_cm ?? null);
-    const planned = pickPlanDates(base);
-    const period = occupancyPeriod({ year: base.year, method: base.method ?? null, ...planned, ...NO_ACTUALS });
-    if (base.bed_id && base.axis_start_cm != null && base.axis_span_cm != null && period) {
-      const bed = getBed(db, base.bed_id);
-      const { axis, cross } = bedAxes(bed);
-      const first = {
-        placement: {
-          axis_start_cm: base.axis_start_cm,
-          axis_span_cm: base.axis_span_cm,
-          cross_start_cm: base.cross_start_cm ?? 0,
-          cross_span_cm: base.cross_span_cm ?? cross,
-        },
-        period,
-      };
-      starts = placeSeries(first, offsets, axis, occupantsInBed(db, base.year, base.bed_id)).map(
-        (o) => o.placement.axis_start_cm,
-      );
-    }
-
-    const seriesId = randomUUID();
-    const dates = {
-      sow: planned.plan_sow_date,
-      transplant: planned.plan_transplant_date,
-      harvestStart: planned.plan_harvest_start,
-      end: planned.plan_end_date,
+  const offsets = seriesOffsets(series.count, series.interval_days);
+  let starts = offsets.map(() => base.axis_start_cm ?? null);
+  const planned = pickPlanDates(base);
+  const period = occupancyPeriod({ year: base.year, method: base.method ?? null, ...planned, ...NO_ACTUALS });
+  if (base.bed_id && base.axis_start_cm != null && base.axis_span_cm != null && period) {
+    const bed = getBed(db, base.bed_id);
+    const { axis, cross } = bedAxes(bed);
+    const first = {
+      placement: {
+        axis_start_cm: base.axis_start_cm,
+        axis_span_cm: base.axis_span_cm,
+        cross_start_cm: base.cross_start_cm ?? 0,
+        cross_span_cm: base.cross_span_cm ?? cross,
+      },
+      period,
     };
-    return offsets.map((offset, i) => {
-      const d = shiftDates(dates, offset);
-      return insert(db, 'planting', {
-        ...base,
-        axis_start_cm: starts[i],
-        plan_sow_date: d.sow,
-        plan_transplant_date: d.transplant,
-        plan_harvest_start: d.harvestStart,
-        plan_end_date: d.end,
-        series_id: seriesId,
-        series_index: i + 1,
-      });
+    starts = placeSeries(first, offsets, axis, occupantsInBed(db, base.year, base.bed_id)).map(
+      (o) => o.placement.axis_start_cm,
+    );
+  }
+
+  const seriesId = randomUUID();
+  const dates = {
+    sow: planned.plan_sow_date,
+    transplant: planned.plan_transplant_date,
+    harvestStart: planned.plan_harvest_start,
+    end: planned.plan_end_date,
+  };
+  return offsets.map((offset, i) => {
+    const d = shiftDates(dates, offset);
+    return insert(db, 'planting', {
+      ...base,
+      axis_start_cm: starts[i],
+      plan_sow_date: d.sow,
+      plan_transplant_date: d.transplant,
+      plan_harvest_start: d.harvestStart,
+      plan_end_date: d.end,
+      series_id: seriesId,
+      series_index: i + 1,
     });
   });
+}
+
+/** Új ültetés; sorozatnál minden tag időben eltolva, a következő szabad sávba kerül. */
+export function createPlantings(db: DB, input: PlantingCreateInput): PlantingListItem[] {
+  const ids = transaction(db, () => insertPlantings(db, input));
   return ids.map((id) => getPlanting(db, id));
 }
 
@@ -256,33 +262,63 @@ export function plantingHistory(db: DB, { plantId, varietyId }: { plantId?: numb
     .map(mapPlanting);
 }
 
+/** A terv teljes cseréje tranzakció nélkül (a tény adatokat és a státuszt nem érinti). */
+function replacePlanting(db: DB, id: number, input: PlantingInput): void {
+  const data = normalize(db, input);
+  if (!update(db, 'planting', id, { ...PLAN_DEFAULTS, ...data, updated_at: new Date().toISOString() })) {
+    throw notFound('Az ültetés');
+  }
+}
+
 export function updatePlanting(db: DB, id: number, input: PlantingInput): PlantingListItem {
-  transaction(db, () => {
-    const data = normalize(db, input);
-    if (!update(db, 'planting', id, { ...PLAN_DEFAULTS, ...data, updated_at: new Date().toISOString() })) {
-      throw notFound('Az ültetés');
-    }
-  });
+  transaction(db, () => replacePlanting(db, id, input));
   return getPlanting(db, id);
 }
 
-/** Törlés; `wholeSeries` esetén a sorozat összes tagja. Visszaadja a törölt sorok számát. */
-export function deletePlanting(db: DB, id: number, wholeSeries = false): number {
+/** Törlés tranzakció nélkül; `wholeSeries` esetén a sorozat összes tagja. A törölt sorok száma. */
+function removePlantings(db: DB, id: number, wholeSeries: boolean): number {
   const row = db.prepare('SELECT series_id FROM planting WHERE id = ?').get(id) as { series_id: string | null } | undefined;
   if (!row) throw notFound('Az ültetés');
   const ids =
     wholeSeries && row.series_id
       ? (db.prepare('SELECT id FROM planting WHERE series_id = ?').all(row.series_id) as { id: number }[]).map((r) => r.id)
       : [id];
+  const del = db.prepare('DELETE FROM planting WHERE id = ?');
+  const delState = db.prepare('DELETE FROM task_state WHERE task_key = ?');
+  let changes = 0;
+  for (const pid of ids) {
+    changes += Number(del.run(pid).changes);
+    // A generált feladatok állapota (áthelyezés, megjegyzés) is megy
+    for (const slot of TASK_SLOTS) if (slot !== 'beszerzes') delState.run(taskKey(slot, pid));
+  }
+  return changes;
+}
+
+/** Törlés; `wholeSeries` esetén a sorozat összes tagja. Visszaadja a törölt sorok számát. */
+export function deletePlanting(db: DB, id: number, wholeSeries = false): number {
+  return transaction(db, () => removePlantings(db, id, wholeSeries));
+}
+
+/**
+ * Tömeges mentés a kiosztás-szerkesztőből: törlés, módosítás, majd létrehozás egyetlen
+ * tranzakcióban – egy hibás elemnél semmi sem változik. A létrehozottak azonosítói a kérés sorrendjében.
+ * A közben máshol már törölt ültetések törlését kihagyja; megkezdett vagy rögzített ültetés nem törölhető.
+ * Egy létrehozott azonosító egyezhet ugyanebben a kérésben törölttel (a `planting.id` nem AUTOINCREMENT).
+ * Ez biztonságos: a törölt ültetés feladatállapota és saját feladatai törlődnek, a naplóbejegyzések
+ * kapcsolata megszűnik; az átvitt évelő forrása mindig kisebb azonosítójú, ezért nem érintett.
+ */
+export function savePlantingBatch(db: DB, input: PlantingBatchInput): { created: number[] } {
   return transaction(db, () => {
-    const del = db.prepare('DELETE FROM planting WHERE id = ?');
-    const delState = db.prepare('DELETE FROM task_state WHERE task_key = ?');
-    let changes = 0;
-    for (const pid of ids) {
-      changes += Number(del.run(pid).changes);
-      // A generált feladatok állapota (áthelyezés, megjegyzés) is megy
-      for (const slot of TASK_SLOTS) if (slot !== 'beszerzes') delState.run(taskKey(slot, pid));
+    for (const id of input.delete) {
+      const row = db.prepare('SELECT * FROM planting WHERE id = ?').get(id) as Row | undefined;
+      if (!row) continue; // máshol már törölték
+      // ugyanaz a feltétel, amivel a szerkesztő rögzítettnek mutatja (az SQLite 0/1-et ad a logikai mezőre)
+      if (startedOrRecorded({ ...(row as unknown as Planting), is_history: row.is_history === 1 })) {
+        throw bad('Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.');
+      }
+      removePlantings(db, id, false);
     }
-    return changes;
+    for (const u of input.update) replacePlanting(db, u.id, u.data);
+    return { created: input.create.flatMap((c) => insertPlantings(db, { ...c, series: null })) };
   });
 }

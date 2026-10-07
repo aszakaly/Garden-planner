@@ -3,7 +3,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 /**
  * A teljes tervezési folyamat a specifikáció 14. pontja szerint, üres adatbázison:
  * fajta és vetőmag → ágyás → múltbeli előzmény → éves terv ellenőrzésekkel → feladat a
- * listán és a naptárban → pipálás → naplóbejegyzés → következő év javaslatai.
+ * listán és a naptárban → pipálás → naplóbejegyzés → következő év javaslatai → ágyás
+ * másolása és kiosztása.
  * A böngésző órája 2027. március 15-re van állítva, így minden dátum kiszámítható.
  */
 
@@ -178,5 +179,55 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
     for (const name of ['E2E ágyás 2', 'E2E ágyás 3', 'E2E ágyás 4']) {
       await expect(page.getByRole('main').getByText(name, { exact: true })).toBeVisible();
     }
+  });
+
+  await test.step('12. ágyás kiosztása: paradicsom–bazsalikom–paradicsom, méretezés húzással', async () => {
+    await page.getByRole('main').getByText('E2E ágyás 2', { exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'E2E ágyás 2' })).toBeVisible();
+    await page.getByRole('button', { name: 'Kiosztás' }).click();
+    const sheet = dialog(page, 'E2E ágyás 2 – kiosztás 2028');
+    await expect(sheet.getByRole('button', { name: /^Fővetemény/ })).toHaveAttribute('aria-pressed', 'true');
+
+    // Csak a növényt kell választani: a dátum a vetési naptárból, a szélesség a sortávból jön
+    for (const plant of ['Paradicsom', 'Bazsalikom']) {
+      await sheet.getByRole('button', { name: 'Sáv hozzáadása' }).click();
+      await field(sheet, 'Növény').selectOption({ label: plant });
+    }
+    await sheet.getByRole('button', { name: /^Paradicsom/ }).click();
+    await sheet.getByRole('button', { name: 'Még egy sáv ebből' }).click();
+    await expect(sheet.getByText('110–190 cm')).toBeVisible();
+
+    await sheet.getByRole('button', { name: /^Bazsalikom/ }).click();
+    await expect(sheet.getByText(/Jó szomszéd: paradicsom/)).toBeVisible();
+
+    // A bazsalikom sávjának vége 15 cm-rel tovább: a mellette álló paradicsom enged
+    const bedBox = (await sheet.locator('[data-layout-bed]').boundingBox())!;
+    const pxPerCm = bedBox.width / 300;
+    const handle = (await sheet.locator('[data-handle="axisEnd"]').boundingBox())!;
+    const x = handle.x + handle.width / 2;
+    const y = handle.y + handle.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 15 * pxPerCm, y, { steps: 5 });
+    await page.mouse.up();
+    await expect(sheet.getByText('80–125 cm')).toBeVisible();
+    await expect(sheet.getByText('125–190 cm')).toBeVisible();
+
+    await confirm(sheet);
+    await expect
+      .poll(async () => {
+        const items: { bed_name: string; plant_name: string; axis_start_cm: number; axis_span_cm: number }[] = await (
+          await page.request.get('/api/plantings?year=2028')
+        ).json();
+        return items
+          .filter((p) => p.bed_name === 'E2E ágyás 2')
+          .sort((a, b) => a.axis_start_cm - b.axis_start_cm)
+          .map((p) => [p.plant_name, p.axis_start_cm, p.axis_span_cm]);
+      })
+      .toEqual([
+        ['Paradicsom', 0, 80],
+        ['Bazsalikom', 80, 45],
+        ['Paradicsom', 125, 65],
+      ]);
   });
 });

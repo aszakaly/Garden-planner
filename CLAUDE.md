@@ -50,6 +50,7 @@ Egyetlen TypeScript projekt három réteggel; a `@shared/*` alias a `src/shared`
 - **Ellenőrzések:** a vetésforgó- és társítás-ellenőrzés a **kliensen** fut, a `features/plan/useChecks.ts` hívja a `domain/plantingChecks.ts`-t. Bemenete a kliensre letöltött ültetés-előzmény és a törzsadatok.
 - **Feladatok:** a `domain/tasks.ts` determinisztikusan, stabil kulccsal generálja őket a tervből. Az adatbázisban csak az állapotuk van (`task_state`: elvégezve, áthelyezve); a saját feladatok külön táblában (`custom_task`).
 - **Dátumok:** mindenhol `ÉÉÉÉ-HH-NN` szövegként. A vetési ablakok `HH-NN` formájúak, az évhatáron átnyúlóknál `year_offset`-tel.
+- **Kiosztás:** a `domain/layout.ts` a kiosztás-szerkesztő tiszta logikája (méretezés a szomszéd engedésével, csere, szétvágás, új sáv helye és arányos helycsinálás, elő-, fő- és utóvetemény, kapcsolt ültetések, ütközésjavítás). A szerkesztő piszkozatát (sorszám-alap, mentendő különbség) a `features/garden/layoutDraft.ts` kezeli; a „megkezdett vagy rögzített” ültetés közös feltétele a `domain/plantings.ts` `startedOrRecorded` függvénye.
 
 ### `src/server/` – Fastify + node:sqlite
 
@@ -63,6 +64,7 @@ Egyetlen TypeScript projekt három réteggel; a `@shared/*` alias a `src/shared`
 - **Segédfüggvények (`db/helpers.ts`, `db/index.ts`):**
   - Az `insert`/`update` objektumból épít SQL-t. Az `update` kihagyja az `undefined` mezőket, ezért a teljes cserét végző PUT-nál a hiányzó opcionális mezőket kifejezetten `null`-ra kell állítani; minta: `updateBed`.
   - A `transaction()` (`db/index.ts`) nem ágyazható egymásba.
+  - A `repos/plantings.ts` tranzakció nélküli belső függvényei (`insertPlantings`, `replacePlanting`, `removePlantings`) a tömeges mentéshez kellenek: a `POST /api/plantings/batch` ezeket fogja össze egyetlen tranzakcióba.
 - **Migrációk:**
   - Számozott SQL-fájlok a `db/migrations/`-ben, induláskor sorban futnak le. Mindegyik külön tranzakcióban fut, kikapcsolt idegenkulcs-ellenőrzéssel, utána `foreign_key_check` jön, így a táblák újraépítése is megengedett.
   - A seed csak üres adatbázisra fut (`seedIfEmpty`), ezért a seed-adatok változását a meglévő adatbázisokba migrációval kell átvinni; minta: `004_plant_source.sql`.

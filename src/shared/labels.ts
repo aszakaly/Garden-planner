@@ -150,3 +150,12 @@ export const MONTHS_HU = [
   'július', 'augusztus', 'szeptember', 'október', 'november', 'december',
 ] as const;
 export const MONTHS_SHORT_HU = ['jan', 'feb', 'márc', 'ápr', 'máj', 'jún', 'júl', 'aug', 'szept', 'okt', 'nov', 'dec'] as const;
+
+/** A kiosztás-szerkesztő pillanatképei: elő-, fő- és utóvetemény. */
+export const LAYOUT_PHASES = ['elo', 'fo', 'uto'] as const;
+export type LayoutPhase = (typeof LAYOUT_PHASES)[number];
+export const LAYOUT_PHASE_LABEL: Record<LayoutPhase, string> = {
+  elo: 'Elővetemény',
+  fo: 'Fővetemény',
+  uto: 'Utóvetemény',
+};

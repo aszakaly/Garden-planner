@@ -1,8 +1,8 @@
 import { PLANTING_METHOD_LABEL, type PlantingStatus } from '@shared/labels.ts';
-import { bedStart } from '@shared/domain/dates.ts';
-import { effectiveBedId, effectiveDates, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
+import { bedStartField, effectiveBedId, effectiveDates, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
 import { bedAxes, estimatePlantCount, type BedGeometry, type Occupant } from '@shared/domain/geometry.ts';
 import { shortDate } from '@shared/domain/isoDate.ts';
+import type { PlantingInput } from '@shared/schemas.ts';
 import type { Bed, PlantingListItem } from '@shared/types.ts';
 
 export { effectiveBedId };
@@ -11,10 +11,68 @@ export { blankPlanting } from '@shared/domain/plantings.ts';
 export const plantingTitle = (p: Pick<PlantingListItem, 'plant_name' | 'variety_name'>) =>
   p.variety_name ? `${p.plant_name} – ${p.variety_name}` : p.plant_name;
 
-/** Az ágyásba kerülés napja (rendezéshez); dátum nélkül null. */
+/** Az ültetés terv szerinti adatai a PUT és a tömeges mentés bemeneteként (teljes csere). */
+export function plantingInputOf(p: PlantingListItem): PlantingInput {
+  return {
+    year: p.year,
+    plant_id: p.plant_id,
+    variety_id: p.variety_id,
+    seed_stock_id: p.seed_stock_id,
+    bed_id: p.bed_id,
+    axis_start_cm: p.axis_start_cm,
+    axis_span_cm: p.axis_span_cm,
+    cross_start_cm: p.cross_start_cm,
+    cross_span_cm: p.cross_span_cm,
+    rows: p.rows,
+    plant_count: p.plant_count,
+    method: p.method,
+    window_id: p.window_id,
+    plan_sow_date: p.plan_sow_date,
+    plan_transplant_date: p.plan_transplant_date,
+    plan_harvest_start: p.plan_harvest_start,
+    plan_end_date: p.plan_end_date,
+    is_history: p.is_history,
+    notes: p.notes,
+  };
+}
+
+/** A kapcsolt sávokra átvihető tervmezők; a hely, a sorok, a tőszám és a megjegyzés mindig a sáv saját értéke. */
+const LINKED_FIELDS = [
+  'variety_id',
+  'seed_stock_id',
+  'window_id',
+  'method',
+  'plan_sow_date',
+  'plan_transplant_date',
+  'plan_harvest_start',
+  'plan_end_date',
+] as const;
+type LinkedField = (typeof LINKED_FIELDS)[number];
+
+/**
+ * Egy kapcsolt sáv új terve a szerkesztett ültetés mentésekor: csak az kerül át rá, ami a
+ * szerkesztett ültetés mentés előtti állapotához (`before`) képest megváltozott; a többi mező a
+ * sáv saját értéke marad. A vetőmagtétel a fajtához tartozik, és csak vetésnél van, ezért fajta-
+ * vagy módszerváltáskor az is követi (különben a párnál a régi fajta tétele maradna az új fajtán).
+ * Ha az átvihető mezők közül semmi nem változott, null.
+ */
+export function linkedUpdate(x: PlantingListItem, update: PlantingInput, before: PlantingListItem): PlantingInput | null {
+  const changed = new Set<LinkedField>(LINKED_FIELDS.filter((k) => (update[k] ?? null) !== (before[k] ?? null)));
+  if (!changed.size) return null;
+  if (changed.has('variety_id') || changed.has('method')) changed.add('seed_stock_id');
+  const data = plantingInputOf(x);
+  const take = <K extends LinkedField>(k: K) => {
+    data[k] = update[k];
+  };
+  changed.forEach((k) => take(k));
+  return data;
+}
+
+/** Az ágyásba kerülés napja (rendezéshez), ugyanaz, amitől a foglaltság számít; dátum nélkül null. */
 export function startOf(p: PlantingListItem): string | null {
   const d = effectiveDates(p);
-  return (p.method ? bedStart(p.method, d) : null) ?? d.transplant ?? d.sow;
+  const field = bedStartField(p.method, d);
+  return field ? d[field] : null;
 }
 
 /** Az első teendő napja: palántánál a tálcás vetés. */

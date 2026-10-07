@@ -209,3 +209,57 @@ Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változat
   - Ha egy sorszámozott név hosszabb lenne 100 karakternél (a névmező korlátja), 400-as hibával egy sem jön létre; a felület ezt előre jelzi.
   - Mindegyik saját, növekvő `sort_order`-t kap a lista végén, így a létrehozás sorrendjében jelennek meg (a névsor szerinti rendezés a „10”-et a „2” elé tenné).
 - **Tesztek:** egységtesztek a sorszámozásra (nagyon hosszú sorszámmal is), API-tesztek a tömeges létrehozásra (hely nélkül, túl hosszú névnél semmi), és a végponttól végpontig tartó folyamat 11. lépése (másolás három példányban).
+
+### Ágyás kiosztása (2026-10-06)
+**Cél:** az ágyás sorait vizuálisan lehessen összeállítani, számok állítgatása nélkül (pl. két sor paradicsom, köztük bazsalikom). Fejlesztés az `agyas-kiosztas` branchen.
+
+**Követelmények:**
+- Gépen húzással, telefonon érintéssel és listával is használható.
+- A sáv szélessége és hossza is állítható, így egy sor hosszában is megosztható (pl. fél sor saláta, fél sor sárgarépa).
+- Kezeli az elő-, fő- és utóveteményt.
+- Ugyanaz a növény több, egymástól elválasztott sávban is állhat. Ezek külön ültetések, de kapcsoltak; adatbázis-módosítás nem kell.
+- Méretezéskor a szomszédos sáv enged (keskenyedik), és nem állítja meg a mozdulatot.
+
+**Felület:** „Kiosztás” lap az ágyás oldaláról. A „Kész” egyben ment, a „Mégse” mindent elvet.
+- **Időpont:** a lap egy nap állapotát mutatja.
+  - Elővetemény: utolsó tavaszi fagy − 4 hét.
+  - Fővetemény: július 1.
+  - Utóvetemény: első őszi fagy − 4 hét.
+  - Tetszőleges nap.
+- **Ágyáskép:**
+  - A sáv a széleinél és a sarkainál méretezhető, mint egy ablak, a közepénél fogva mozgatható.
+  - Ha a szomszéd közepén túlra húzod, helyet cserélnek.
+  - 5 cm-es rács; egy sáv legalább 10 cm.
+- **Sávlista** az ágyáskép alatt: a sorrend fogantyúval, a szélesség léptetővel állítható, és látszik a szabad hely.
+- **Műveletek:**
+  - Új sáv: csak a növényt kell kiválasztani. A dátumok a vetési naptárból, a szélesség a sortávból jön.
+  - Még egy sáv ebből, szétvágás hosszában, törlés.
+  - Részletek: a meglévő ültetési lap.
+- A már megtörtént (tény adatos) ültetés helye és törlése csak a Részletek lapon módosítható.
+
+**Ellenőrzések mentés előtt:**
+- A szomszédos sávok határán a társítás színe.
+- A sávon a vetésforgó-figyelmeztetés.
+- Az egész évre számolt helyütközés, két javítással:
+  - az előző kultúra korábban szabadítja fel a helyet, de nem a betakarítása kezdete előtt;
+  - vagy az új kultúra kerül később.
+
+**Kapcsolt ültetések:** ugyanabban az ágyásban azonos a növényük, a fajtájuk, a módszerük és a tervezett dátumaik. Az ültetési lapon a „Kapcsolt sávokon is” kapcsoló (alapból bekapcsolva) a fajta, a vetőmag és a dátumok módosítását a párokon is átvezeti.
+
+**Megvalósítás:**
+- Tiszta logika a `src/shared/domain/layout.ts`-ben:
+  - méretezés engedéssel, csere, szétvágás, elhelyezés;
+  - időpontok és vetési ablak választása;
+  - kapcsolt ültetések, ütközésjavítás.
+- `POST /api/plantings/batch`: létrehozás, módosítás és törlés egy tranzakcióban.
+
+**Tesztek:**
+- Egységtesztek a `layout.ts`-re.
+- API-tesztek a tömeges mentésre: egy hibás elemnél semmi sem változik.
+- E2E: kiosztás paradicsom–bazsalikom–paradicsom sorokkal, és egy sáv méretezése húzással.
+
+**Később:** ágyásminta több ágyásra, a kapcsolt ültetések feladatainak összevonása, húzás az idővonalon.
+
+**Elvetve:**
+- Több sávos ültetés: az adatbázist és az ellenőrzéseket is át kellene írni hozzá.
+- A szomszédnál megálló méretezés.
