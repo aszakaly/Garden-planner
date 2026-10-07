@@ -395,8 +395,9 @@ export function placeInFree(free: [number, number][], span: number, crossLength:
 
 /**
  * Hely híján: az új sáv a cél sáv végére kerül, a cél sáv pedig enged neki (a minimális
- * méretéig, rácsra kerekítve). Csak a pillanatkép napján látható sávokat ismeri; az időbeli
- * ütközések az ütközéslistában jelennek meg.
+ * méretéig). A kért szélesség és a két sáv közös határa a rácsra kerül; mindkét sáv legalább
+ * minimális marad. Csak a pillanatkép napján látható sávokat ismeri; az időbeli ütközések az
+ * ütközéslistában jelennek meg.
  */
 export function makeRoom(
   strips: LayoutStrip[],
@@ -406,14 +407,23 @@ export function makeRoom(
   const target = strips.find((s) => s.key === targetKey);
   if (!target || target.fixed) return null;
   const p = target.placement;
-  const take = Math.floor(Math.min(span, p.axis_span_cm - LAYOUT_MIN_CM) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM;
-  if (take < LAYOUT_MIN_CM - EPS) return null;
+  const start = p.axis_start_cm;
   const end = endOf(p, 'axis');
+  const want = Math.max(LAYOUT_MIN_CM, snapCm(span));
+  // a határ rácspontjai: a cél sáv megtartja a minimumot (a régi, keskenyebb a méretét), az új is legalább minimális
+  const lo = Math.ceil((start + Math.min(LAYOUT_MIN_CM, p.axis_span_cm) - EPS) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM;
+  const hi = Math.floor((end - LAYOUT_MIN_CM + EPS) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM;
+  if (hi < lo) return null;
+  const cut = clamp(snapCm(end - want), lo, hi);
   return {
-    strips: strips.map((s) => (s.key === targetKey ? { ...s, placement: withRange(p, 'axis', p.axis_start_cm, end - take) } : s)),
-    placement: withRange(p, 'axis', end - take, end),
+    strips: strips.map((s) => (s.key === targetKey ? { ...s, placement: withRange(p, 'axis', start, cut) } : s)),
+    placement: withRange(p, 'axis', cut, end),
   };
 }
+
+/** Teljes hosszú-e a sáv: a keresztirányban az ágyás egész hosszán fut. */
+export const isFullLength = (pl: Placement, crossLength: number) =>
+  Math.abs(pl.cross_start_cm) < EPS && Math.abs(pl.cross_span_cm - crossLength) < EPS;
 
 // --- Időpontok és vetési ablak --------------------------------------------------
 
@@ -510,25 +520,28 @@ export function applyClashFix(p: PlantingListItem, fix: ClashFix): PlantingListI
 }
 
 /**
- * Javítások két, ugyanott és egyszerre álló ültetésre. Csak olyat kínál, amelynek
- * alkalmazása után az időszakok tényleg nem fedik egymást. Az előző vége csak akkor hozható
- * előre, ha még nincs tényleges vége, a betakarítás kezdete ismert, és a vég nem kerül elé;
- * a későbbi csak akkor tolható, ha még nem került az ágyásba, a kezdete a tervezett
- * dátumból jön, az előző vége valódi dátum, és az eltolt kezdet még az évben marad.
+ * Javítások két, ugyanott és egyszerre álló ültetésre (egymást nem fedő időszakokra nincs).
+ * Csak olyat kínál, amelynek alkalmazása után az időszakok tényleg nem fedik egymást. Az előző
+ * vége csak akkor hozható előre, ha még nincs tényleges vége, a betakarítás kezdete ismert, és
+ * a vég nem kerül elé. A későbbi az előző (becsült) vége utánra tolható, ha még nem került az
+ * ágyásba és a kezdete a tervezett dátumból jön; az eltolt időszak még az évben kezdődik, és a
+ * vége nem csúszik át a következő évre (az áttelelő az marad, az idei termés nem lesz jövő évi).
  * Azonos kezdőnapon a korábbi az, amelyik már az ágyásban áll, majd a mentett ültetés
- * (pozitív azonosító) az új sáv (negatív) előtt, végül az alacsonyabb azonosítójú.
+ * (pozitív azonosító) az új sáv (negatív) előtt; a mentettek közül az alacsonyabb, az újak
+ * közül a korábban felvett (-1, -2, … sorrendben) azonosítójú.
  */
 export function clashFixes(x: PlantingListItem, y: PlantingListItem): ClashFix[] {
   const px = occupancyPeriod(x);
   const py = occupancyPeriod(y);
-  if (!px || !py) return [];
+  if (!px || !py || !periodsOverlap(px, py)) return [];
   const inBed = (p: PlantingListItem) =>
     bedStart(p.method, { sow: p.actual_sow_date, transplant: p.actual_transplant_date, harvestStart: null, end: null }) != null;
   const earlier = (): boolean => {
     if (px.start !== py.start) return px.start < py.start;
     if (inBed(x) !== inBed(y)) return inBed(x);
     if (x.id > 0 !== y.id > 0) return x.id > 0;
-    return x.id < y.id;
+    // a mentettek a kisebb azonosítóval, az újak a felvétel sorrendjében (-1 a -2 előtt)
+    return Math.abs(x.id) < Math.abs(y.id);
   };
   const [a, pa, b, pb] = earlier() ? [x, px, y, py] : [y, py, x, px];
   const out: ClashFix[] = [];
@@ -537,14 +550,19 @@ export function clashFixes(x: PlantingListItem, y: PlantingListItem): ClashFix[]
     const fix: ClashFix = { kind: 'elozo_vege', plantingId: a.id, date: pb.start };
     if (removesClash(a, fix, pb)) out.push(fix);
   }
-  const plannedStart = bedStart(b.method, planDates(b));
-  if (!inBed(b) && plannedStart && effectiveDates(a).end && pa.end > pb.start) {
-    const days = diffDays(pb.start, pa.end);
-    const fix: ClashFix = { kind: 'kesobbi_eltolas', plantingId: b.id, days, date: pa.end };
-    if (addDaysISO(plannedStart, days) < `${b.year}-12-31` && removesClash(b, fix, pa)) out.push(fix);
+  if (!inBed(b) && bedStart(b.method, planDates(b))) {
+    const fix: ClashFix = { kind: 'kesobbi_eltolas', plantingId: b.id, days: diffDays(pb.start, pa.end), date: pa.end };
+    // a ténylegesen eltolt időszakkal (módszer nélkül pl. a kiültetéstől) számol
+    const shifted = occupancyPeriod(applyClashFix(b, fix));
+    if (shifted && shifted.start < `${b.year}-12-31` && lastYear(shifted) === lastYear(pb) && !periodsOverlap(shifted, pa)) {
+      out.push(fix);
+    }
   }
   return out;
 }
+
+/** Az időszak utolsó foglalt napjának éve (a záró napon a hely már szabad). */
+const lastYear = (p: Period) => addDaysISO(p.end, -1).slice(0, 4);
 
 /** A javított ültetés időszaka már nem fedi a másikét. */
 function removesClash(p: PlantingListItem, fix: ClashFix, other: Period): boolean {

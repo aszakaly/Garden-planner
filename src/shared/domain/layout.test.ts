@@ -7,6 +7,7 @@ import {
   applyClashFix,
   boundaries,
   clashFixes,
+  isFullLength,
   layoutRows,
   layoutValid,
   linkedPlantings,
@@ -20,6 +21,7 @@ import {
   resizeStrip,
   rowsReorderable,
   splitStrip,
+  type ClashFix,
   type LayoutStrip,
 } from './layout.ts';
 
@@ -306,6 +308,38 @@ describe('új sáv helye', () => {
     expect(room!.placement).toEqual({ axis_start_cm: 60, axis_span_cm: 20, cross_start_cm: 0, cross_span_cm: 200 });
     expect(makeRoom([strip(1, 0, 15)], 1, 30)).toBeNull();
   });
+
+  it('a rácson kívül végződő cél sávnál a közös határ a rácsra kerül', () => {
+    // 0–47 cm, 30 cm kérés: a határ 17 helyett 15
+    const room = makeRoom([strip(1, 0, 47)], 1, 30);
+    expect(at(room!.strips, 1)).toMatchObject({ axis_start_cm: 0, axis_span_cm: 15 });
+    expect(room!.placement).toMatchObject({ axis_start_cm: 15, axis_span_cm: 32 });
+  });
+
+  it('a rácson kívüli kezdetű cél sáv legalább 10 cm-t megtart, a határ akkor is a rácson van', () => {
+    // 3–50 cm, 40 cm kérés: a 10-es határ 7 cm-t hagyna, ezért 15
+    const room = makeRoom([strip(1, 3, 47)], 1, 40);
+    expect(at(room!.strips, 1)).toMatchObject({ axis_start_cm: 3, axis_span_cm: 12 });
+    expect(room!.placement).toMatchObject({ axis_start_cm: 15, axis_span_cm: 35 });
+  });
+
+  it('a kért szélesség a rácsra kerekedik, és az új sáv legalább 10 cm', () => {
+    expect(makeRoom([strip(1, 0, 80)], 1, 33)!.placement).toMatchObject({ axis_start_cm: 45, axis_span_cm: 35 });
+    expect(makeRoom([strip(1, 0, 80)], 1, 4)!.placement).toMatchObject({ axis_start_cm: 70, axis_span_cm: 10 });
+    // 0–48 cm, 10 cm kérés: a 38-as határ 40-re kerekedne (8 cm), ezért 35
+    expect(makeRoom([strip(1, 0, 48)], 1, 10)!.placement).toMatchObject({ axis_start_cm: 35, axis_span_cm: 13 });
+  });
+});
+
+describe('teljes hosszú sáv', () => {
+  it('a keresztirányban az ágyás egész hosszán fut (fél cm tűréssel)', () => {
+    const pl = (cross: number, crossSpan: number) => strip(1, 0, 30, cross, crossSpan).placement;
+    expect(isFullLength(pl(0, 200), 200)).toBe(true);
+    expect(isFullLength(pl(0.2, 199.9), 200)).toBe(true);
+    expect(isFullLength(pl(0, 100), 200)).toBe(false);
+    expect(isFullLength(pl(100, 100), 200)).toBe(false);
+    expect(isFullLength(pl(0, 80), 80)).toBe(true);
+  });
 });
 
 describe('időpontok és vetési ablak', () => {
@@ -407,22 +441,36 @@ describe('ütközésjavítás', () => {
   it('már az ágyásba került ültetést nem told el', () => {
     expect(clashFixes(planting(1, { actual_transplant_date: '2027-05-10' }), salad()).map((f) => f.kind)).toEqual(['elozo_vege']);
   });
+
+  it('egymást nem fedő ültetésekre nincs javítás', () => {
+    // a saláta jún. 5-én kikerül, a paradicsom csak jún. 10-én jön: a saláta vége nem tolódhat később
+    const tomato = planting(1, { plan_transplant_date: '2027-06-10' });
+    expect(clashFixes(salad(), tomato)).toEqual([]);
+    expect(clashFixes(tomato, salad())).toEqual([]);
+  });
 });
 
 describe('ütközésjavítás: ellenőrzött javítások', () => {
   const base = (id: number, o: Partial<PlantingListItem>) => planting(id, o);
-  const pairs: [string, PlantingListItem, PlantingListItem][] = [
-    ['palánta után saláta', base(1, {}), base(10, { method: 'helyrevetes', plan_sow_date: '2027-03-20', plan_transplant_date: null, plan_harvest_start: '2027-05-09', plan_end_date: '2027-06-05' })],
-    ['két palánta egymás után', base(1, { plan_end_date: '2027-08-01' }), base(2, { plan_transplant_date: '2027-06-01', plan_sow_date: '2027-04-10', plan_harvest_start: '2027-08-20', plan_end_date: '2027-10-01' })],
-    ['azonos kezdőnap', base(3, {}), base(-1, {})],
-    ['már az ágyásban álló és új', base(4, { actual_transplant_date: '2027-05-10' }), base(-2, { plan_transplant_date: '2027-05-10' })],
-    ['betakarítás előtti vég', base(1, { plan_harvest_start: '2027-07-01', plan_end_date: '2027-09-30' }), base(5, { plan_transplant_date: '2027-06-15', plan_sow_date: '2027-05-01', plan_harvest_start: '2027-08-15', plan_end_date: '2027-10-15' })],
-    ['megkezdett betakarítás', base(1, { actual_harvest_start: '2027-06-01' }), base(6, { plan_transplant_date: '2027-06-20', plan_sow_date: '2027-05-01', plan_harvest_start: '2027-08-15', plan_end_date: '2027-10-15' })],
+  // rövid tenyészidejű saláta: márc. 20.–jún. 5.
+  const saladDates: Partial<PlantingListItem> = {
+    method: 'helyrevetes', plan_sow_date: '2027-03-20', plan_transplant_date: null, plan_harvest_start: '2027-05-09', plan_end_date: '2027-06-05',
+  };
+  const pairs: [string, PlantingListItem, PlantingListItem, ClashFix['kind'][]][] = [
+    ['palánta után saláta', base(1, {}), base(10, saladDates), ['elozo_vege', 'kesobbi_eltolas']],
+    ['két palánta egymás után', base(1, { plan_end_date: '2027-08-01' }), base(2, { plan_transplant_date: '2027-06-01', plan_sow_date: '2027-04-10', plan_harvest_start: '2027-08-20', plan_end_date: '2027-10-01' }), ['kesobbi_eltolas']],
+    ['azonos kezdőnap', base(3, saladDates), base(-1, saladDates), ['kesobbi_eltolas']],
+    ['már az ágyásban álló és új', base(4, { ...saladDates, actual_sow_date: '2027-03-20' }), base(-2, saladDates), ['kesobbi_eltolas']],
+    ['betakarítás előtti vég', base(1, { plan_harvest_start: '2027-07-01', plan_end_date: '2027-08-20' }), base(5, { plan_transplant_date: '2027-06-15', plan_sow_date: '2027-05-01', plan_harvest_start: '2027-08-15', plan_end_date: '2027-10-15' }), ['kesobbi_eltolas']],
+    ['megkezdett betakarítás', base(1, { actual_harvest_start: '2027-06-01' }), base(6, { plan_transplant_date: '2027-06-20', plan_sow_date: '2027-05-01', plan_harvest_start: '2027-08-15', plan_end_date: '2027-10-15' }), ['elozo_vege']],
   ];
 
-  for (const [név, x, y] of pairs) {
+  for (const [név, x, y, kinds] of pairs) {
     it(`minden felkínált javítás tényleg megszünteti az átfedést (${név})`, () => {
-      for (const fix of clashFixes(x, y)) {
+      expect(periodsOverlap(occupancyPeriod(x)!, occupancyPeriod(y)!)).toBe(true);
+      const fixes = clashFixes(x, y);
+      expect(fixes.map((f) => f.kind)).toEqual(kinds);
+      for (const fix of fixes) {
         const target = fix.plantingId === x.id ? x : y;
         const other = fix.plantingId === x.id ? y : x;
         const period = occupancyPeriod(applyClashFix(target, fix));
@@ -433,20 +481,78 @@ describe('ütközésjavítás: ellenőrzött javítások', () => {
   }
 
   it('átvitt későbbi ültetésre nincs eltolás (a kezdete nem a tervezett dátumból jön)', () => {
-    const a = planting(1, { year: 2026, plan_end_date: '2027-06-20' });
-    const b = planting(2, {
-      carried_from_id: 1, method: 'palanta', plan_sow_date: null, plan_transplant_date: null,
-      plan_harvest_start: '2027-08-01', plan_end_date: '2027-10-12',
+    // ősszel vetett, a következő év júniusában felszabaduló korábbi ültetés
+    const a = planting(1, {
+      year: 2026, method: 'helyrevetes', plan_sow_date: '2026-10-15', plan_transplant_date: null,
+      plan_harvest_start: '2027-06-01', plan_end_date: '2027-06-20',
     });
-    expect(clashFixes(a, b).map((f) => f.kind)).not.toContain('kesobbi_eltolas');
+    // az átvitt évelő január 1-jétől áll a helyén, tehát ez a későbbi
+    const carried = planting(2, {
+      carried_from_id: 99, method: 'palanta', plan_sow_date: null, plan_transplant_date: null,
+      plan_harvest_start: '2027-07-01', plan_end_date: '2027-07-10',
+    });
+    expect(occupancyPeriod(carried)!.start > occupancyPeriod(a)!.start).toBe(true);
+    for (const fixes of [clashFixes(a, carried), clashFixes(carried, a)]) {
+      expect(fixes.map((f) => f.kind)).not.toContain('kesobbi_eltolas');
+    }
+    // ugyanez tervezett kiültetéssel eltolható
+    const planned = { ...carried, carried_from_id: null, plan_sow_date: '2027-03-15', plan_transplant_date: '2027-05-01' };
+    expect(clashFixes(a, planned)).toEqual([{ kind: 'kesobbi_eltolas', plantingId: 2, days: 50, date: '2027-06-20' }]);
   });
 
-  it('évelő vagy ismeretlen végű korábbi ültetés mellé nincs eltolás', () => {
-    const open = planting(1, { plan_end_date: null, plan_harvest_start: null });
+  it('a vég nélküli, de ismert betakarítású korábbi ültetés becsült vége után eltolható', () => {
+    // betakarítás júl. 14., vég nélkül: egy hónappal később, aug. 13-án szabadul fel
+    const a = planting(1, { plan_end_date: null });
     const next = planting(2, { plan_transplant_date: '2027-06-01' });
-    expect(clashFixes(open, next).map((f) => f.kind)).not.toContain('kesobbi_eltolas');
-    const perennial = planting(3, { perennial: true, plan_end_date: null, plan_harvest_start: '2027-05-01' });
-    expect(clashFixes(perennial, next).map((f) => f.kind)).not.toContain('kesobbi_eltolas');
+    const fixes = clashFixes(a, next);
+    expect(fixes).toEqual([{ kind: 'kesobbi_eltolas', plantingId: 2, days: 73, date: '2027-08-13' }]);
+    expect(periodsOverlap(occupancyPeriod(applyClashFix(next, fixes[0]!))!, occupancyPeriod(a)!)).toBe(false);
+  });
+
+  it('évelő vagy betakarítás nélküli korábbi ültetés az év végéig foglal: utána nincs eltolás', () => {
+    // áttelelő utóvetemény: aug. 1-jétől a következő év májusáig
+    const next = planting(2, {
+      method: 'helyrevetes', plan_sow_date: '2027-08-01', plan_transplant_date: null,
+      plan_harvest_start: '2028-04-15', plan_end_date: '2028-05-15',
+    });
+    // ismert betakarítással a becsült vég (aug. 13.) után eltolható
+    expect(clashFixes(planting(1, { plan_end_date: null }), next)).toContainEqual({
+      kind: 'kesobbi_eltolas', plantingId: 2, days: 12, date: '2027-08-13',
+    });
+    // évelőként vagy betakarítás nélkül az év végéig áll: az eltolt kezdet az év utolsó napjára esne
+    for (const a of [planting(1, { plan_end_date: null, perennial: true }), planting(1, { plan_end_date: null, plan_harvest_start: null })]) {
+      expect(occupancyPeriod(a)!.end).toBe('2027-12-31');
+      expect(clashFixes(a, next).map((f) => f.kind)).not.toContain('kesobbi_eltolas');
+    }
+  });
+
+  it('a betakarítás évében végző ültetést nem tolja át a következő évre', () => {
+    // két paradicsom máj. 10.–okt. 12.: az eltolt a következő év márciusáig állna
+    for (const fixes of [clashFixes(planting(5), planting(-1)), clashFixes(planting(-1), planting(5))]) {
+      expect(fixes).toEqual([]);
+    }
+  });
+
+  it('az eltolt vég a záró napig számít: január 1-jei vég még az évben marad', () => {
+    const a = planting(1, { plan_end_date: '2027-08-01' });
+    const next = (end: string) =>
+      planting(2, { plan_sow_date: '2027-04-10', plan_transplant_date: '2027-06-01', plan_harvest_start: '2027-08-20', plan_end_date: end });
+    // 61 nap eltolás: nov. 1. → jan. 1. (az utolsó foglalt nap dec. 31.), nov. 2. → jan. 2.
+    expect(clashFixes(a, next('2027-11-01'))).toEqual([{ kind: 'kesobbi_eltolas', plantingId: 2, days: 61, date: '2027-08-01' }]);
+    expect(clashFixes(a, next('2027-11-02'))).toEqual([]);
+  });
+
+  it('módszer nélkül a valódi időszakkal számol (a kiültetés napjától)', () => {
+    // módszer nélkül az ágyásba kerülés a kiültetés (szept. 1.), nem a vetés (aug. 1.)
+    const next = planting(2, {
+      method: null, plan_sow_date: '2027-08-01', plan_transplant_date: '2027-09-01',
+      plan_harvest_start: '2028-04-15', plan_end_date: '2028-05-15',
+    });
+    expect(clashFixes(planting(1, { plan_end_date: '2027-11-30' }), next)).toContainEqual({
+      kind: 'kesobbi_eltolas', plantingId: 2, days: 90, date: '2027-11-30',
+    });
+    // dec. 31-ig álló előző után a valódi kezdet dec. 31-re esne (a vetés szerint még nov. 30. lenne)
+    expect(clashFixes(planting(1, { plan_end_date: '2027-12-31' }), next).map((f) => f.kind)).not.toContain('kesobbi_eltolas');
   });
 
   it('ismeretlen betakarítású korábbi ültetés végét nem hozza előre', () => {
@@ -455,11 +561,19 @@ describe('ütközésjavítás: ellenőrzött javítások', () => {
     expect(clashFixes(a, b).map((f) => f.kind)).not.toContain('elozo_vege');
   });
 
-  it('azonos kezdőnapon a mentett ültetés a korábbi, az új sáv tolódik', () => {
-    const saved = planting(5);
-    const fresh = planting(-1);
-    for (const fixes of [clashFixes(saved, fresh), clashFixes(fresh, saved)]) {
-      expect(fixes).toEqual([{ kind: 'kesobbi_eltolas', plantingId: -1, days: 155, date: '2027-10-12' }]);
+  it('azonos kezdőnapon: az ágyásban álló, a mentett (kisebb azonosító), majd a korábban felvett új sáv a korábbi', () => {
+    const s = (id: number, o: Partial<PlantingListItem> = {}) => planting(id, { ...saladDates, ...o });
+    const shifted = (x: PlantingListItem, y: PlantingListItem) =>
+      clashFixes(x, y).filter((f) => f.kind === 'kesobbi_eltolas').map((f) => f.plantingId);
+    const cases: [string, PlantingListItem, PlantingListItem][] = [
+      ['két mentett', s(3), s(5)],
+      ['mentett és új', s(5), s(-1)],
+      ['két új: a -1 előbb készült', s(-1), s(-2)],
+      ['az ágyásban álló a kisebb azonosító előtt', s(5, { actual_sow_date: '2027-03-20' }), s(3)],
+    ];
+    for (const [név, first, later] of cases) {
+      expect(shifted(first, later), név).toEqual([later.id]);
+      expect(shifted(later, first), név).toEqual([later.id]);
     }
   });
 });
