@@ -1,9 +1,9 @@
-import { CopyPlus, Info, Minus, Plus, Scissors, Trash2 } from 'lucide-react';
+import { CopyPlus, Info, Minus, Plus, Scissors, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LAYOUT_PHASES, type LayoutPhase } from '@shared/labels.ts';
 import { relationOf } from '@shared/domain/companions.ts';
 import { bedAxes, findClashes, freeAxisRanges, type Placement } from '@shared/domain/geometry.ts';
-import { shortDate } from '@shared/domain/isoDate.ts';
+import { addDaysISO, shortDate } from '@shared/domain/isoDate.ts';
 import {
   boundaries as stripBoundaries,
   clashFixes,
@@ -13,6 +13,7 @@ import {
   LAYOUT_GRID_CM,
   linkedPlantings,
   makeRoom,
+  makeRoomEvenly,
   moveRow,
   moveStrip,
   phaseDays,
@@ -293,19 +294,31 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
     if (period && !(period.start <= day && day < period.end)) setDay(period.start);
   };
 
-  /** Az új (vagy másolt) ültetés elhelyezése: szabad helyre, ennek híján a kijelölt vagy az utolsó sáv mellé. */
-  const insert = (item: PlantingListItem) =>
+  /**
+   * Az új (vagy másolt) ültetés elhelyezése: az egész idejére szabad helyre; ennek híján a választott
+   * napon szabad helyre (elő- és utóveteménynél az ütközést a javítógombok oldják fel); hely híján
+   * minden sor arányosan enged, és az új sor a kijelölt sor után (`atEnd`: a végére) kerül; ha ez
+   * sem megy, a kijelölt vagy az utolsó sáv ad helyet.
+   */
+  const insert = (item: PlantingListItem, atEnd = false) =>
     update((d) => {
       const period = occupancyPeriod(item);
       const span = item.axis_span_cm ?? 30;
-      const free = period ? freeAxisRanges(size.axis, placedInBed(d.items, bed), period, { start: 0, span: size.cross }) : [];
+      const whole = { start: 0, span: size.cross };
+      const placed = placedInBed(d.items, bed);
+      const free = period ? freeAxisRanges(size.axis, placed, period, whole) : [];
+      const freeToday = freeAxisRanges(size.axis, placed, { start: day, end: addDaysISO(day, 1) }, whole);
       let next = d;
-      let placement: Placement | null = placeInFree(free, span, size.cross);
+      let placement: Placement | null = placeInFree(free, span, size.cross) ?? placeInFree(freeToday, span, size.cross);
       if (!placement) {
+        const rows = layoutRows(strips);
+        const selRow = rows.findIndex((r) => selected != null && r.keys.includes(selected));
         const movable = strips.filter((x) => !x.fixed);
         const last = [...movable].sort((a, b) => endOf(a.placement, 'axis') - endOf(b.placement, 'axis')).at(-1);
         const target = movable.find((x) => x.key === selected) ?? last;
-        const room = target ? makeRoom(strips, target.key, span) : null;
+        const room =
+          makeRoomEvenly(strips, size, span, atEnd || selRow < 0 ? rows.length : selRow + 1) ??
+          (target ? makeRoom(strips, target.key, span) : null);
         if (!room) return null;
         next = applyStrips(next, room.strips, bed);
         placement = room.placement;
@@ -332,7 +345,8 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
   const duplicate = (key: number) => {
     const p = byId.get(key);
     if (!p || !draft) return;
-    insert({ ...copyPlanting(p, draft.nextId), axis_span_cm: placementOf(p, bed)?.axis_span_cm ?? p.axis_span_cm });
+    // A másolat hely híján az utolsó sor után kerül: így lesz paradicsom–bazsalikom–paradicsom
+    insert({ ...copyPlanting(p, draft.nextId), axis_span_cm: placementOf(p, bed)?.axis_span_cm ?? p.axis_span_cm }, true);
   };
 
   const split = (key: number) =>
@@ -483,7 +497,6 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
       onClose={close}
       onConfirm={confirmSave}
       busy={save.isPending}
-      error={notice}
       wide
     >
       {!draft ? (
@@ -578,6 +591,15 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
             </div>
           )}
         </>
+      )}
+      {notice && (
+        // A lap alján tapad, így az ágyáskép és a sávlista felől indított műveletnél is látszik
+        <div className={s.notice} role="alert">
+          <span>{notice}</span>
+          <button type="button" aria-label="Üzenet bezárása" onClick={() => setNotice(null)}>
+            <X size={14} />
+          </button>
+        </div>
       )}
       {detailsPlanting && (
         <PlantingEditSheet

@@ -421,6 +421,53 @@ export function makeRoom(
   };
 }
 
+/**
+ * Hely híján egyenletes engedés (mint a méretezésnél): minden sor arányosan keskenyedik a régi
+ * szélességek és a kért szélesség összegéhez mérten, a rácsra kerekítve, de legalább a minimumig;
+ * egyik sem szélesedik (a minimumnál keskenyebb régi sor így változatlan). Az új, teljes hosszú sor
+ * a sorrendben az `at` helyre kerül (0: az első elé, a sorok száma: a végére), és a maradékot
+ * kapja. A sorok 0-tól hézag nélkül követik egymást (a hézagok elfogynak); a sor sávjai a
+ * keresztirányú helyüket megtartják, és együtt mozognak. null: a sorok részben átfednek, van
+ * rögzített sáv, vagy az új sornak a minimumon sem jut hely (a hívó ekkor a `makeRoom`-mal próbálkozhat).
+ */
+export function makeRoomEvenly(
+  strips: LayoutStrip[],
+  size: LayoutSize,
+  span: number,
+  at: number,
+): { strips: LayoutStrip[]; placement: Placement } | null {
+  if (strips.some((s) => s.fixed)) return null;
+  const rows = layoutRows(strips);
+  if (!rowsReorderable(rows)) return null;
+  const total = rows.reduce((sum, r) => sum + r.span, 0) + span;
+  const widths = rows.map((r) => Math.min(r.span, Math.max(LAYOUT_MIN_CM, snapCm((r.span * size.axis) / total))));
+  const rest = size.axis - widths.reduce((sum, w) => sum + w, 0);
+  if (rest < LAYOUT_MIN_CM - EPS) return null;
+  const index = clamp(Math.round(at), 0, rows.length);
+  const moved = new Map<number, number>();
+  let cursor = 0;
+  let start = 0;
+  rows.forEach((r, i) => {
+    if (i === index) {
+      start = cursor;
+      cursor += rest;
+    }
+    for (const key of r.keys) moved.set(key, cursor);
+    cursor += widths[i]!;
+  });
+  if (index === rows.length) start = cursor;
+  const width = new Map(rows.flatMap((r, i) => r.keys.map((k) => [k, widths[i]!] as const)));
+  const out = strips.map((s) => {
+    const from = moved.get(s.key)!;
+    return { ...s, placement: withRange(s.placement, 'axis', from, from + width.get(s.key)!) };
+  });
+  if (!layoutValid(strips, out, size)) return null;
+  return {
+    strips: out,
+    placement: { axis_start_cm: start, axis_span_cm: rest, cross_start_cm: 0, cross_span_cm: size.cross },
+  };
+}
+
 /** Teljes hosszú-e a sáv: a keresztirányban az ágyás egész hosszán fut. */
 export const isFullLength = (pl: Placement, crossLength: number) =>
   Math.abs(pl.cross_start_cm) < EPS && Math.abs(pl.cross_span_cm - crossLength) < EPS;

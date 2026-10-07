@@ -12,6 +12,7 @@ import {
   layoutValid,
   linkedPlantings,
   makeRoom,
+  makeRoomEvenly,
   moveRow,
   moveStrip,
   phaseDays,
@@ -333,6 +334,36 @@ describe('új sáv helye', () => {
     expect(makeRoom([strip(1, 0, 80)], 1, 4)!.placement).toMatchObject({ axis_start_cm: 70, axis_span_cm: 10 });
     // 0–48 cm, 10 cm kérés: a 38-as határ 40-re kerekedne (8 cm), ezért 35
     expect(makeRoom([strip(1, 0, 48)], 1, 10)!.placement).toMatchObject({ axis_start_cm: 35, axis_span_cm: 13 });
+  });
+});
+
+describe('egyenletes engedés új sávnak', () => {
+  it('paradicsom és bazsalikom mellé a másolat a végére: minden sor arányosan enged', () => {
+    const room = makeRoomEvenly([strip(1, 0, 50), strip(2, 50, 30)], size, 50, 2);
+    expect(at(room!.strips, 1)).toMatchObject({ axis_start_cm: 0, axis_span_cm: 30 });
+    expect(at(room!.strips, 2)).toMatchObject({ axis_start_cm: 30, axis_span_cm: 20 });
+    expect(room!.placement).toMatchObject({ axis_start_cm: 50, axis_span_cm: 30, cross_start_cm: 0, cross_span_cm: 200 });
+  });
+
+  it('az új sor a megadott helyre kerül, a hézag elfogy', () => {
+    const room = makeRoomEvenly([strip(1, 0, 40), strip(2, 50, 30)], size, 20, 1);
+    expect(at(room!.strips, 1)).toMatchObject({ axis_start_cm: 0, axis_span_cm: 35 });
+    expect(room!.placement).toMatchObject({ axis_start_cm: 35, axis_span_cm: 20 });
+    expect(at(room!.strips, 2)).toMatchObject({ axis_start_cm: 55, axis_span_cm: 25 });
+  });
+
+  it('a sor hosszában osztott sávjai együtt mozognak', () => {
+    const room = makeRoomEvenly([strip(1, 0, 50, 0, 100), strip(2, 0, 50, 100, 100), strip(3, 50, 30)], size, 50, 0);
+    expect(room!.placement).toMatchObject({ axis_start_cm: 0, axis_span_cm: 30 });
+    expect(at(room!.strips, 1)).toMatchObject({ axis_start_cm: 30, axis_span_cm: 30, cross_start_cm: 0, cross_span_cm: 100 });
+    expect(at(room!.strips, 2)).toMatchObject({ axis_start_cm: 30, axis_span_cm: 30, cross_start_cm: 100, cross_span_cm: 100 });
+    expect(at(room!.strips, 3)).toMatchObject({ axis_start_cm: 60, axis_span_cm: 20 });
+  });
+
+  it('rögzített sáv mellett vagy a minimumon sem férő új sornál nincs egyenletes engedés', () => {
+    expect(makeRoomEvenly([strip(1, 0, 50, 0, 200, true), strip(2, 50, 30)], size, 30, 2)).toBeNull();
+    const full = [10, 20, 30, 40, 50, 60, 70].map((a, i) => strip(i + 1, a, 10)).concat(strip(8, 0, 10));
+    expect(makeRoomEvenly(full, size, 30, 8)).toBeNull();
   });
 });
 

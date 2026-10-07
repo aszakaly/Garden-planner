@@ -1,5 +1,7 @@
 # Ágyás kiosztása – megvalósítási terv
 
+> **Megjegyzés (2026-10-07):** a megvalósítás a kódátnézések és a kézi próba alapján több ponton eltér az itteni kódtól (pl. sorszám-alap a piszkozatban, arányos helycsinálás, a választott napon szabad hely az elővetemény felvételéhez); a mérvadó a kód.
+
 > **Végrehajtóknak:** KÖTELEZŐ al-skill: superpowers:subagent-driven-development (ajánlott) vagy superpowers:executing-plans. A lépések jelölőnégyzetesek (`- [ ]`).
 
 **Cél:** az ágyás sorai vizuálisan, húzással és méretezéssel állíthatók össze (pl. paradicsom–bazsalikom–paradicsom), elő-, fő- és utóvetemény szerint; a követelmények a [design dokumentum](../specs/2026-09-30-kerttervezo-design.md) „Ágyás kiosztása (2026-10-06)” szakaszában vannak.

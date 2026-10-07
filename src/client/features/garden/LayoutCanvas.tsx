@@ -326,10 +326,6 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
           );
         })}
 
-        {boundaries.map((b) => (
-          <line key={`${b.a}-${b.b}-${b.dim}`} className={`${s.boundary} ${b.relation === 1 ? s.good : s.bad}`} {...lineOf(b)} />
-        ))}
-
         {sel && (
           <Handles
             rect={rectOf(sel.placement, across, scale)}
@@ -339,6 +335,11 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
             onStart={(e, edges, cursor) => begin(e, sel.key, edges, cursor)}
           />
         )}
+
+        {/* A határvonal a kijelölés kerete fölött: a zöld vonal a kijelölt sáv mellett is látszik */}
+        {boundaries.map((b) => (
+          <line key={`${b.a}-${b.b}-${b.dim}`} className={`${s.boundary} ${b.relation === 1 ? s.good : s.bad}`} {...lineOf(b)} />
+        ))}
 
         <text className={s.dim} x={w / 2} y={h + 20} textAnchor="middle">
           {nf.format(bed.length_cm / 100)} m
