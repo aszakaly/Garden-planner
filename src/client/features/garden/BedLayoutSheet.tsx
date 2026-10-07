@@ -1,5 +1,5 @@
 import { CopyPlus, Info, Minus, Plus, Scissors, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LAYOUT_PHASES, type LayoutPhase } from '@shared/labels.ts';
 import { relationOf } from '@shared/domain/companions.ts';
 import { bedAxes, findClashes, freeAxisRanges, type Placement } from '@shared/domain/geometry.ts';
@@ -20,6 +20,7 @@ import {
   resizeRow,
   resizeStrip,
   rowsReorderable,
+  samePlacement,
   splitStrip,
   type ClashFix,
   type LayoutStrip,
@@ -59,6 +60,7 @@ import {
 } from './layoutDraft.ts';
 import s from './BedLayout.module.css';
 
+/** A lapot nyitáskor kell csatolni (`{open && <BedLayoutSheet open … />}`): így minden nyitás tisztán indul. */
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -68,22 +70,52 @@ interface Props {
 
 const nf = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 1 });
 const NO_ROOM = 'Nincs hely az új sávnak: keskenyíts egy sávot, vagy válassz másik napot.';
+const PLANTS_LOADING = 'A növények adatai még töltődnek: próbáld újra egy pillanat múlva.';
+
+/** A piszkozat és a kiinduló állapota: a mentendő különbség ehhez képest számít, nem a közben frissült listához. */
+interface Session {
+  from: LayoutDraft;
+  draft: LayoutDraft;
+}
 
 function fixLabel(f: ClashFix, byId: Map<number, PlantingListItem>): string {
   const name = byId.get(f.plantingId)?.plant_name ?? '';
   return f.kind === 'elozo_vege' ? `${name}: a hely ${shortDate(f.date)} szabadul fel` : `${name} később (${shortDate(f.date)} után)`;
 }
 
-function Stepper({ label, value, onStep }: { label: string; value: number; onStep: (delta: number) => void }) {
+/** Léptető; a határon a gomb letiltottnak látszik, de fókuszban marad (mint a sávlistában). */
+function Stepper({
+  label,
+  value,
+  canLess,
+  canMore,
+  onStep,
+}: {
+  label: string;
+  value: number;
+  canLess: boolean;
+  canMore: boolean;
+  onStep: (delta: number) => void;
+}) {
   return (
     <div className={s.detailRow}>
       <span>{label}</span>
       <span className={s.stepper}>
-        <button type="button" aria-label={`${label}: kevesebb`} onClick={() => onStep(-LAYOUT_GRID_CM)}>
+        <button
+          type="button"
+          aria-label={`${label}: kevesebb`}
+          aria-disabled={!canLess || undefined}
+          onClick={() => canLess && onStep(-LAYOUT_GRID_CM)}
+        >
           <Minus size={14} />
         </button>
         <span>{nf.format(value)} cm</span>
-        <button type="button" aria-label={`${label}: több`} onClick={() => onStep(LAYOUT_GRID_CM)}>
+        <button
+          type="button"
+          aria-label={`${label}: több`}
+          aria-disabled={!canMore || undefined}
+          onClick={() => canMore && onStep(LAYOUT_GRID_CM)}
+        >
           <Plus size={14} />
         </button>
       </span>
@@ -97,7 +129,8 @@ function Stepper({ label, value, onStep }: { label: string; value: number; onSte
  */
 export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
   const { data: plantings } = usePlantings(year);
-  const { data: plants = [] } = usePlants();
+  const { data: plantList } = usePlants();
+  const plants = plantList ?? [];
   const { data: groups = [] } = useCropGroups();
   const { data: settings } = useSettings();
   const checksCtx = useChecksContext(year);
@@ -106,34 +139,38 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
   const size = bedAxes(bed);
 
   const [day, setDay] = useState(days.fo);
-  const [draft, setDraft] = useState<LayoutDraft | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   // A piszkozat a mentett állapotból indul: nyitáskor, és a részletes lap mentése után újra
   const [synced, setSynced] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [detailsId, setDetailsId] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const phasesRef = useRef<HTMLDivElement>(null);
 
-  // A kiinduló piszkozat (a sorszám alapjával együtt); a mentendő különbség ehhez képest számít
+  // A mentett állapot piszkozata (a sorszám alapjával együtt)
   const initial = useMemo(() => (plantings ? draftFrom(plantings, bed) : null), [plantings, bed]);
-  const original = initial?.items ?? null;
+  const draft = session?.draft ?? null;
+  const original = session?.from.items ?? null;
 
   useEffect(() => {
-    if (!open) {
-      setDraft(null);
-      setSynced(false);
-      setSelected(null);
-      setAdding(false);
-      setNotice(null);
-      setDay(phaseDays(year, frost).fo);
-      return;
-    }
-    if (initial && !synced) {
-      setDraft(initial);
+    if (!open || !initial) return;
+    // Ha a mentett állapot közben kívülről változott (pl. a részletes lapon), és a piszkozatban
+    // nincs mentetlen módosítás, a friss állapot lesz az új kiindulás; különben a régi marad
+    const stale = !!session && session.from !== initial && !isDirty(session.from.items, session.draft);
+    if (!synced || stale) {
+      setSession({ from: initial, draft: initial });
       setSynced(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial, synced]);
+
+  // A fókusz a betöltés után kerül a lapra (a Sheet a „Betöltés…” alatt még nem talál mezőt): a
+  // választott időszak gombjára, nem a dátummezőre, hogy telefonon ne nyíljon meg a billentyűzet
+  const loaded = draft != null;
+  useEffect(() => {
+    if (loaded) phasesRef.current?.querySelector<HTMLElement>('button[aria-pressed="true"]')?.focus();
+  }, [loaded]);
 
   // A napló is frissül: a törölt ültetés naplókapcsolata megszűnik, az azonosítója újra kiosztható
   const save = useApiMutation(
@@ -218,18 +255,37 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
 
   // --- Műveletek ----------------------------------------------------------------
 
-  /** A piszkozat módosítása; ha a művelet nem lehetséges (null), az üzenet jelenik meg. */
+  /**
+   * A piszkozat módosítása egy művelettel; ha nem lehetséges (null), az üzenet jelenik meg, egyébként
+   * a korábbi üzenet eltűnik. Mentés közben nincs módosítás (a mentés utáni újratöltés felülírná).
+   */
   const update = (fn: (d: LayoutDraft) => LayoutDraft | null, failMessage?: string) => {
-    if (!draft) return;
-    const next = fn(draft);
+    if (!session || save.isPending) return;
+    const next = fn(session.draft);
     if (!next) {
       if (failMessage) setNotice(failMessage);
       return;
     }
     setNotice(null);
-    setDraft(next);
+    setSession({ ...session, draft: next });
   };
   const withStrips = (next: LayoutStrip[] | null) => (d: LayoutDraft) => (next ? applyStrips(d, next, bed) : null);
+
+  /** Húzás az ágyásképen: az üzenet marad (az eltűnése a képet a mutató alatt elmozdítaná). */
+  const drag = (next: LayoutStrip[]) => {
+    if (save.isPending) return;
+    setSession((cur) => cur && { ...cur, draft: applyStrips(cur.draft, next, bed) });
+  };
+
+  /** Változtat-e a sávokon a művelet eredménye (a határon a léptetés változatlan kiosztást ad). */
+  const changes = (next: LayoutStrip[] | null) => {
+    if (!next) return false;
+    const before = new Map(strips.map((x) => [x.key, x.placement]));
+    return next.some((x) => {
+      const p = before.get(x.key);
+      return !p || !samePlacement(p, x.placement);
+    });
+  };
 
   /** Ha az ültetés a választott napon nem áll az ágyásban, a pillanatkép az ágyásba kerülésére ugrik. */
   const showOnDay = (p: PlantingListItem) => {
@@ -266,9 +322,11 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
   };
 
   const add = (plantId: number) => {
+    if (!draft) return;
     setAdding(false);
-    const item = draft ? newFor(plantId, draft.nextId) : null;
+    const item = newFor(plantId, draft.nextId);
     if (item) insert(item);
+    else setNotice(PLANTS_LOADING);
   };
 
   const duplicate = (key: number) => {
@@ -306,16 +364,15 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
       if (!where || !fresh) return null;
       showOnDay(fresh);
       return applyStrips(replaceItem(d, fresh), [{ key, placement: where }], bed);
-    });
+    }, PLANTS_LOADING);
 
-  const stepCross = (key: number, field: 'start' | 'span', delta: number) =>
-    update(
-      withStrips(
-        field === 'start'
-          ? moveStrip(strips, key, { axis: 0, cross: delta }, size)
-          : resizeStrip(strips, key, ['crossEnd'], { axis: 0, cross: delta }, size),
-      ),
-    );
+  /** A sor hossza mentén: a kezdete (mozgatás) vagy a hossza (a vége mozdul). */
+  const crossStep = (key: number, field: 'start' | 'span', delta: number) =>
+    field === 'start'
+      ? moveStrip(strips, key, { axis: 0, cross: delta }, size)
+      : resizeStrip(strips, key, ['crossEnd'], { axis: 0, cross: delta }, size);
+  const stepCross = (key: number, field: 'start' | 'span', delta: number) => update(withStrips(crossStep(key, field, delta)));
+  const canStep = (key: number, field: 'start' | 'span', delta: number) => changes(crossStep(key, field, delta));
 
   const resizeRowAt = (index: number, delta: number) => {
     const row = rows[index];
@@ -329,7 +386,7 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
 
   /** Részletes lap: ha van mentetlen módosítás, előbb ment (az új sáv így kap azonosítót). */
   const openDetails = (key: number) => {
-    if (!draft || !original) return;
+    if (!draft || !original || save.isPending) return;
     if (!dirty) {
       setDetailsId(key);
       return;
@@ -346,6 +403,8 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
   };
 
   const close = () => {
+    // mentés közben nem zárható (a mentés úgyis lefut, a hibája pedig itt jelenik meg)
+    if (save.isPending) return;
     if (dirty && !window.confirm('Elveted a kiosztás módosításait?')) return;
     onClose();
   };
@@ -376,8 +435,20 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
         )}
         {!isFixed(sel, year) && (
           <>
-            <Stepper label="Hossz kezdete" value={selPlacement.cross_start_cm} onStep={(d) => stepCross(sel.id, 'start', d)} />
-            <Stepper label="Hossza" value={selPlacement.cross_span_cm} onStep={(d) => stepCross(sel.id, 'span', d)} />
+            <Stepper
+              label="Hossz kezdete"
+              value={selPlacement.cross_start_cm}
+              canLess={canStep(sel.id, 'start', -LAYOUT_GRID_CM)}
+              canMore={canStep(sel.id, 'start', LAYOUT_GRID_CM)}
+              onStep={(d) => stepCross(sel.id, 'start', d)}
+            />
+            <Stepper
+              label="Hossza"
+              value={selPlacement.cross_span_cm}
+              canLess={canStep(sel.id, 'span', -LAYOUT_GRID_CM)}
+              canMore={canStep(sel.id, 'span', LAYOUT_GRID_CM)}
+              onStep={(d) => stepCross(sel.id, 'span', d)}
+            />
           </>
         )}
         <div className={s.detailActions}>
@@ -391,8 +462,9 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
               <CopyPlus size={15} /> Még egy sáv ebből
             </button>
           )}
-          <button type="button" onClick={() => openDetails(sel.id)}>
-            <Info size={15} /> Részletek
+          {/* mentetlen módosításnál a részletes lap előtt a teljes piszkozat mentődik */}
+          <button type="button" disabled={save.isPending} onClick={() => openDetails(sel.id)}>
+            <Info size={15} /> {dirty ? 'Mentés és részletek' : 'Részletek'}
           </button>
           {!isFixed(sel, year) && (
             <button type="button" className={s.danger} onClick={() => remove(sel.id)}>
@@ -418,17 +490,20 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
         <p className={s.loading}>Betöltés…</p>
       ) : (
         <>
-          <LayoutPhasePicker
-            bed={bed}
-            year={year}
-            days={days}
-            day={day}
-            previews={previews}
-            onChange={(d) => {
-              setDay(d);
-              setSelected(null);
-            }}
-          />
+          <div ref={phasesRef}>
+            <LayoutPhasePicker
+              bed={bed}
+              year={year}
+              days={days}
+              day={day}
+              previews={previews}
+              onChange={(d) => {
+                setDay(d);
+                setSelected(null);
+                setNotice(null);
+              }}
+            />
+          </div>
           <div className={s.canvasWrap}>
             <LayoutCanvas
               bed={bed}
@@ -437,7 +512,7 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
               selected={selected}
               linked={linkedIds}
               onSelect={setSelected}
-              onChange={(next) => update(withStrips(next))}
+              onChange={drag}
             />
             <p className={s.hint}>
               {strips.length
@@ -457,21 +532,27 @@ export function BedLayoutSheet({ open, onClose, bed, year }: Props) {
           />
           <div className={s.addBar}>
             {adding ? (
-              <label className={s.detailRow}>
-                <span>Növény</span>
-                <Select value="" autoFocus onChange={(e) => add(Number(e.target.value))}>
-                  <option value="" disabled>
-                    Válassz…
-                  </option>
-                  {plants.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name_hu}
+              <>
+                <label className={s.detailRow}>
+                  <span>Növény</span>
+                  <Select value="" autoFocus onChange={(e) => add(Number(e.target.value))}>
+                    <option value="" disabled>
+                      Válassz…
                     </option>
-                  ))}
-                </Select>
-              </label>
+                    {plants.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name_hu}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <button type="button" className={s.addButton} onClick={() => setAdding(false)}>
+                  Mégse
+                </button>
+              </>
             ) : (
-              <button type="button" className={s.addButton} onClick={() => setAdding(true)}>
+              // a növények betöltéséig nincs mit választani
+              <button type="button" className={s.addButton} disabled={!plantList} onClick={() => setAdding(true)}>
                 <Plus size={15} /> Sáv hozzáadása
               </button>
             )}

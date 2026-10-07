@@ -332,6 +332,9 @@
 .detailActions .danger {
   color: var(--c-red);
 }
+.detailActions button:disabled {
+  color: var(--label-3);
+}
 
 /* Hozzáadás és ütközések */
 .addBar {
@@ -352,6 +355,9 @@
   color: var(--tint);
   font-size: 15px;
   font-weight: 500;
+}
+.addButton:disabled {
+  color: var(--label-3);
 }
 .free {
   font-size: 12px;

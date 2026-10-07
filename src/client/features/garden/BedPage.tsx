@@ -246,7 +246,8 @@ export function BedPage() {
         bed={bedSheet === 'edit' ? bed : undefined}
         template={bedSheet === 'copy' ? bed : undefined}
       />
-      <BedLayoutSheet open={layoutOpen} onClose={() => setLayoutOpen(false)} bed={bed} year={year} />
+      {/* csak nyitva csatolt: minden nyitás tisztán indul, és a függő mentés visszahívása bezárás után nem fut le */}
+      {layoutOpen && <BedLayoutSheet open onClose={() => setLayoutOpen(false)} bed={bed} year={year} />}
       <HistorySheet open={historyYear !== null} onClose={() => setHistoryYear(null)} bed={bed} year={historyYear ?? year - 1} />
       <SuggestionSheet
         open={suggesting}
