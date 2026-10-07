@@ -70,7 +70,7 @@ import {
 import { BedDiagram, type Strip } from '../garden/BedDiagram.tsx';
 import { companionChecks, companionIssue, rotationChecks, rotationHistory } from '@shared/domain/plantingChecks.ts';
 import { linkedPlantings } from '@shared/domain/layout.ts';
-import { axisLabel, blankPlanting, placedInBed, plantingInputOf, plantingTitle } from './plantingView.ts';
+import { axisLabel, blankPlanting, linkedUpdate, placedInBed, plantingTitle } from './plantingView.ts';
 import { useChecksContext } from './useChecks.ts';
 import { actualFromPlanting, actualPayload, PlantingActualPanel, type ActualForm } from './PlantingActualPanel.tsx';
 import { PlantingJournalPanel } from './PlantingJournalPanel.tsx';
@@ -257,10 +257,14 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
   );
   const others = useMemo(() => (plantings ?? []).filter((p) => p.id !== planting?.id), [plantings, planting?.id]);
   // A módosítás előtti állapot alapján: a mentett ültetés párjai. Másik növényre váltva az ültetés kiválik
-  // közülük (a fajta és az időszak a párok növényéhez nem illene); másik évre váltva a lista már az új évé, így üres.
+  // közülük (a fajta és az időszak a párok növényéhez nem illene), másik ágyásba téve szintén (a párok az
+  // eredeti ágyásban maradnak, onnan már nem kapcsolt sávok); másik évre váltva a lista már az új évé, így üres.
   const linked = useMemo(
-    () => (planting && form.plant_id === planting.plant_id ? linkedPlantings(planting, plantings ?? []) : []),
-    [planting, plantings, form.plant_id],
+    () =>
+      planting && form.plant_id === planting.plant_id && form.bed_id === planting.bed_id
+        ? linkedPlantings(planting, plantings ?? [])
+        : [],
+    [planting, plantings, form.plant_id, form.bed_id],
   );
   const othersIn = (id: number | null) => {
     const bed = beds.find((b) => b.id === id);
@@ -550,27 +554,16 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     };
     if (planting) {
       const { series: _series, ...update } = body;
-      if (linkOn && linked.length) {
-        // A párok helye, sorai, tőszáma és megjegyzése marad; a fajta, a vetőmag, a módszer és a dátumok követik
-        await api.post('/plantings/batch', {
-          update: [
-            { id: planting.id, data: update },
-            ...linked.map((x) => ({
-              id: x.id,
-              data: {
-                ...plantingInputOf(x),
-                variety_id: update.variety_id,
-                seed_stock_id: update.seed_stock_id,
-                window_id: update.window_id,
-                method: update.method,
-                plan_sow_date: update.plan_sow_date,
-                plan_transplant_date: update.plan_transplant_date,
-                plan_harvest_start: update.plan_harvest_start,
-                plan_end_date: update.plan_end_date,
-              },
-            })),
-          ],
-        });
+      // A párokra csak a fajta, a vetőmag, az időszak, a módszer és a dátumok változása kerül át;
+      // a helyük, soraik, tőszámuk és megjegyzésük marad. Ha ezekből semmi nem változott, csak ez az egy mentődik.
+      const followers = linkOn
+        ? linked.flatMap((x) => {
+            const data = linkedUpdate(x, update, planting);
+            return data ? [{ id: x.id, data }] : [];
+          })
+        : [];
+      if (followers.length) {
+        await api.post('/plantings/batch', { update: [{ id: planting.id, data: update }, ...followers] });
       } else {
         await api.put(`/plantings/${planting.id}`, update);
       }
@@ -715,7 +708,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
           {planting && linked.length > 0 && (
             <FormGroup footer="Ugyanebben az ágyásban, ugyanilyen dátumokkal álló sávok. A fajta, a vetőmag, a módszer és a dátumok változása rájuk is átkerül; a helyük nem változik.">
               <FormRow label={`Kapcsolt sávokon is (${linked.length})`}>
-                <Toggle checked={linkOn} onChange={setLinkOn} label="Kapcsolt sávokon is" />
+                <Toggle checked={linkOn} onChange={setLinkOn} label={`Kapcsolt sávokon is (${linked.length})`} />
               </FormRow>
             </FormGroup>
           )}

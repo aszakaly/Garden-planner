@@ -36,6 +36,38 @@ export function plantingInputOf(p: PlantingListItem): PlantingInput {
   };
 }
 
+/** A kapcsolt sávokra átvihető tervmezők; a hely, a sorok, a tőszám és a megjegyzés mindig a sáv saját értéke. */
+const LINKED_FIELDS = [
+  'variety_id',
+  'seed_stock_id',
+  'window_id',
+  'method',
+  'plan_sow_date',
+  'plan_transplant_date',
+  'plan_harvest_start',
+  'plan_end_date',
+] as const;
+type LinkedField = (typeof LINKED_FIELDS)[number];
+
+/**
+ * Egy kapcsolt sáv új terve a szerkesztett ültetés mentésekor: csak az kerül át rá, ami a
+ * szerkesztett ültetés mentés előtti állapotához (`before`) képest megváltozott; a többi mező a
+ * sáv saját értéke marad. A vetőmagtétel a fajtához tartozik, és csak vetésnél van, ezért fajta-
+ * vagy módszerváltáskor az is követi (különben a párnál a régi fajta tétele maradna az új fajtán).
+ * Ha az átvihető mezők közül semmi nem változott, null.
+ */
+export function linkedUpdate(x: PlantingListItem, update: PlantingInput, before: PlantingListItem): PlantingInput | null {
+  const changed = new Set<LinkedField>(LINKED_FIELDS.filter((k) => (update[k] ?? null) !== (before[k] ?? null)));
+  if (!changed.size) return null;
+  if (changed.has('variety_id') || changed.has('method')) changed.add('seed_stock_id');
+  const data = plantingInputOf(x);
+  const take = <K extends LinkedField>(k: K) => {
+    data[k] = update[k];
+  };
+  changed.forEach((k) => take(k));
+  return data;
+}
+
 /** Az ágyásba kerülés napja (rendezéshez), ugyanaz, amitől a foglaltság számít; dátum nélkül null. */
 export function startOf(p: PlantingListItem): string | null {
   const d = effectiveDates(p);
