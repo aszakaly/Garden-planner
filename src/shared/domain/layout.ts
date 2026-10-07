@@ -569,8 +569,8 @@ export function applyClashFix(p: PlantingListItem, fix: ClashFix): PlantingListI
 /**
  * Javítások két, ugyanott és egyszerre álló ültetésre (egymást nem fedő időszakokra nincs).
  * Csak olyat kínál, amelynek alkalmazása után az időszakok tényleg nem fedik egymást. Az előző
- * vége csak akkor hozható előre, ha még nincs tényleges vége, a betakarítás kezdete ismert, és
- * a vég nem kerül elé. A későbbi az előző (becsült) vége utánra tolható, ha még nem került az
+ * vége csak akkor hozható előre, ha nem évelő, még nincs tényleges vége, a betakarítás kezdete
+ * ismert, és a vég nem kerül elé. A későbbi az előző (becsült) vége utánra tolható, ha még nem került az
  * ágyásba és a kezdete a tervezett dátumból jön; az eltolt időszak még az évben kezdődik, és a
  * vége nem csúszik át a következő évre (az áttelelő az marad, az idei termés nem lesz jövő évi).
  * Azonos kezdőnapon a korábbi az, amelyik már az ágyásban áll, majd a mentett ültetés
@@ -596,7 +596,8 @@ export function clashFixes(x: PlantingListItem, y: PlantingListItem): ClashFix[]
   const [a, pa, b, pb] = earlier() ? [x, px, y, py] : [y, py, x, px];
   const out: ClashFix[] = [];
   const harvestA = effectiveDates(a).harvestStart;
-  if (!a.actual_end_date && harvestA && pb.start > pa.start && pb.start >= harvestA) {
+  // évelőnél a vég előrehozása a felszámolása volna (nem kerülne át a következő évre)
+  if (!a.actual_end_date && !a.perennial && harvestA && pb.start > pa.start && pb.start >= harvestA) {
     const fix: ClashFix = { kind: 'elozo_vege', plantingId: a.id, date: pb.start };
     if (removesClash(a, fix, pb)) out.push(fix);
   }

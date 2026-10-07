@@ -478,6 +478,10 @@ describe('ütközésjavítás', () => {
     expect(clashFixes(planting(1, { actual_transplant_date: '2027-05-10' }), salad()).map((f) => f.kind)).toEqual(['elozo_vege']);
   });
 
+  it('évelőnél nem hozza előre a véget: az a felszámolását jelentené (nem kerülne át a következő évre)', () => {
+    expect(clashFixes(planting(1), salad({ perennial: true })).map((f) => f.kind)).toEqual(['kesobbi_eltolas']);
+  });
+
   it('egymást nem fedő ültetésekre nincs javítás', () => {
     // a saláta jún. 5-én kikerül, a paradicsom csak jún. 10-én jön: a saláta vége nem tolódhat később
     const tomato = planting(1, { plan_transplant_date: '2027-06-10' });
