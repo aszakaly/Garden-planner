@@ -1,4 +1,4 @@
-import { Copy, Lightbulb, Pencil } from 'lucide-react';
+import { Copy, Lightbulb, Pencil, Rows3 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { BED_TYPE_LABEL, ROW_DIRECTION_LABEL, SUN_LABEL } from '@shared/labels.ts';
@@ -30,6 +30,7 @@ import { useJournalSheet } from '../journal/useJournalSheet.tsx';
 import { BedDiagram, type Strip } from './BedDiagram.tsx';
 import { BedEditSheet } from './BedEditSheet.tsx';
 import { BedHistory } from './BedHistory.tsx';
+import { BedLayoutSheet } from './BedLayoutSheet.tsx';
 import { HistorySheet } from './HistorySheet.tsx';
 import s from './BedPage.module.css';
 
@@ -46,6 +47,7 @@ export function BedPage() {
   const checks = useYearChecks(year);
   const [historyYear, setHistoryYear] = useState<number | null>(null);
   const [suggesting, setSuggesting] = useState(false);
+  const [layoutOpen, setLayoutOpen] = useState(false);
   const [picked, setPicked] = useState<{ suggestion: Suggestion; bedId: number } | null>(null);
   const { data: entries = [] } = useJournal({ bed_id: id, year }, id > 0);
   const journal = useJournalSheet();
@@ -158,7 +160,14 @@ export function BedPage() {
         )}
       </Block>
 
-      <Block title={`Felülnézet · ${formatDay(day)}`}>
+      <Block
+        title={`Felülnézet · ${formatDay(day)}`}
+        action={
+          <AddButton icon={<Rows3 size={15} strokeWidth={2.4} />} onClick={() => setLayoutOpen(true)}>
+            Kiosztás
+          </AddButton>
+        }
+      >
         <BedDiagram
           lengthCm={bed.length_cm}
           widthCm={bed.width_cm}
@@ -237,6 +246,7 @@ export function BedPage() {
         bed={bedSheet === 'edit' ? bed : undefined}
         template={bedSheet === 'copy' ? bed : undefined}
       />
+      <BedLayoutSheet open={layoutOpen} onClose={() => setLayoutOpen(false)} bed={bed} year={year} />
       <HistorySheet open={historyYear !== null} onClose={() => setHistoryYear(null)} bed={bed} year={historyYear ?? year - 1} />
       <SuggestionSheet
         open={suggesting}
