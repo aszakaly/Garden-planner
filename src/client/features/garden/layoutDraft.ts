@@ -1,6 +1,13 @@
 import { completeDates, EMPTY_DATES, usesSow, usesTransplant, type FrostDates } from '@shared/domain/dates.ts';
 import { bedAxes, rowsForSpan, spanForRows, type Placement } from '@shared/domain/geometry.ts';
-import { applyClashFix, pickWindowForDay, samePlacement, type ClashFix, type LayoutStrip } from '@shared/domain/layout.ts';
+import {
+  applyClashFix,
+  isFullLength,
+  pickWindowForDay,
+  samePlacement,
+  type ClashFix,
+  type LayoutStrip,
+} from '@shared/domain/layout.ts';
 import { isConfirmed } from '@shared/domain/plantingChecks.ts';
 import { blankPlanting, effectiveBedId, occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
 import type { PlantingBatchInput } from '@shared/schemas.ts';
@@ -18,6 +25,7 @@ export interface LayoutDraft {
   nextId: number;
 }
 
+/** Az ágyás piszkozata; az első új ültetés azonosítója -1. */
 export const draftFrom = (plantings: PlantingListItem[], bed: Pick<Bed, 'id'>): LayoutDraft => ({
   items: plantings.filter((p) => effectiveBedId(p) === bed.id),
   deleted: [],
@@ -25,11 +33,13 @@ export const draftFrom = (plantings: PlantingListItem[], bed: Pick<Bed, 'id'>): 
 });
 
 /**
- * Rögzített: más évhez tartozik (pl. ősszel ültetett fokhagyma), vagy már megtörtént (tény adat,
- * tényleges hely). A szerkesztő nem mozdítja és nem törli; ez csak a részletes lapon lehet.
+ * Rögzített: más évhez tartozik (pl. ősszel ültetett fokhagyma), máshol valósult meg (tényleges
+ * ágyás, akár hely nélkül: ekkor a terv szerinti, másik ágyásbeli koordinátáival látszik), tényleges
+ * helye van, vagy már megtörtént (tény adat, előzmény). A szerkesztő nem mozdítja és nem törli;
+ * ez csak a részletes lapon lehet.
  */
 export const isFixed = (p: PlantingListItem, year: number) =>
-  p.year !== year || p.actual_axis_start_cm != null || isConfirmed(p);
+  p.year !== year || p.actual_bed_id != null || p.actual_axis_start_cm != null || isConfirmed(p);
 
 /** A napon az ágyásban álló, elhelyezett ültetések sávjai. */
 export function stripsAt(draft: LayoutDraft, bed: Bed, year: number, day: string): LayoutStrip[] {
@@ -41,19 +51,24 @@ export function stripsAt(draft: LayoutDraft, bed: Bed, year: number, day: string
   });
 }
 
-/** Az ültetés terv szerinti helye; teljes hosszú sávnál a keresztirányú mezők üresek, mint az ültetési lapon. */
+/**
+ * Az ültetés terv szerinti helye; teljes hosszú sávnál a keresztirányú mezők üresek, mint az
+ * ültetési lapon. A megadott sorszám a szélességgel arányosan változik (a sűrűbb sorok sűrűk
+ * maradnak); sorszám vagy korábbi szélesség nélkül a sortávból számol.
+ */
 export function placeItem(p: PlantingListItem, pl: Placement, bed: Bed): PlantingListItem {
-  const { cross } = bedAxes(bed);
-  const before = placementOf(p, bed);
-  const full = Math.abs(pl.cross_start_cm) < 0.5 && Math.abs(pl.cross_span_cm - cross) < 0.5;
-  const sameWidth = before != null && Math.abs(before.axis_span_cm - pl.axis_span_cm) < 0.5;
+  const full = isFullLength(pl, bedAxes(bed).cross);
+  const oldSpan = p.axis_span_cm;
   return {
     ...p,
     axis_start_cm: pl.axis_start_cm,
     axis_span_cm: pl.axis_span_cm,
     cross_start_cm: full ? null : pl.cross_start_cm,
     cross_span_cm: full ? null : pl.cross_span_cm,
-    rows: sameWidth && p.rows ? p.rows : rowsForSpan(pl.axis_span_cm, p.row_spacing_cm),
+    rows:
+      p.rows && oldSpan && oldSpan > 0
+        ? Math.max(1, Math.round((p.rows * pl.axis_span_cm) / oldSpan))
+        : rowsForSpan(pl.axis_span_cm, p.row_spacing_cm),
   };
 }
 
@@ -131,6 +146,7 @@ export function copyPlanting(p: PlantingListItem, id: number): PlantingListItem 
     id,
     bed_id: effectiveBedId(p),
     status: 'terv',
+    is_history: false,
     series_id: null,
     series_index: null,
     series_size: null,
@@ -153,13 +169,22 @@ export function copyPlanting(p: PlantingListItem, id: number): PlantingListItem 
   };
 }
 
-export const addItem = (draft: LayoutDraft, p: PlantingListItem): LayoutDraft => ({ ...draft, items: [...draft.items, p] });
-
-export const removeItem = (draft: LayoutDraft, id: number): LayoutDraft => ({
+/** Felvétel a piszkozatba; új (negatív azonosítójú) ültetésnél a következő azonosító is lép. */
+export const addItem = (draft: LayoutDraft, p: PlantingListItem): LayoutDraft => ({
   ...draft,
-  items: draft.items.filter((p) => p.id !== id),
-  deleted: id > 0 ? [...draft.deleted, id] : draft.deleted,
+  items: [...draft.items, p],
+  nextId: p.id < 0 ? Math.min(draft.nextId, p.id - 1) : draft.nextId,
 });
+
+/** Eltávolítás; csak a piszkozatban lévő mentett ültetés kerül (egyszer) a törlendők közé. */
+export function removeItem(draft: LayoutDraft, id: number): LayoutDraft {
+  const present = draft.items.some((p) => p.id === id);
+  return {
+    ...draft,
+    items: draft.items.filter((p) => p.id !== id),
+    deleted: id > 0 && present && !draft.deleted.includes(id) ? [...draft.deleted, id] : draft.deleted,
+  };
+}
 
 /** Ütközésjavítás alkalmazása a tervezett dátumokra. */
 export function applyFix(draft: LayoutDraft, fix: ClashFix): LayoutDraft {

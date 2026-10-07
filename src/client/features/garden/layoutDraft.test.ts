@@ -1,8 +1,23 @@
 import { describe, expect, it } from 'vitest';
+import type { Placement } from '@shared/domain/geometry.ts';
 import { linkedPlantings } from '@shared/domain/layout.ts';
 import { blankPlanting } from '@shared/domain/plantings.ts';
 import type { Bed, GrowingWindow, PlantListItem, PlantingListItem } from '@shared/types.ts';
-import { applyFix, applyStrips, copyPlanting, isDirty, plantingFor, stripsAt, toBatch, type LayoutDraft } from './layoutDraft.ts';
+import {
+  addItem,
+  applyFix,
+  applyStrips,
+  copyPlanting,
+  draftFrom,
+  isDirty,
+  isFixed,
+  placeItem,
+  plantingFor,
+  removeItem,
+  stripsAt,
+  toBatch,
+  type LayoutDraft,
+} from './layoutDraft.ts';
 
 const bed: Bed = {
   id: 1, garden_id: 1, name: 'Emelt 1', color: 'green', length_cm: 200, width_cm: 80, row_direction: 'hosszaban',
@@ -23,6 +38,9 @@ const garlic = item(3, {
   plan_sow_date: '2026-10-10', plan_harvest_start: '2027-06-01', plan_end_date: '2027-06-20',
 });
 const draft = (items: PlantingListItem[], o: Partial<LayoutDraft> = {}): LayoutDraft => ({ items, deleted: [], nextId: -1, ...o });
+const pl = (axis_start_cm: number, axis_span_cm: number, cross_start_cm = 0, cross_span_cm = 200): Placement => ({
+  axis_start_cm, axis_span_cm, cross_start_cm, cross_span_cm,
+});
 
 describe('pillanatkép', () => {
   it('a napon álló, elhelyezett ültetések; a más évhez tartozó rögzített', () => {
@@ -30,17 +48,92 @@ describe('pillanatkép', () => {
     expect(stripsAt(d, bed, 2027, '2027-04-12').map((s) => [s.key, s.fixed])).toEqual([[2, false], [3, true]]);
     expect(stripsAt(d, bed, 2027, '2027-07-01').map((s) => s.key)).toEqual([1]);
   });
+
+  it('az elmaradt, a hely nélküli és a záró napján már szabad ültetés nem látszik', () => {
+    const skipped = { ...salad, id: 4, status: 'elmaradt' as const };
+    const unplaced = { ...salad, id: 5, axis_start_cm: null };
+    const d = draft([salad, skipped, unplaced]);
+    expect(stripsAt(d, bed, 2027, '2027-04-12').map((s) => s.key)).toEqual([2]);
+    // a saláta helye jún. 5-én szabadul fel
+    expect(stripsAt(d, bed, 2027, '2027-06-04').map((s) => s.key)).toEqual([2]);
+    expect(stripsAt(d, bed, 2027, '2027-06-05')).toEqual([]);
+  });
+});
+
+describe('rögzített sávok', () => {
+  it('a tervezési év saját, meg nem kezdett ültetése szerkeszthető', () => {
+    expect(isFixed(salad, 2027)).toBe(false);
+  });
+
+  const cases: [string, Partial<PlantingListItem>][] = [
+    ['más évhez tartozik', { year: 2026 }],
+    ['máshol valósult meg (tényleges ágyás, hely nélkül)', { actual_bed_id: 2 }],
+    ['tényleges helye van', { actual_axis_start_cm: 0, actual_axis_span_cm: 40 }],
+    ['folyamatban van', { status: 'folyamatban' }],
+    ['tényleges dátuma van', { actual_sow_date: '2027-03-22' }],
+    ['gyors előzmény', { is_history: true }],
+  ];
+  for (const [név, o] of cases) {
+    it(`rögzített, ha ${név}`, () => {
+      expect(isFixed({ ...salad, ...o }, 2027)).toBe(true);
+    });
+  }
+
+  it('a máshová áthelyezett ültetés a másik ágyás piszkozatában rögzített (a terv szerinti helyén látszik)', () => {
+    const other: Bed = { ...bed, id: 2, name: 'Emelt 2' };
+    const moved = { ...salad, actual_bed_id: 2 };
+    expect(stripsAt(draftFrom([moved], other), other, 2027, '2027-04-12')).toEqual([{ key: 2, fixed: true, placement: pl(0, 40) }]);
+  });
 });
 
 describe('visszaírás', () => {
-  it('a szélességből újraszámolja a sorokat, a teljes hosszú sávnál üres a keresztirány', () => {
-    const out = applyStrips(draft([salad]), [{ key: 2, placement: { axis_start_cm: 0, axis_span_cm: 60, cross_start_cm: 0, cross_span_cm: 200 } }], bed);
-    expect(out.items[0]).toMatchObject({ axis_span_cm: 60, rows: 3, cross_start_cm: null, cross_span_cm: null });
+  // sűrű sorok: 3 sor 40 cm-en, bár a 20 cm-es sortávhoz csak 2 járna
+  const dense = { ...salad, rows: 3 };
+  const put = (p: PlantingListItem, placement: Placement) => applyStrips(draft([p]), [{ key: p.id, placement }], bed).items[0]!;
+
+  it('a teljes hosszú sávnál üres a keresztirány', () => {
+    expect(put(salad, pl(0, 60))).toMatchObject({ axis_span_cm: 60, cross_start_cm: null, cross_span_cm: null });
   });
 
-  it('a részleges hosszt eltárolja, a változatlan szélességnél a sorok maradnak', () => {
-    const out = applyStrips(draft([salad]), [{ key: 2, placement: { axis_start_cm: 0, axis_span_cm: 40, cross_start_cm: 0, cross_span_cm: 100 } }], bed);
-    expect(out.items[0]).toMatchObject({ rows: 2, cross_start_cm: 0, cross_span_cm: 100 });
+  it('változatlan szélességnél a saját sorszám marad (tengely menti mozgatás, részleges hossz)', () => {
+    expect(put(dense, pl(20, 40))).toMatchObject({ axis_start_cm: 20, axis_span_cm: 40, rows: 3 });
+    expect(put(dense, pl(0, 40, 0, 100))).toMatchObject({ rows: 3, cross_start_cm: 0, cross_span_cm: 100 });
+  });
+
+  it('a szélességgel arányosan változik a sorok száma, legalább egy sor marad', () => {
+    expect(put(dense, pl(0, 80)).rows).toBe(6);
+    expect(put(dense, pl(0, 20)).rows).toBe(2);
+    expect(put(dense, pl(0, 10)).rows).toBe(1);
+  });
+
+  it('sorszám nélkül a sortávból számol', () => {
+    expect(put({ ...salad, rows: null }, pl(0, 60)).rows).toBe(3);
+  });
+
+  it('a rögzített és a változatlan sávot érintetlenül hagyja', () => {
+    const out = applyStrips(draft([tomato, garlic]), [{ key: 1, placement: pl(0, 30) }, { key: 3, fixed: true, placement: pl(0, 40) }], bed);
+    expect(out.items[0]).toBe(tomato);
+    expect(out.items[1]).toBe(garlic);
+  });
+});
+
+describe('keresztben futó sorok', () => {
+  // 200 × 80 cm, keresztben: a tengely az ágyás hossza, egy sor az ágyás szélessége (80 cm)
+  const across: Bed = { ...bed, row_direction: 'keresztben' };
+  const radish = item(4, {
+    method: 'helyrevetes', row_spacing_cm: 15, rows: 2, axis_start_cm: 100, axis_span_cm: 30,
+    plan_sow_date: '2027-04-01', plan_harvest_start: '2027-05-01', plan_end_date: '2027-05-20',
+  });
+
+  it('a keresztirány nélküli sáv az ágyás teljes szélességében áll', () => {
+    expect(stripsAt(draft([radish]), across, 2027, '2027-04-12')).toEqual([{ key: 4, fixed: false, placement: pl(100, 30, 0, 80) }]);
+  });
+
+  it('a 80 cm-es sor teljes hosszú, a rövidebb részleges', () => {
+    expect(placeItem(radish, pl(100, 30, 0, 80), across)).toMatchObject({ cross_start_cm: null, cross_span_cm: null });
+    expect(placeItem(radish, pl(100, 30, 0, 40), across)).toMatchObject({ cross_start_cm: 0, cross_span_cm: 40 });
+    // hosszában futó soroknál ugyanez a 80 cm részleges
+    expect(placeItem(radish, pl(0, 30, 0, 80), bed)).toMatchObject({ cross_start_cm: 0, cross_span_cm: 80 });
   });
 });
 
@@ -74,8 +167,46 @@ describe('új sáv', () => {
   it('a másolat kapcsolt pár, tény adatok nélkül', () => {
     const started = { ...tomato, status: 'folyamatban' as const, actual_transplant_date: '2027-05-12', notes: 'jól eredt' };
     const copy = copyPlanting(started, -5);
-    expect(copy).toMatchObject({ id: -5, status: 'terv', actual_transplant_date: null, notes: null, plan_transplant_date: '2027-05-10' });
+    expect(copy).toMatchObject({
+      id: -5, status: 'terv', is_history: false, actual_transplant_date: null, notes: null, plan_transplant_date: '2027-05-10',
+    });
     expect(linkedPlantings(copy, [started, copy]).map((p) => p.id)).toEqual([1]);
+    // a gyors előzmény másolata sem előzmény (a szerver lezártként mentené)
+    expect(copyPlanting({ ...tomato, is_history: true }, -6).is_history).toBe(false);
+  });
+});
+
+describe('felvétel és törlés', () => {
+  it('a piszkozat kiosztja az új azonosítókat: egymás után felvéve különbözők', () => {
+    let d = draftFrom([tomato, salad, item(9, { bed_id: 2 })], bed);
+    expect(d).toEqual({ items: [tomato, salad], deleted: [], nextId: -1 });
+    d = addItem(d, copyPlanting(salad, d.nextId));
+    d = addItem(d, copyPlanting(tomato, d.nextId));
+    expect(d.items.map((p) => p.id)).toEqual([1, 2, -1, -2]);
+    expect(d.nextId).toBe(-3);
+    expect(toBatch([tomato, salad], d).create).toHaveLength(2);
+  });
+
+  it('mentett ültetés felvétele nem változtat a következő azonosítón', () => {
+    expect(addItem(draft([]), tomato).nextId).toBe(-1);
+  });
+
+  it('az ismételt törlés egyszer szerepel', () => {
+    const d = removeItem(removeItem(draft([tomato, salad]), 1), 1);
+    expect(d.deleted).toEqual([1]);
+    expect(toBatch([tomato, salad], d).delete).toEqual([1]);
+  });
+
+  it('a piszkozatban nem szereplő ültetés törlése nem kerül a törlendők közé', () => {
+    expect(removeItem(draft([tomato]), 99).deleted).toEqual([]);
+  });
+
+  it('a mentés előtt törölt új sáv sem létrehozásként, sem törlésként nem szerepel', () => {
+    const d = removeItem(addItem(draft([tomato]), copyPlanting(tomato, -1)), -1);
+    const b = toBatch([tomato], d);
+    expect(b.create).toEqual([]);
+    expect(b.delete).toEqual([]);
+    expect(isDirty([tomato], d)).toBe(false);
   });
 });
 

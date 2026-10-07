@@ -303,8 +303,9 @@ export function deletePlanting(db: DB, id: number, wholeSeries = false): number 
  * Tömeges mentés a kiosztás-szerkesztőből: törlés, módosítás, majd létrehozás egyetlen
  * tranzakcióban – egy hibás elemnél semmi sem változik. A létrehozottak azonosítói a kérés sorrendjében.
  * A közben máshol már törölt ültetések törlését kihagyja; megkezdett vagy rögzített ültetés nem törölhető.
- * Egy létrehozott azonosító egyezhet ugyanebben a kérésben törölttel (a `planting.id` nem AUTOINCREMENT);
- * ez biztonságos, mert a törölt azonosítóra mutató minden hivatkozás (feladatállapot, kapcsolt sorok) előbb törlődik.
+ * Egy létrehozott azonosító egyezhet ugyanebben a kérésben törölttel (a `planting.id` nem AUTOINCREMENT).
+ * Ez biztonságos: a törölt ültetés feladatállapota és saját feladatai törlődnek, a naplóbejegyzések
+ * kapcsolata megszűnik; az átvitt évelő forrása mindig kisebb azonosítójú, ezért nem érintett.
  */
 export function savePlantingBatch(db: DB, input: PlantingBatchInput): { created: number[] } {
   return transaction(db, () => {

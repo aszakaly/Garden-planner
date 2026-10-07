@@ -173,12 +173,13 @@ describe('tömeges mentés', () => {
   it('az újra kiosztott azonosítóhoz nem marad feladatállapot', async () => {
     const [p]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
     const maxId = (db.prepare('SELECT MAX(id) AS m FROM planting').get() as { m: number }).m;
+    // előfeltétel: a törlendő a legnagyobb azonosítójú, így az új ültetés ezt kapja meg újra
+    expect(p!.id).toBe(maxId);
     db.prepare('INSERT INTO task_state (task_key, note) VALUES (?, ?)').run(`kiultetes:${maxId}`, 'régi jegyzet');
     const res = await batch({ delete: [maxId], create: [basil({ axis_start_cm: 0 })] });
     expect(res.statusCode).toBe(200);
     expect((res.json() as { created: number[] }).created).toEqual([maxId]);
     expect(db.prepare('SELECT 1 FROM task_state WHERE task_key LIKE ?').get(`%:${maxId}`)).toBeUndefined();
-    expect(p).toBeDefined();
   });
 
   it('ismétlődő azonosítót elutasít', async () => {
@@ -202,15 +203,30 @@ describe('tömeges mentés', () => {
     expect((await listed()).find((x) => x.id === p!.id)?.axis_start_cm).toBe(20);
   });
 
-  it('megkezdett ültetés nem törölhető, semmi sem változik', async () => {
-    const [keep]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
-    const [done]: PlantingListItem[] = (await post(basil({ axis_start_cm: 30 }))).json();
-    const patch = await app.inject({ method: 'PATCH', url: `/api/plantings/${done!.id}/actual`, payload: { actual_transplant_date: '2029-05-16' } });
-    expect(patch.statusCode).toBe(200);
-    const before = await listed();
-    const res = await batch({ delete: [keep!.id, done!.id] });
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error).toBe('Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.');
-    expect(await listed()).toEqual(before);
+  it('megkezdett vagy rögzített ültetés nem törölhető, semmi sem változik', async () => {
+    const msg = 'Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.';
+    // tényleges dátum a tényadat-lapon keresztül (a státusz is folyamatban lesz)
+    const patchActual = async (id: number) => {
+      const patch = await app.inject({ method: 'PATCH', url: `/api/plantings/${id}/actual`, payload: { actual_transplant_date: '2029-05-16' } });
+      expect(patch.statusCode).toBe(200);
+    };
+    // a többi közvetlenül az adatbázisban: előzmény, csak státusz, tényleges hely dátum nélkül
+    const setColumn = (set: string) => (id: number) => void db.prepare(`UPDATE planting SET ${set} WHERE id = ?`).run(id);
+    for (const [név, mark] of [
+      ['tényleges dátum', patchActual],
+      ['gyors előzmény', setColumn('is_history = 1')],
+      ['sikertelen', setColumn("status = 'sikertelen'")],
+      ['elmaradt', setColumn("status = 'elmaradt'")],
+      ['tényleges hely', setColumn('actual_axis_start_cm = 10')],
+    ] as const) {
+      const [keep]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
+      const [fixed]: PlantingListItem[] = (await post(basil({ axis_start_cm: 30 }))).json();
+      await mark(fixed!.id);
+      const before = await listed();
+      const res = await batch({ delete: [keep!.id, fixed!.id] });
+      expect(res.statusCode, név).toBe(400);
+      expect(res.json().error, név).toBe(msg);
+      expect(await listed(), név).toEqual(before);
+    }
   });
 });
