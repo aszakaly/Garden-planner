@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rowsForSpan, type Placement } from '@shared/domain/geometry.ts';
-import { linkedPlantings } from '@shared/domain/layout.ts';
+import { linkedPlantings, splitStrip } from '@shared/domain/layout.ts';
 import { blankPlanting } from '@shared/domain/plantings.ts';
 import type { Bed, GrowingWindow, PlantListItem, PlantingListItem } from '@shared/types.ts';
 import {
@@ -11,7 +11,6 @@ import {
   draftFrom,
   isDirty,
   isFixed,
-  placeItem,
   plantingFor,
   removeItem,
   replaceItem,
@@ -146,6 +145,52 @@ describe('visszaírás', () => {
     });
   }
 
+  it('az egysoros sáv szélesítése a sortávot követi', () => {
+    // 1 sor 30 cm-en, 35 cm-es sortáv: 80 cm-en 2 sor fér el
+    expect(put(tomato, pl(0, 80)).rows).toBe(2);
+    // 1 sor 10 cm-en, 20 cm-es sortáv: 15 cm-en sem lesz 7,5 cm-es sorköz, 40 cm-en sem 10 cm-es
+    const narrow = { ...salad, rows: 1, axis_span_cm: 10 };
+    expect(put(narrow, pl(0, 15)).rows).toBe(1);
+    expect(rowsOf(drag(draftFrom([narrow], bed), 2, steps(10, 40)), 2)).toBe(2);
+  });
+
+  it('a sűrű sáv sosem ritkább a sortáv szerintinél', () => {
+    const wide = { ...salad, rows: 3, axis_span_cm: 55 };
+    for (const w of widths) expect(put(wide, pl(0, w)).rows, `${w} cm`).toBeGreaterThanOrEqual(rowsForSpan(w, 20));
+  });
+
+  it('a sortáv szerinti sáv (kerekítési maradékkal, egy sorral is) a sortáv szerinti marad', () => {
+    const textbook: PlantingListItem[] = [
+      salad,
+      { ...salad, axis_span_cm: 55 },
+      { ...salad, rows: 1, axis_span_cm: 10 },
+      tomato,
+      { ...tomato, axis_span_cm: 10 },
+    ];
+    for (const p of textbook) {
+      for (const w of widths) expect(put(p, pl(0, w)).rows, `${p.rows} sor ${p.axis_span_cm} cm-en → ${w} cm`).toBe(rowsForSpan(w, p.row_spacing_cm));
+    }
+  });
+
+  it('köztes szélességen mentve, majd újra betöltve a sortáv szerinti sáv a sortávot követi', () => {
+    // 2 sor 40 cm-en → 55 cm (még 2 sor), mentés („Részletek”), és a piszkozat újra a mentett állapotból
+    const saved = drag(draftFrom([salad], bed), 2, steps(40, 55)).items[0]!;
+    expect(saved).toMatchObject({ axis_span_cm: 55, rows: 2 });
+    const d = draftFrom([saved], bed);
+    expect(rowsOf(drag(d, 2, steps(55, 40)), 2)).toBe(2);
+    expect(rowsOf(drag(d, 2, steps(55, 80)), 2)).toBe(4);
+  });
+
+  it('a keskenyre húzott egysoros sáv másolata a sortávot követi', () => {
+    // paradicsom (35 cm-es sortáv) 10 cm-re szűkítve: 1 sor, ami a sortáv szerint is annyi
+    let d = drag(draftFrom([tomato], bed), 1, steps(30, 10));
+    expect(d.items[0]).toMatchObject({ axis_span_cm: 10, rows: 1 });
+    const copy = copyPlanting(d.items[0]!, d.nextId);
+    d = addItem(d, copy);
+    expect(rowsOf(drag(d, copy.id, steps(10, 60)), copy.id)).toBe(1);
+    expect(rowsOf(drag(d, copy.id, steps(10, 80)), copy.id)).toBe(2);
+  });
+
   it('a sűrű sáv másolata megtartja a sűrűséget', () => {
     let d = draftFrom([dense], bed);
     // „Még egy sáv ebből”: a másolat a forrás szélességével és sorszámával kerül be
@@ -159,14 +204,21 @@ describe('visszaírás', () => {
     expect(rowsForSpan(80, 20)).toBe(4);
   });
 
-  it('a megosztott sáv mindkét fele megtartja a sűrűséget', () => {
-    // 4 sor 40 cm-en (10 cm-es sorköz), a 20 cm-es sortávhoz csak 2 járna
-    const dense4 = { ...salad, rows: 4 };
-    let d = draftFrom([dense4], bed);
-    const half = copyPlanting(dense4, d.nextId);
-    d = applyStrips(addItem(d, half), [{ key: 2, placement: pl(0, 20) }, { key: half.id, placement: pl(20, 20) }], bed);
-    expect(d.items.map((p) => p.rows)).toEqual([2, 2]);
-    expect(rowsOf(drag(d, half.id, [25, 30]), half.id)).toBe(3);
+  it('a kettéosztott sáv mindkét fele megtartja a sűrűséget', () => {
+    let d = draftFrom([dense], bed);
+    // a kettéosztás a sor hosszát felezi (keresztirányban), a szélesség marad
+    const next = splitStrip(stripsAt(d, bed, 2027, '2027-04-12'), dense.id, d.nextId)!;
+    d = applyStrips(addItem(d, copyPlanting(dense, d.nextId)), next, bed);
+    expect(d.items.map((p) => [p.id, p.axis_span_cm, p.cross_start_cm, p.cross_span_cm, p.rows])).toEqual([
+      [2, 40, 0, 100, 3],
+      [-1, 40, 100, 100, 3],
+    ]);
+    // az egyik fele szélesítve a saját sorközét követi: a sortáv szerint 3, illetve 4 sor lenne
+    const widen = (to: number) =>
+      steps(40, to).reduce((acc, w) => applyStrips(acc, [{ key: -1, placement: pl(0, w, 100, 100) }], bed), d);
+    expect(rowsOf(widen(60), -1)).toBe(4);
+    expect(rowsOf(widen(80), -1)).toBe(6);
+    expect(rowsOf(widen(80), 2)).toBe(3);
   });
 
   it('a növény cseréje új alapot ad: a szélesítés az új növény sorközét követi', () => {
@@ -219,10 +271,13 @@ describe('keresztben futó sorok', () => {
   });
 
   it('a 80 cm-es sor teljes hosszú, a rövidebb részleges', () => {
-    expect(placeItem(radish, pl(100, 30, 0, 80), across)).toMatchObject({ cross_start_cm: null, cross_span_cm: null });
-    expect(placeItem(radish, pl(100, 30, 0, 40), across)).toMatchObject({ cross_start_cm: 0, cross_span_cm: 40 });
+    const place = (p: PlantingListItem, placement: Placement, b: Bed) =>
+      applyStrips(draft([p]), [{ key: p.id, placement }], b).items[0]!;
+    const partial = { ...radish, cross_start_cm: 0, cross_span_cm: 40 };
+    expect(place(partial, pl(100, 30, 0, 80), across)).toMatchObject({ cross_start_cm: null, cross_span_cm: null });
+    expect(place(radish, pl(100, 30, 0, 40), across)).toMatchObject({ cross_start_cm: 0, cross_span_cm: 40 });
     // hosszában futó soroknál ugyanez a 80 cm részleges
-    expect(placeItem(radish, pl(0, 30, 0, 80), bed)).toMatchObject({ cross_start_cm: 0, cross_span_cm: 80 });
+    expect(place(radish, pl(0, 30, 0, 80), bed)).toMatchObject({ cross_start_cm: 0, cross_span_cm: 80 });
   });
 });
 

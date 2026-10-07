@@ -15,7 +15,8 @@ import { plantingInputOf } from '../plan/plantingView.ts';
 
 /**
  * A sorszám alapja: a sáv szélessége és sorszáma (üres is lehet), amikor a piszkozatba került.
- * A sorköz (szélesség / sorszám) így a tankönyvi sortávnál sűrűbb vagy ritkább sorokat is megőrzi.
+ * Ha a sorszám eltér a sortáv szerintitől, a sorköze (szélesség / sorszám) a saját sűrűség: így
+ * a tankönyvinél sűrűbb vagy ritkább sorok is megmaradnak.
  */
 export interface RowBase {
   span: number;
@@ -32,7 +33,7 @@ export interface LayoutDraft {
   /** A következő új ültetés azonosítója (negatív) */
   nextId: number;
   /**
-   * Ültetésenként a sorszám alapja (lásd `placeItem`); hely nélküli ültetésnél nincs, ekkor a
+   * Ültetésenként a sorszám alapja (lásd `placeItem`); szélesség nélküli ültetésnél nincs, ekkor a
    * sortáv számít. Felvételkor és cserekor áll be, a húzás nem változtatja; a mentéshez nem tartozik.
    */
   rowBase: Record<number, RowBase>;
@@ -44,7 +45,7 @@ const withoutKey = <T>(rec: Record<number, T>, id: number): Record<number, T> =>
   return next;
 };
 
-/** Az ültetés saját szélessége és sorszáma lesz az alapja (hely nélkül nincs alapja). */
+/** Az ültetés saját szélessége és sorszáma lesz az alapja (szélesség nélkül nincs alapja). */
 function withRowBase(base: Record<number, RowBase>, p: PlantingListItem): Record<number, RowBase> {
   const rest = withoutKey(base, p.id);
   return p.axis_span_cm != null && p.axis_span_cm > 0 ? { ...rest, [p.id]: { span: p.axis_span_cm, rows: p.rows } } : rest;
@@ -82,12 +83,12 @@ const sameSpan = (a: number, b: number) => Math.abs(a - b) < EPS;
  * ültetési lapon. A sorszám:
  * - változatlan szélességnél (tisztán mozgatás vagy keresztirányú változás) marad, üresen is;
  * - az alap (`base`) szélességén az alap sorszáma, üresen is;
- * - egyébként annyi sor, amennyi az alap sorközével (szélesség / sorszám) elfér, ennek híján
- *   (nincs alap, vagy nincs sorszáma) a sortávval.
+ * - egyébként annyi sor, amennyi elfér: az alap saját sorközével, ha a sorszáma eltér a sortáv
+ *   szerintitől, különben (a sortáv szerinti vagy üres sorszámnál, alap nélkül) a sortávval.
  * A sorszám így csak a szélességtől és az alaptól függ, attól nem, milyen lépésekben jutott ide
  * a húzás; a kiinduló szélességre visszahúzva a kiinduló sorszám áll vissza.
  */
-export function placeItem(p: PlantingListItem, pl: Placement, bed: Bed, base?: RowBase): PlantingListItem {
+function placeItem(p: PlantingListItem, pl: Placement, bed: Bed, base: RowBase | undefined): PlantingListItem {
   const full = isFullLength(pl, bedAxes(bed).cross);
   return {
     ...p,
@@ -99,10 +100,12 @@ export function placeItem(p: PlantingListItem, pl: Placement, bed: Bed, base?: R
   };
 }
 
-function rowsAt(p: PlantingListItem, span: number, base?: RowBase): number | null {
+function rowsAt(p: PlantingListItem, span: number, base: RowBase | undefined): number | null {
   if (p.axis_span_cm != null && sameSpan(span, p.axis_span_cm)) return p.rows;
   if (base && sameSpan(span, base.span)) return base.rows;
-  return rowsForSpan(span, base?.rows ? base.span / base.rows : p.row_spacing_cm);
+  // a sortáv szerinti sorszám (a kerekítési maradékkal, egy sorral is) nem saját sűrűség
+  const ownPitch = base?.rows && rowsForSpan(base.span, p.row_spacing_cm) !== base.rows ? base.span / base.rows : null;
+  return rowsForSpan(span, ownPitch ?? p.row_spacing_cm);
 }
 
 /**
@@ -132,7 +135,10 @@ export interface NewPlantingContext {
   cropGroupCode: string | null;
 }
 
-/** Új ültetés a növényből, egy sor szélességben; hely nélkül (azt a hívó adja `placeItem`-mel). */
+/**
+ * Új ültetés a növényből, egy sor szélességben, hely nélkül; a hívó helyezi el:
+ * `applyStrips(addItem(d, p), [{ key: p.id, placement }], bed)`.
+ */
 export function plantingFor(plant: PlantListItem, ctx: NewPlantingContext): PlantingListItem {
   const crop = {
     daysToHarvest: plant.days_to_harvest,

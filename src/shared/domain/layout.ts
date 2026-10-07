@@ -10,7 +10,7 @@ import {
   type FrostDates,
   type PlantingDates,
 } from './dates.ts';
-import { periodsOverlap, placementsOverlap, rangesOverlap, type Period, type Placement } from './geometry.ts';
+import { EPS, periodsOverlap, placementsOverlap, rangesOverlap, type Period, type Placement } from './geometry.ts';
 import { addDaysISO, diffDays, isoFromMonthDay } from './isoDate.ts';
 import { bedStartField, effectiveBedId, effectiveDates, occupancyPeriod, planDates } from './plantings.ts';
 
@@ -23,7 +23,6 @@ import { bedStartField, effectiveBedId, effectiveDates, occupancyPeriod, planDat
 export const LAYOUT_GRID_CM = 5;
 /** Ennél kisebb sávot a szerkesztő nem hoz létre (a régi, kisebb sávok megmaradhatnak). */
 export const LAYOUT_MIN_CM = 10;
-const EPS = 0.5;
 
 export type Dim = 'axis' | 'cross';
 export type Edge = 'axisStart' | 'axisEnd' | 'crossStart' | 'crossEnd';
