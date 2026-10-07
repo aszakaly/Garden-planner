@@ -83,8 +83,9 @@ const sameSpan = (a: number, b: number) => Math.abs(a - b) < EPS;
  * ültetési lapon. A sorszám:
  * - változatlan szélességnél (tisztán mozgatás vagy keresztirányú változás) marad, üresen is;
  * - az alap (`base`) szélességén az alap sorszáma, üresen is;
- * - egyébként annyi sor, amennyi elfér: az alap saját sorközével, ha a sorszáma eltér a sortáv
- *   szerintitől, különben (a sortáv szerinti vagy üres sorszámnál, alap nélkül) a sortávval.
+ * - egyébként, ha az alap sorszáma eltér a sortáv szerintitől, a saját sorközével a legközelebbi
+ *   egész sorszám (legalább 1), hogy mentés és újratöltés után se kopjon a sűrűség; különben (a
+ *   sortáv szerinti vagy üres sorszámnál, alap nélkül) annyi sor, amennyi a sortávval elfér.
  * A sorszám így csak a szélességtől és az alaptól függ, attól nem, milyen lépésekben jutott ide
  * a húzás; a kiinduló szélességre visszahúzva a kiinduló sorszám áll vissza.
  */
@@ -104,8 +105,11 @@ function rowsAt(p: PlantingListItem, span: number, base: RowBase | undefined): n
   if (p.axis_span_cm != null && sameSpan(span, p.axis_span_cm)) return p.rows;
   if (base && sameSpan(span, base.span)) return base.rows;
   // a sortáv szerinti sorszám (a kerekítési maradékkal, egy sorral is) nem saját sűrűség
-  const ownPitch = base?.rows && rowsForSpan(base.span, p.row_spacing_cm) !== base.rows ? base.span / base.rows : null;
-  return rowsForSpan(span, ownPitch ?? p.row_spacing_cm);
+  if (base?.rows && rowsForSpan(base.span, p.row_spacing_cm) !== base.rows) {
+    // span / (base.span / base.rows), osztás nélkül a sorközzel, hogy a feles értékek pontosak legyenek
+    return Math.max(1, Math.round((span * base.rows) / base.span));
+  }
+  return rowsForSpan(span, p.row_spacing_cm);
 }
 
 /**

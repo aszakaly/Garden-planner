@@ -120,7 +120,8 @@ describe('visszaírás', () => {
   });
 
   const cases: [string, PlantingListItem, Record<number, number | null>][] = [
-    ['sűrű (3 sor 40 cm-en, 20 cm-es sortáv)', dense, { 10: 1, 20: 1, 30: 2, 45: 3, 55: 4, 60: 4, 80: 6 }],
+    // a saját sorköznél a legközelebbi egész sorszám: 20 cm-en 1,5 → 2, 60 cm-en 4,5 → 5
+    ['sűrű (3 sor 40 cm-en, 20 cm-es sortáv)', dense, { 10: 1, 20: 2, 30: 2, 45: 3, 55: 4, 60: 5, 80: 6 }],
     ['sortáv szerinti (2 sor 40 cm-en)', salad, { 10: 1, 30: 1, 45: 2, 60: 3, 80: 4 }],
     ['ritka (1 sor 60 cm-en, 20 cm-es sortáv)', { ...salad, rows: 1, axis_span_cm: 60 }, { 20: 1, 40: 1, 65: 1, 80: 1 }],
     ['sorszám nélküli (40 cm)', { ...salad, rows: null }, { 20: 1, 35: 1, 40: null, 45: 2, 60: 3, 80: 4 }],
@@ -181,6 +182,20 @@ describe('visszaírás', () => {
     expect(rowsOf(drag(d, 2, steps(55, 80)), 2)).toBe(4);
   });
 
+  it('köztes szélességen mentve, majd újra betöltve a sűrű sáv megtartja a sűrűséget', () => {
+    // 3 sor 40 cm-en → 55 cm: 4 sor; mentés, és a piszkozat újra a mentett állapotból (4 sor 55 cm-en)
+    const saved = drag(draftFrom([dense], bed), 2, steps(40, 55)).items[0]!;
+    expect(saved).toMatchObject({ axis_span_cm: 55, rows: 4 });
+    const d = draftFrom([saved], bed);
+    // 40 cm-en 2,91 sor fér el a mentett sorközzel: a legközelebbi egész 3, nem 2
+    expect(rowsOf(drag(d, 2, steps(55, 40)), 2)).toBe(3);
+    expect(rowsOf(drag(d, 2, steps(55, 80)), 2)).toBe(6);
+    // visszahúzva a mentett szélességre a mentett sorszám áll vissza
+    const back = drag(d, 2, [...steps(55, 40), ...steps(40, 55)]);
+    expect(rowsOf(back, 2)).toBe(4);
+    expect(isDirty([saved], back)).toBe(false);
+  });
+
   it('a keskenyre húzott egysoros sáv másolata a sortávot követi', () => {
     // paradicsom (35 cm-es sortáv) 10 cm-re szűkítve: 1 sor, ami a sortáv szerint is annyi
     let d = drag(draftFrom([tomato], bed), 1, steps(30, 10));
@@ -216,7 +231,7 @@ describe('visszaírás', () => {
     // az egyik fele szélesítve a saját sorközét követi: a sortáv szerint 3, illetve 4 sor lenne
     const widen = (to: number) =>
       steps(40, to).reduce((acc, w) => applyStrips(acc, [{ key: -1, placement: pl(0, w, 100, 100) }], bed), d);
-    expect(rowsOf(widen(60), -1)).toBe(4);
+    expect(rowsOf(widen(60), -1)).toBe(5);
     expect(rowsOf(widen(80), -1)).toBe(6);
     expect(rowsOf(widen(80), 2)).toBe(3);
   });
