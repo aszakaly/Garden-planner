@@ -4,7 +4,7 @@ import { shortDate } from '@shared/domain/isoDate.ts';
 import type { Placement } from '@shared/domain/geometry.ts';
 import type { Bed } from '@shared/types.ts';
 import { DateInput } from '../../components/ui/Form.tsx';
-import { rectOf } from './LayoutCanvas.tsx';
+import { rectOf } from './canvasGeometry.ts';
 import s from './BedLayout.module.css';
 
 export type PhasePreview = { placement: Placement; color: string }[];

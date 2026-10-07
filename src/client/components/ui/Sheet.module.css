@@ -63,6 +63,8 @@
 
 .body {
   overflow-y: auto;
+  /* a megjelenő görgetősáv ne szűkítse a tartalmat (különben a méretfigyelő képek oda-vissza ugrálhatnak) */
+  scrollbar-gutter: stable;
   padding: 8px 0 28px;
 }
 

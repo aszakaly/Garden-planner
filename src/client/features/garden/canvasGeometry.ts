@@ -17,10 +17,34 @@ export function rectOf(p: Placement, across: boolean, scale = 1): Rect {
     : { x: p.cross_start_cm * scale, y: p.axis_start_cm * scale, w: p.cross_span_cm * scale, h: p.axis_span_cm * scale };
 }
 
-/** A szerkeszthető ágyáskép margói képpontban (a méretfeliratok helye). */
+/** A szerkeszthető ágyáskép alap margói képpontban (a méretfeliratok helye). */
 export const CANVAS_PAD = { left: 34, top: 10, right: 12, bottom: 26 } as const;
 /** Az ágyáskép legnagyobb magassága képpontban (a margókkal együtt). */
 export const CANVAS_MAX_H = 380;
+
+export type CanvasPad = { [K in keyof typeof CANVAS_PAD]: number };
+
+/**
+ * A margók képpontban: legalább a fogantyúk érintési sávjának fele (`hit`), hogy az ágyás szélén
+ * álló sáv kifelé nyúló fogantyúit se vágja le a kép széle. Egérrel (`hit` 11) csak a felső margó
+ * nő egy képponttal, ujjal (22) a felső és a jobb oldali.
+ */
+export function canvasPad(hit = 0): CanvasPad {
+  return {
+    left: Math.max(CANVAS_PAD.left, hit),
+    top: Math.max(CANVAS_PAD.top, hit),
+    right: Math.max(CANVAS_PAD.right, hit),
+    bottom: Math.max(CANVAS_PAD.bottom, hit),
+  };
+}
+
+/**
+ * A kép legnagyobb magassága az ablak magasságához mérten: legfeljebb az ablak fele, hogy fekvő
+ * telefonon is maradjon hely a kép mellett görgetni (a képen az érintés nem görget).
+ * Ismeretlen ablakmagasságnál `CANVAS_MAX_H`.
+ */
+export const canvasMaxH = (windowH: number | null) =>
+  windowH && windowH > 0 ? Math.min(CANVAS_MAX_H, Math.round(windowH * 0.5)) : CANVAS_MAX_H;
 
 export interface CanvasFit {
   /** képpont / cm */
@@ -39,12 +63,18 @@ export interface CanvasFit {
 /**
  * Az ágyáskép méretezése a tényleges szélességhez: a viewBox egysége egy CSS-képpont, így a
  * feliratok, fogantyúk és érintési sávok telefonon és asztalon is ugyanakkorák. Az ágyás kitölti
- * a szélességet, de a kép legfeljebb `CANVAS_MAX_H` magas (ekkor az ágyás vízszintesen középre kerül).
+ * a szélességet, de a kép legfeljebb `maxH` magas (ekkor az ágyás vízszintesen középre kerül).
+ * A margók a fogantyúk érintési sávjától (`hit`) függnek, lásd `canvasPad`.
  */
-export function canvasFit(widthPx: number, lengthCm: number, widthCm: number): CanvasFit {
-  const pad = CANVAS_PAD;
+export function canvasFit(
+  widthPx: number,
+  lengthCm: number,
+  widthCm: number,
+  { hit = 0, maxH = CANVAS_MAX_H }: { hit?: number; maxH?: number } = {},
+): CanvasFit {
+  const pad = canvasPad(hit);
   const availW = Math.max(1, widthPx - pad.left - pad.right);
-  const availH = Math.max(1, CANVAS_MAX_H - pad.top - pad.bottom);
+  const availH = Math.max(1, maxH - pad.top - pad.bottom);
   const scale = Math.min(availW / lengthCm, availH / widthCm);
   const w = lengthCm * scale;
   const h = widthCm * scale;
@@ -52,7 +82,8 @@ export function canvasFit(widthPx: number, lengthCm: number, widthCm: number): C
     scale,
     w,
     h,
-    viewW: Math.max(widthPx, w + pad.left + pad.right),
+    // a szélesség pontosan a mért (kerekítési hiba nélkül); csak a túl keskeny képnél nagyobb
+    viewW: Math.max(widthPx, pad.left + availW + pad.right),
     viewH: h + pad.top + pad.bottom,
     left: pad.left + (availW - w) / 2,
     top: pad.top,
@@ -70,11 +101,14 @@ export interface HandleZone extends Rect {
 
 /**
  * A kijelölt sáv fogantyúinak érintési területei. Kifelé `hit`-nyire nyúlnak, befelé legfeljebb
- * a sáv adott méretének negyedéig: keskeny sávnál is marad a közepén mozgatásra szolgáló rész.
+ * a sáv adott méretének negyedéig: a sáv közepén mozgatásra szolgáló rész marad. A `2 * hit`-nél
+ * keskenyebb irányban befelé egyáltalán nem nyúlnak: ott az egész sáv mozgat, és csak a kifelé
+ * nyúló részük méretez (különben ujjal alig maradna megfogható közép).
  */
 export function handleZones(r: Rect, hit: number): HandleZone[] {
-  const inX = Math.min(hit, r.w / 4);
-  const inY = Math.min(hit, r.h / 4);
+  const inward = (dim: number) => (dim < 2 * hit ? 0 : Math.min(hit, dim / 4));
+  const inX = inward(r.w);
+  const inY = inward(r.h);
   const cols = {
     l: { x: r.x - hit, w: hit + inX },
     mid: { x: r.x + inX, w: r.w - 2 * inX },
@@ -98,6 +132,34 @@ export function handleZones(r: Rect, hit: number): HandleZone[] {
   return zones.filter((z) => z.w > 0 && z.h > 0);
 }
 
+/** Képpont helye (az ágyás bal felső sarkától) tengely- és keresztirányban; a `rectOf` párja. */
+export const axesOf = (x: number, y: number, across: boolean): LayoutSize => (across ? { axis: x, cross: y } : { axis: y, cross: x });
+
+/** Benne van-e a pont (cm) a sávban; az élei is beletartoznak. */
+const containsPoint = (p: Placement, pt: LayoutSize) =>
+  pt.axis >= p.axis_start_cm &&
+  pt.axis <= p.axis_start_cm + p.axis_span_cm &&
+  pt.cross >= p.cross_start_cm &&
+  pt.cross <= p.cross_start_cm + p.cross_span_cm;
+
+/** A ponton (cm) álló sáv kulcsa, átfedésnél a később (felülre) rajzolté; `null`, ha ott nincs sáv. */
+export function stripAt(strips: LayoutStrip[], pt: LayoutSize): number | null {
+  for (let i = strips.length - 1; i >= 0; i--) if (containsPoint(strips[i]!.placement, pt)) return strips[i]!.key;
+  return null;
+}
+
+/**
+ * A kijelölt sáv fogantyúján húzás nélkül véget ért koppintás célja. A fogantyúk kifelé a
+ * szomszédra is rányúlnak (ujjal ~22 képpontnyira), ezért a sávon kívüli koppintás az ott álló
+ * sávot jelöli ki, üres helyen pedig megszünteti a kijelölést (`null`).
+ * `undefined`: a koppintás a kijelölt sávon belül volt, a kijelölés marad.
+ */
+export function handleTapTarget(strips: LayoutStrip[], selected: number, pt: LayoutSize): number | null | undefined {
+  const own = strips.find((x) => x.key === selected);
+  if (own && containsPoint(own.placement, pt)) return undefined;
+  return stripAt(strips, pt);
+}
+
 /** Az élek által változtatott irányok; mozgatásnál (`null`) mindkettő. */
 export function dimsOf(edges: Edge[] | null): Dim[] {
   if (!edges) return ['axis', 'cross'];
@@ -112,6 +174,20 @@ export const exceeds = (delta: LayoutSize, dims: Dim[], cm: number) => dims.some
  * hogy a koppintás közbeni remegés ne mozdítsa el a sávot.
  */
 export const slopCm = (slopPx: number, pxPerCm: number) => Math.max(LAYOUT_GRID_CM / 2, slopPx / pxPerCm);
+
+export type DragStep = 'wait' | 'orig' | 'apply';
+
+/**
+ * A húzás egy lépése a kezdőponthoz mért elmozdulásból (`dims` irányaiban). Az indítási küszöb
+ * (`slop`) első átléptéig koppintásnak számít, nincs változás (`wait`). Utána a holtsávon belül
+ * (`deadCm`, a rácsköz fele) a kiinduló kiosztás áll vissza (`orig`), azon túl az elmozdulás
+ * érvényes (`apply`): a küszöbnél kisebb, de a holtsávnál nagyobb méretváltozás is elérhető.
+ * A hívó a `wait`-től eltérő első lépéstől indultnak tekinti a húzást (`started`).
+ */
+export function dragStep(started: boolean, delta: LayoutSize, dims: Dim[], slop: number, deadCm = LAYOUT_GRID_CM / 2): DragStep {
+  if (!started && !exceeds(delta, dims, slop)) return 'wait';
+  return exceeds(delta, dims, deadCm) ? 'apply' : 'orig';
+}
 
 /** Ugyanaz-e a két kiosztás (ugyanazok a sávok, ugyanott). */
 export function sameStrips(a: LayoutStrip[], b: LayoutStrip[]): boolean {

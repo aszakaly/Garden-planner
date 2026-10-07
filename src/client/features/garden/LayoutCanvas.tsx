@@ -3,7 +3,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  useSyncExternalStore,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
@@ -11,11 +10,23 @@ import {
 import { bedAxes } from '@shared/domain/geometry.ts';
 import { LAYOUT_GRID_CM, moveStrip, resizeStrip, type Boundary, type Edge, type LayoutStrip } from '@shared/domain/layout.ts';
 import type { Bed } from '@shared/types.ts';
-import { canvasFit, dimsOf, exceeds, handleZones, rectOf, sameStrips, slopCm, type Rect, type Side, type ZoneId } from './canvasGeometry.ts';
+import { useCoarsePointer, useWindowHeight } from '../../lib/useDevice.ts';
+import {
+  axesOf,
+  canvasFit,
+  canvasMaxH,
+  dimsOf,
+  dragStep,
+  handleTapTarget,
+  handleZones,
+  rectOf,
+  sameStrips,
+  slopCm,
+  type Rect,
+  type Side,
+  type ZoneId,
+} from './canvasGeometry.ts';
 import s from './BedLayout.module.css';
-
-// a fázisválasztó előnézete innen használja
-export { rectOf };
 
 export interface CanvasStrip extends LayoutStrip {
   label: string;
@@ -49,7 +60,7 @@ const ISSUE_TITLE: Record<NonNullable<CanvasStrip['issue']>, string> = {
   figyelem: 'figyelmeztetés',
 };
 /** A méréséig feltételezett szélesség (asztali lap) */
-const FALLBACK_WIDTH = 866;
+const FALLBACK_WIDTH = 848;
 /** A fogantyúk érintési sávjának fele képpontban: ujjal 44, egérrel 22 px széles sáv az él körül */
 const HIT_PX = { coarse: 22, fine: 11 };
 /** A fogantyúk pöttyének sugara képpontban */
@@ -76,16 +87,11 @@ interface Drag {
   started: boolean;
 }
 
-const COARSE = '(pointer: coarse)';
-const subscribeCoarse = (onChange: () => void) => {
-  const mq = matchMedia(COARSE);
-  mq.addEventListener('change', onChange);
-  return () => mq.removeEventListener('change', onChange);
-};
-/** Ujjal kezelt eszköz-e (nagyobb érintési terület kell). */
-const useCoarsePointer = () => useSyncExternalStore(subscribeCoarse, () => matchMedia(COARSE).matches);
-
-/** Az elem szélessége CSS-képpontban; a lap nyitó animációjának nagyítása nem számít bele. */
+/**
+ * Az elem szélessége CSS-képpontban. A `clientWidth` és a ResizeObserver tartalomdoboza a
+ * transzformációktól független, így a lap nyitó animációjának nagyítása nem számít bele
+ * (a `getBoundingClientRect` a nagyított méretet adná).
+ */
 function useWidth(ref: RefObject<Element | null>): number | null {
   const [width, setWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
@@ -94,7 +100,7 @@ function useWidth(ref: RefObject<Element | null>): number | null {
     const set = (w: number) => {
       if (w > 0) setWidth(w);
     };
-    set(el.getBoundingClientRect().width);
+    set(el.clientWidth);
     const ro = new ResizeObserver(([entry]) => entry && set(entry.contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();
@@ -116,10 +122,11 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
   const clipBase = `layout-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const coarse = useCoarsePointer();
   const width = useWidth(svgRef);
+  const maxH = canvasMaxH(useWindowHeight());
   const across = bed.row_direction === 'keresztben';
   const size = bedAxes(bed);
-  const { scale, w, h, viewW, viewH, left, top } = canvasFit(width ?? FALLBACK_WIDTH, bed.length_cm, bed.width_cm);
   const hit = coarse ? HIT_PX.coarse : HIT_PX.fine;
+  const { scale, w, h, viewW, viewH, left, top } = canvasFit(width ?? FALLBACK_WIDTH, bed.length_cm, bed.width_cm, { hit, maxH });
 
   const edgeOf = (side: Side): Edge =>
     across
@@ -135,6 +142,7 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
   const begin = (e: ReactPointerEvent, key: number, edges: Edge[] | null, cursor: string) => {
     // ne jusson el az ágyásig: az törölné a kijelölést (egy második ujjnál is)
     e.stopPropagation();
+    dropStale(e);
     if (drag.current || e.button !== 0) return;
     onSelect(key);
     if (strips.find((x) => x.key === key)?.fixed) return;
@@ -173,6 +181,15 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
     setDragCursor(null);
   };
 
+  /**
+   * Árva húzás elengedése: ha egy új elsődleges mutató (új érintés, kattintás) vagy ugyanaz a mutató
+   * újra lenyomódik, a régi húzás felengedése elveszett, és nem akadályozhatja a további érintéseket.
+   */
+  function dropStale(e: ReactPointerEvent) {
+    const d = drag.current;
+    if (d && (d.pointerId === e.pointerId || e.isPrimary)) end();
+  }
+
   const move = (e: ReactPointerEvent) => {
     const d = drag.current;
     if (!d || e.pointerId !== d.pointerId) return;
@@ -182,16 +199,14 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
       return;
     }
     const { x, y } = pointCm(e);
-    const delta = across ? { axis: x - d.x0, cross: y - d.y0 } : { axis: y - d.y0, cross: x - d.x0 };
-    // csak a húzott élek irányát nézzük (mozgatásnál mindkettőt)
-    const dims = dimsOf(d.edges);
-    // koppintás közbeni remegés: a küszöb átlépéséig nem húzás
-    if (!d.started) {
-      if (!exceeds(delta, dims, d.slopCm)) return;
-      d.started = true;
-    }
-    // a rácsköz felénél kisebb elmozdulás nem módosít (a rácson kívüli régi élek sem ugranak el)
-    if (!exceeds(delta, dims, LAYOUT_GRID_CM / 2)) {
+    const delta = axesOf(x - d.x0, y - d.y0, across);
+    // csak a húzott élek irányát nézzük (mozgatásnál mindkettőt). A küszöb átlépéséig koppintás
+    // (remegés), utána a rácsköz felénél kisebb elmozdulás nem módosít (a rácson kívüli régi élek
+    // sem ugranak el).
+    const step = dragStep(d.started, delta, dimsOf(d.edges), d.slopCm, LAYOUT_GRID_CM / 2);
+    if (step === 'wait') return;
+    d.started = true;
+    if (step === 'orig') {
       emit(d, d.orig);
       return;
     }
@@ -200,6 +215,18 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
   };
 
   const up = (e: ReactPointerEvent) => {
+    const d = drag.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    end();
+    // Fogantyún húzás nélkül véget ért koppintás: a fogantyúk kifelé a szomszédra is rányúlnak,
+    // ezért a kijelölt sávon kívül az ott álló sáv kijelölése, üres helyen a kijelölés megszüntetése.
+    if (d.started || !d.edges) return;
+    const target = handleTapTarget(d.orig, d.key, axesOf(d.x0, d.y0, across));
+    if (target !== undefined) onSelect(target);
+  };
+
+  /** Elveszett mutató (pl. a felengedés után): a húzás véget ér, koppintásként nem számít. */
+  const lost = (e: ReactPointerEvent) => {
     if (drag.current?.pointerId === e.pointerId) end();
   };
 
@@ -228,13 +255,14 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
       viewBox={`0 0 ${viewW} ${viewH}`}
       aria-hidden="true"
       onPointerDown={(e) => {
+        dropStale(e);
         // húzás közben egy második ujj ne törölje a kijelölést
         if (!drag.current && e.button === 0) onSelect(null);
       }}
       onPointerMove={move}
       onPointerUp={up}
       onPointerCancel={cancel}
-      onLostPointerCapture={up}
+      onLostPointerCapture={lost}
     >
       <defs>
         {/* a feliratok a saját sávjukon belül maradnak */}
