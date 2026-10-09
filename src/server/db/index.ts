@@ -7,16 +7,21 @@ export type DB = DatabaseSync;
 
 const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'migrations');
 
-export function openDatabase(path: string): DB {
+export interface OpenOptions {
+  /** Egy már használt adatbázison a függő migrációk előtt fut le (pl. mentés a tábla-újraépítés elé) */
+  beforeMigrate?: (db: DB) => void;
+}
+
+export function openDatabase(path: string, options: OpenOptions = {}): DB {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   if (path !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
-  migrate(db);
+  migrate(db, MIGRATIONS_DIR, options.beforeMigrate);
   return db;
 }
 
-export function migrate(db: DB, dir = MIGRATIONS_DIR): string[] {
+export function migrate(db: DB, dir = MIGRATIONS_DIR, beforeMigrate?: (db: DB) => void): string[] {
   db.exec(
     'CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TEXT NOT NULL)',
   );
@@ -27,6 +32,8 @@ export function migrate(db: DB, dir = MIGRATIONS_DIR): string[] {
     .filter((f) => f.endsWith('.sql') && !applied.has(f))
     .sort();
   if (!pending.length) return pending;
+  // új (üres) adatbázisnál nincs mit menteni
+  if (applied.size) beforeMigrate?.(db);
 
   // A táblák újraépítése (pl. CHECK-feltétel módosítása) csak kikapcsolt idegenkulcs-ellenőrzéssel
   // biztonságos: különben a régi tábla eldobása lenullázná a rá mutató hivatkozásokat.

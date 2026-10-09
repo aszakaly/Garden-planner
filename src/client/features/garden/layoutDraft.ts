@@ -9,6 +9,7 @@ import {
   type LayoutStrip,
 } from '@shared/domain/layout.ts';
 import { blankPlanting, effectiveBedId, occupancyPeriod, placementOf, startedOrRecorded } from '@shared/domain/plantings.ts';
+import type { Suggestion } from '@shared/domain/suggestions.ts';
 import type { PlantingBatchInput } from '@shared/schemas.ts';
 import type { Bed, PlantListItem, PlantingListItem } from '@shared/types.ts';
 import { plantingInputOf } from '../plan/plantingView.ts';
@@ -139,20 +140,8 @@ export interface NewPlantingContext {
   cropGroupCode: string | null;
 }
 
-/**
- * Új ültetés a növényből, egy sor szélességben, hely nélkül; a hívó helyezi el:
- * `applyStrips(addItem(d, p), [{ key: p.id, placement }], bed)`.
- */
-export function plantingFor(plant: PlantListItem, ctx: NewPlantingContext): PlantingListItem {
-  const crop = {
-    daysToHarvest: plant.days_to_harvest,
-    harvestDurationDays: plant.harvest_duration_days,
-    frostSensitive: plant.frost_sensitive,
-    perennial: plant.perennial,
-  };
-  const choice = pickWindowForDay(plant.windows, ctx.day, { year: ctx.year, crop, frost: ctx.frost });
-  const method = choice?.method ?? 'helyrevetes';
-  const dates = choice?.dates ?? completeDates({ ...EMPTY_DATES, sow: ctx.day }, method, crop, ctx.frost);
+/** Az új ültetés növényből vett mezői (dátumok, módszer és hely nélkül). */
+function fromPlant(plant: PlantListItem, ctx: Omit<NewPlantingContext, 'day' | 'frost'>): PlantingListItem {
   return {
     ...blankPlanting(),
     id: ctx.id,
@@ -174,6 +163,25 @@ export function plantingFor(plant: PlantListItem, ctx: NewPlantingContext): Plan
     days_to_harvest: plant.days_to_harvest,
     harvest_duration_days: plant.harvest_duration_days,
     seed_viability_years: plant.seed_viability_years,
+  };
+}
+
+/**
+ * Új ültetés a növényből, egy sor szélességben, hely nélkül; a hívó helyezi el:
+ * `applyStrips(addItem(d, p), [{ key: p.id, placement }], bed)`.
+ */
+export function plantingFor(plant: PlantListItem, ctx: NewPlantingContext): PlantingListItem {
+  const crop = {
+    daysToHarvest: plant.days_to_harvest,
+    harvestDurationDays: plant.harvest_duration_days,
+    frostSensitive: plant.frost_sensitive,
+    perennial: plant.perennial,
+  };
+  const choice = pickWindowForDay(plant.windows, ctx.day, { year: ctx.year, crop, frost: ctx.frost });
+  const method = choice?.method ?? 'helyrevetes';
+  const dates = choice?.dates ?? completeDates({ ...EMPTY_DATES, sow: ctx.day }, method, crop, ctx.frost);
+  return {
+    ...fromPlant(plant, ctx),
     method,
     window_id: choice?.window.id ?? null,
     plan_sow_date: usesSow(method) ? dates.sow : null,
@@ -182,6 +190,36 @@ export function plantingFor(plant: PlantListItem, ctx: NewPlantingContext): Plan
     plan_end_date: dates.end,
     rows: 1,
     axis_span_cm: spanForRows(1, plant.row_spacing_cm),
+  };
+}
+
+/**
+ * Új ültetés a „Mi kerülhet ide?” javaslatából: a javasolt időzítéssel, fajtával, vetőmaggal és
+ * hellyel. A felvételhez elég az `addItem`, mert a javaslat helye a teljes időszakára szabad.
+ */
+export function plantingFromSuggestion(
+  sg: Suggestion,
+  ctx: Omit<NewPlantingContext, 'day' | 'frost'> & { seedVintage: number | null; bed: Bed },
+): PlantingListItem {
+  const full = isFullLength(sg.placement, bedAxes(ctx.bed).cross);
+  return {
+    ...fromPlant(sg.plant, ctx),
+    variety_id: sg.variety_id,
+    variety_name: sg.variety_name,
+    seed_stock_id: sg.seed_stock_id,
+    seed_vintage: sg.seed_stock_id != null ? ctx.seedVintage : null,
+    has_seed: sg.seed_stock_id != null,
+    method: sg.method,
+    window_id: sg.window.id,
+    plan_sow_date: usesSow(sg.method) ? sg.dates.sow : null,
+    plan_transplant_date: usesTransplant(sg.method) ? sg.dates.transplant : null,
+    plan_harvest_start: sg.dates.harvestStart,
+    plan_end_date: sg.dates.end,
+    rows: sg.rows,
+    axis_start_cm: sg.placement.axis_start_cm,
+    axis_span_cm: sg.placement.axis_span_cm,
+    cross_start_cm: full ? null : sg.placement.cross_start_cm,
+    cross_span_cm: full ? null : sg.placement.cross_span_cm,
   };
 }
 

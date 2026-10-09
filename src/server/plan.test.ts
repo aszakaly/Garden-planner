@@ -140,7 +140,6 @@ describe('tömeges mentés', () => {
     expect(created).toHaveLength(1);
     const list = await listed();
     expect(list.find((p) => p.id === keep!.id)?.axis_start_cm).toBe(10);
-    // az azonosító újra kiosztódhat, ezért a törölt sáv helye alapján ellenőrzünk
     expect(list.some((p) => p.axis_start_cm === 30)).toBe(false);
     expect(list).toHaveLength(2);
     expect(list.find((p) => p.id === created[0])?.plant_name).toBe('Paradicsom');
@@ -170,15 +169,15 @@ describe('tömeges mentés', () => {
     expect((await listed()).some((x) => x.id === p!.id)).toBe(true);
   });
 
-  it('az újra kiosztott azonosítóhoz nem marad feladatállapot', async () => {
+  it('a törölt ültetés azonosítója nem kerül újra kiosztásra, és a feladatállapota sem marad meg', async () => {
     const [p]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
     const maxId = (db.prepare('SELECT MAX(id) AS m FROM planting').get() as { m: number }).m;
-    // előfeltétel: a törlendő a legnagyobb azonosítójú, így az új ültetés ezt kapja meg újra
+    // a törlendő a legnagyobb azonosítójú: AUTOINCREMENT nélkül az új ültetés ezt kapná meg újra
     expect(p!.id).toBe(maxId);
     db.prepare('INSERT INTO task_state (task_key, note) VALUES (?, ?)').run(`kiultetes:${maxId}`, 'régi jegyzet');
     const res = await batch({ delete: [maxId], create: [basil({ axis_start_cm: 0 })] });
     expect(res.statusCode).toBe(200);
-    expect((res.json() as { created: number[] }).created).toEqual([maxId]);
+    expect((res.json() as { created: number[] }).created[0]).toBeGreaterThan(maxId);
     expect(db.prepare('SELECT 1 FROM task_state WHERE task_key LIKE ?').get(`%:${maxId}`)).toBeUndefined();
   });
 

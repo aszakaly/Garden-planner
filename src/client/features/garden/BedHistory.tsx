@@ -15,15 +15,14 @@ interface Props {
   ctx: ChecksContext | null;
   onOpen: (p: PlantingListItem) => void;
   onAdd: (year: number) => void;
+  /** A vetésforgó-javaslat is látszódjon */
+  notices?: boolean;
 }
 
-/** Az ágyás korábbi évei és a vetésforgó-javaslat a kiválasztott évre. */
-export function BedHistory({ bed, year, ctx, onOpen, onAdd }: Props) {
-  if (!ctx) return null;
+/** A vetésforgó-javaslat az ágyás előzményeiből a kiválasztott évre (az áttekintő panel is használja). */
+export function bedRotationNotices(bed: Bed, year: number, ctx: ChecksContext): { level: CheckLevel | 'ok'; message: string }[] {
   const history = ctx.all.filter((p) => effectiveBedId(p) === bed.id && p.year < year && p.status !== 'elmaradt');
   const summary = bedRotationSummary(history.map(toRotationCrop), year, ctx.families);
-  const years = [...new Set([year - 1, year - 2, year - 3, ...history.map((p) => p.year)])].sort((a, b) => b - a);
-
   const notices: { level: CheckLevel | 'ok'; message: string }[] = [];
   if (summary.next && summary.last) {
     notices.push({
@@ -33,7 +32,7 @@ export function BedHistory({ bed, year, ctx, onOpen, onAdd }: Props) {
   } else if (summary.last) {
     notices.push({
       level: 'info',
-      message: `${yearIn(summary.last.year)} vegyesen állt itt ${summary.last.stages.map((st) => ROTATION_STAGE_NOUN[st]).join(' és ')} – az egyes sávokat az ültetés szerkesztője ellenőrzi.`,
+      message: `${yearIn(summary.last.year)} vegyesen állt itt ${summary.last.stages.map((st) => ROTATION_STAGE_NOUN[st]).join(' és ')} – az egyes sávokat a munkalap ellenőrzi.`,
     });
   }
   if (summary.blocked.length) {
@@ -48,6 +47,15 @@ export function BedHistory({ bed, year, ctx, onOpen, onAdd }: Props) {
       message: 'Még nincs rögzített előzmény. Elég az évet és a növényt megadni – a vetésforgó-ellenőrzés ebből is dolgozik.',
     });
   }
+  return notices;
+}
+
+/** Az ágyás korábbi évei; a vetésforgó-javaslat a munkalap áttekintésében van (`notices`: itt is). */
+export function BedHistory({ bed, year, ctx, onOpen, onAdd, notices: showNotices = true }: Props) {
+  if (!ctx) return null;
+  const history = ctx.all.filter((p) => effectiveBedId(p) === bed.id && p.year < year && p.status !== 'elmaradt');
+  const years = [...new Set([year - 1, year - 2, year - 3, ...history.map((p) => p.year)])].sort((a, b) => b - a);
+  const notices = showNotices ? bedRotationNotices(bed, year, ctx) : [];
 
   return (
     <>

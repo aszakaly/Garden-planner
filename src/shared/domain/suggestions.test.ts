@@ -121,4 +121,38 @@ describe('Mi kerülhet ide?', () => {
     const out = suggestPlantings({ target: target({ year: 2026, from: '2026-05-01', today: '2026-05-01' }), plants: [paradicsom], seeds: [], ctx: ctx([]) });
     expect(out[0]).toMatchObject({ method: 'vasarolt_palanta', dates: { sow: null, transplant: '2026-05-10' } });
   });
+
+  it('a kijelölt napra: ami azon a napon vagy utána áll a helyén, a korábban lekerülő nem', () => {
+    const out = suggestPlantings({ target: target({ day: '2027-07-01' }), plants, seeds: [], ctx: ctx([]) });
+    // a paradicsom máj. 10-től áll ott, a bab júliusban is vethető; a tavaszi retek addigra lekerül
+    expect(names(out)).toEqual(expect.arrayContaining(['Paradicsom', 'Bokorbab']));
+    expect(names(out)).not.toContain('Retek');
+    for (const s of out) expect(s.period.end > '2027-07-01').toBe(true);
+  });
+
+  it('a munkalap még nem mentett (negatív azonosítójú) sávja is szomszédnak számít', () => {
+    // a piszkozat első új sávja -1-es azonosítót kap
+    const fresh = planting(-1, paradicsom, {
+      year: 2027, method: 'palanta', plan_transplant_date: '2027-05-10', plan_end_date: '2027-10-05', axis_start_cm: 0, axis_span_cm: 40,
+    });
+    const out = suggestPlantings({
+      target: target({ strip: { start: 40, span: 60 }, day: '2027-07-01', fill: false }),
+      plants: [bab],
+      seeds: [],
+      ctx: ctx([fresh], [{ a: paradicsom.id, b: bab.id, relation: 1 }]),
+    });
+    expect(out[0]!.reasons.map((r) => r.text)).toContain('Jó szomszéd: paradicsom');
+  });
+
+  it('szabad helyre: kitöltés helyett legfeljebb az alapszélesség, a hely elejétől', () => {
+    const strip = { start: 40, span: 120 };
+    const [filled] = suggestPlantings({ target: target({ strip }), plants: [bab], seeds: [], ctx: ctx([]) });
+    expect(filled!.placement).toMatchObject({ axis_start_cm: 40, axis_span_cm: 120 });
+    // a bokorbab sortávja 40 cm: kb. 60 cm-nyi sor két sor, 80 cm
+    const [own] = suggestPlantings({ target: target({ strip, fill: false }), plants: [bab], seeds: [], ctx: ctx([]) });
+    expect(own!.placement).toMatchObject({ axis_start_cm: 40, axis_span_cm: 80 });
+    // keskenyebb helyen a hely szélessége
+    const [narrow] = suggestPlantings({ target: target({ strip: { start: 0, span: 50 }, fill: false }), plants: [bab], seeds: [], ctx: ctx([]) });
+    expect(narrow!.placement.axis_span_cm).toBe(50);
+  });
 });

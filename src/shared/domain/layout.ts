@@ -10,7 +10,7 @@ import {
   type FrostDates,
   type PlantingDates,
 } from './dates.ts';
-import { EPS, periodsOverlap, placementsOverlap, rangesOverlap, type Period, type Placement } from './geometry.ts';
+import { EPS, freeAxisRanges, periodsOverlap, placementsOverlap, rangesOverlap, type Occupant, type Period, type Placement } from './geometry.ts';
 import { addDaysISO, diffDays, isoFromMonthDay } from './isoDate.ts';
 import { bedStartField, effectiveBedId, effectiveDates, occupancyPeriod, planDates } from './plantings.ts';
 
@@ -466,6 +466,75 @@ export function makeRoomEvenly(
     strips: out,
     placement: { axis_start_cm: start, axis_span_cm: rest, cross_start_cm: 0, cross_span_cm: size.cross },
   };
+}
+
+/**
+ * A napon szabad, teljes hosszú szakaszok a tengely mentén, a rácsra igazítva (az eleje felfelé,
+ * a vége lefelé); a minimális sávnál keskenyebb maradék nem számít. Ezekre kattintva kér
+ * javaslatot a munkalap.
+ */
+export function freeOnDay(occupants: Occupant[], size: LayoutSize, day: string): { start: number; end: number }[] {
+  return freeAxisRanges(size.axis, occupants, { start: day, end: addDaysISO(day, 1) }, { start: 0, span: size.cross })
+    .map(([s, e]) => ({
+      start: Math.max(0, Math.ceil((s - EPS) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM),
+      end: Math.min(size.axis, Math.floor((e + EPS) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM),
+    }))
+    .filter((r) => r.end - r.start >= LAYOUT_MIN_CM - EPS);
+}
+
+export interface InsertInput {
+  size: LayoutSize;
+  /** Az új sáv kért szélessége */
+  span: number;
+  /** Az új ültetés teljes időszaka; null: nincs dátuma */
+  period: Period | null;
+  /** A nap, amikor az új ültetés az ágyásban áll: a napi szabad hely és a helycsinálás ezt nézi */
+  on: string;
+  /** Az ágyás elhelyezett ültetései (foglaltság, az új nélkül) */
+  occupants: Occupant[];
+  /** Az `on` napon látható sávok */
+  strips: LayoutStrip[];
+  /** A kijelölt sáv: a sora után kerül az új sor, illetve ő ad helyet */
+  selected: number | null;
+  /** A sorok végére kerüljön (pl. a „Még egy sáv ebből” másolata) */
+  atEnd?: boolean;
+}
+
+export interface InsertResult {
+  placement: Placement;
+  /** A helyet adó sávok új helye; null: szabad helyre került, más nem mozdult */
+  strips: LayoutStrip[] | null;
+}
+
+/**
+ * Az új (vagy másolt) sáv helye, ebben a sorrendben:
+ * 1. az egész időszakára szabad, elég széles hely;
+ * 2. az `on` napon szabad, elég széles hely (elő- és utóveteménynél az ütközést a javítás oldja fel);
+ * 3. a legszélesebb szabad szakasz (az egész időszakra, majd az `on` napra), kitöltve;
+ * 4. hely híján minden sor arányosan enged, és az új sor a kijelölt sor után (`atEnd`: a végére) kerül;
+ * 5. ha ez sem megy (pl. rögzített sáv áll az ágyásban), a kijelölt vagy az utolsó mozdítható sáv ad helyet.
+ * null: sehogy sincs hely.
+ */
+export function insertPlacement(i: InsertInput): InsertResult | null {
+  const whole = { start: 0, span: i.size.cross };
+  const free = i.period ? freeAxisRanges(i.size.axis, i.occupants, i.period, whole) : [];
+  const freeOn = freeAxisRanges(i.size.axis, i.occupants, { start: i.on, end: addDaysISO(i.on, 1) }, whole);
+  // a `placeInFree` elég hely híján a legszélesebb szakaszt adja: előbb a teljes szélesség kell
+  const fit = (ranges: [number, number][]) => {
+    const p = placeInFree(ranges, i.span, i.size.cross);
+    return p && p.axis_span_cm >= i.span - EPS ? p : null;
+  };
+  const placed = fit(free) ?? fit(freeOn) ?? placeInFree(free, i.span, i.size.cross) ?? placeInFree(freeOn, i.span, i.size.cross);
+  if (placed) return { placement: placed, strips: null };
+
+  const rows = layoutRows(i.strips);
+  const selRow = rows.findIndex((r) => i.selected != null && r.keys.includes(i.selected));
+  const room = makeRoomEvenly(i.strips, i.size, i.span, i.atEnd || selRow < 0 ? rows.length : selRow + 1);
+  if (room) return room;
+  const movable = i.strips.filter((x) => !x.fixed);
+  const last = [...movable].sort((a, b) => endOf(a.placement, 'axis') - endOf(b.placement, 'axis')).at(-1);
+  const target = movable.find((x) => x.key === i.selected) ?? last;
+  return target ? makeRoom(i.strips, target.key, i.span) : null;
 }
 
 /** Teljes hosszú-e a sáv: a keresztirányban az ágyás egész hosszán fut. */

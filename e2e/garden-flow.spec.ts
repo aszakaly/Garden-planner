@@ -64,17 +64,21 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
   });
 
   await test.step('4–5. 2027-es terv: vetésforgó-figyelmeztetés és piros társítási jelzés', async () => {
-    await page.getByRole('button', { name: 'Új ültetés' }).click();
+    // Az ágyáshoz nem kötött új ültetés az Éves terv oldaláról, a teljes ültetési lappal
+    await page.goto('/terv');
+    await page.getByRole('button', { name: 'Új ültetés', exact: true }).click();
     let sheet = dialog(page, 'Új ültetés');
     await field(sheet, 'Növény').selectOption({ label: 'Paradicsom' });
     await field(sheet, 'Fajta').selectOption({ label: 'Ökörszív' });
+    await field(sheet, 'Ágyás').selectOption({ label: 'E2E ágyás' });
     // Burgonyafélék után burgonyafélék: a 2025-ös, csak évvel rögzített előzmény is számít
     await expect(sheet.getByText(/legalább 3 évnek kell eltelnie.*2025-ben burgonya volt itt/)).toBeVisible();
     await confirm(sheet);
 
-    await page.getByRole('button', { name: 'Új ültetés' }).click();
+    await page.getByRole('button', { name: 'Új ültetés', exact: true }).click();
     sheet = dialog(page, 'Új ültetés');
     await field(sheet, 'Növény').selectOption({ label: 'Gumós édeskömény' });
+    await field(sheet, 'Ágyás').selectOption({ label: 'E2E ágyás' });
     await expect(sheet.getByText(/Kerülendő szomszéd: paradicsom közvetlenül mellette áll/)).toBeVisible();
     await confirm(sheet);
 
@@ -181,39 +185,51 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
     }
   });
 
-  await test.step('12. ágyás kiosztása: paradicsom–bazsalikom–paradicsom, méretezés húzással', async () => {
+  await test.step('12. ágyás-munkalap: paradicsom–bazsalikom–paradicsom javaslatokból, méretezés húzással', async () => {
     await page.getByRole('main').getByText('E2E ágyás 2', { exact: true }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'E2E ágyás 2' })).toBeVisible();
-    await page.getByRole('button', { name: 'Kiosztás' }).click();
-    const sheet = dialog(page, 'E2E ágyás 2 – kiosztás 2028');
-    await expect(sheet.getByRole('button', { name: /^Fővetemény/ })).toHaveAttribute('aria-pressed', 'true');
+    const stage = page.getByRole('region', { name: 'Ágyás kiosztása' });
+    const panel = page.getByRole('complementary', { name: 'Részletek' });
+    // Más évben a fővetemény napja nyílik, kijelölés nélkül: a panel az áttekintés
+    await expect(stage.getByRole('button', { name: /^Fővetemény/ })).toHaveAttribute('aria-pressed', 'true');
+    await expect(panel.getByRole('heading', { name: 'Az ágyás áttekintése' })).toBeVisible();
 
-    // Csak a növényt kell választani: a dátum a vetési naptárból, a szélesség a sortávból jön
-    for (const plant of ['Paradicsom', 'Bazsalikom']) {
-      await sheet.getByRole('button', { name: 'Sáv hozzáadása' }).click();
-      await field(sheet, 'Növény').selectOption({ label: plant });
-    }
-    await sheet.getByRole('button', { name: /^Paradicsom/ }).click();
-    await sheet.getByRole('button', { name: 'Még egy sáv ebből' }).click();
-    await expect(sheet.getByText('110–190 cm')).toBeVisible();
+    // Szabad helyre kattintva javaslat; a keresőből bármelyik növény felvehető
+    const pick = async (gap: RegExp, plant: string) => {
+      await stage.getByRole('button', { name: gap }).click();
+      await expect(panel.getByRole('heading', { name: 'Mi kerülhet ide?' })).toBeVisible();
+      await panel.getByRole('searchbox', { name: 'Növény keresése' }).fill(plant);
+      await panel.getByRole('button', { name: new RegExp(`^${plant}`) }).first().click();
+    };
+    // A dátum a vetési naptárból, a szélesség a sortávból jön (paradicsom: 80 cm, bazsalikom: kb. 60 cm-nyi sor)
+    await pick(/^Szabad · 300 cm/, 'Paradicsom');
+    await expect(stage.getByText('0–80 cm', { exact: true })).toBeVisible();
+    await pick(/^Szabad · 220 cm/, 'Bazsalikom');
+    await expect(stage.getByText('80–140 cm', { exact: true })).toBeVisible();
+    await expect(panel.getByText(/Jó szomszéd: paradicsom/)).toBeVisible();
 
-    await sheet.getByRole('button', { name: /^Bazsalikom/ }).click();
-    await expect(sheet.getByText(/Jó szomszéd: paradicsom/)).toBeVisible();
+    await stage.getByRole('button', { name: /^Paradicsom/ }).click();
+    await panel.getByRole('button', { name: 'Még egy sáv ebből' }).click();
+    await expect(stage.getByText('140–220 cm', { exact: true })).toBeVisible();
 
     // A bazsalikom sávjának vége 15 cm-rel tovább: a mellette álló paradicsom enged
-    const bedBox = (await sheet.locator('[data-layout-bed]').boundingBox())!;
+    await stage.getByRole('button', { name: /^Bazsalikom/ }).click();
+    const bedBox = (await stage.locator('[data-layout-bed]').boundingBox())!;
     const pxPerCm = bedBox.width / 300;
-    const handle = (await sheet.locator('[data-handle="axisEnd"]').boundingBox())!;
+    const handle = (await stage.locator('[data-handle="axisEnd"]').boundingBox())!;
     const x = handle.x + handle.width / 2;
     const y = handle.y + handle.height / 2;
     await page.mouse.move(x, y);
     await page.mouse.down();
     await page.mouse.move(x + 15 * pxPerCm, y, { steps: 5 });
     await page.mouse.up();
-    await expect(sheet.getByText('80–125 cm')).toBeVisible();
-    await expect(sheet.getByText('125–190 cm')).toBeVisible();
+    await expect(stage.getByText('80–155 cm', { exact: true })).toBeVisible();
+    await expect(stage.getByText('155–220 cm', { exact: true })).toBeVisible();
 
-    await confirm(sheet);
+    // Mentés-sáv: egyben ment
+    await expect(page.getByRole('region', { name: 'Mentetlen módosítások' })).toContainText('3 nem mentett módosítás');
+    await page.getByRole('button', { name: 'Mentés', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Mentetlen módosítások' })).toBeHidden();
     await expect
       .poll(async () => {
         const items: { bed_name: string; plant_name: string; axis_start_cm: number; axis_span_cm: number }[] = await (
@@ -226,8 +242,8 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
       })
       .toEqual([
         ['Paradicsom', 0, 80],
-        ['Bazsalikom', 80, 45],
-        ['Paradicsom', 125, 65],
+        ['Bazsalikom', 80, 75],
+        ['Paradicsom', 155, 65],
       ]);
   });
 });

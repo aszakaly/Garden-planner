@@ -35,6 +35,16 @@ export interface SuggestionTarget {
   today: string;
   /** A szerkesztett ültetés (nem számít foglaltságnak) */
   excludeId?: number;
+  /**
+   * A kijelölt nap (a munkalap pillanatképe): csak olyan időzítés jön szóba, amelynél a növény
+   * ezen a napon vagy utána áll a helyén. Üresen nincs ilyen megkötés.
+   */
+  day?: string | null;
+  /**
+   * Sávnál kitöltse-e a teljes sávot (alapértelmezés). Hamis: legfeljebb az alapértelmezett
+   * szélesség (kb. 60 cm-nyi sor), a sáv elejétől.
+   */
+  fill?: boolean;
 }
 
 export interface SuggestionInput {
@@ -174,6 +184,8 @@ function findFit(plant: PlantListItem, w: GrowingWindow, target: SuggestionTarge
         actual_end_date: null,
       });
       if (!period) continue;
+      // a kijelölt napra tervezünk: ami addigra már lekerül, az nem ide való
+      if (target.day && period.end <= target.day) continue;
 
       // Szabad szakasz a sávon belül
       const range = freeAxisRanges(axis, occupants, period, cross)
@@ -181,7 +193,8 @@ function findFit(plant: PlantListItem, w: GrowingWindow, target: SuggestionTarge
         .find(([s, e]) => e - s + 0.5 >= minSpan);
       if (!range) continue;
       const room = range[1] - range[0];
-      const span = target.strip ? room : Math.min(room, spanForRows(defaultRows(rowSpacing), rowSpacing));
+      const fill = !!target.strip && target.fill !== false;
+      const span = fill ? room : Math.min(room, spanForRows(defaultRows(rowSpacing), rowSpacing));
       const rows = rowsForSpan(span, rowSpacing);
       return {
         method,
@@ -196,10 +209,17 @@ function findFit(plant: PlantListItem, w: GrowingWindow, target: SuggestionTarge
   return null;
 }
 
+/**
+ * A virtuális ültetés azonosítója: nem ütközhet a munkalap piszkozatának új (-1, -2 …) ültetéseivel,
+ * különben az ellenőrzések a szomszédos új sávot önmagának tekintenék.
+ */
+const VIRTUAL_ID = Number.MIN_SAFE_INTEGER;
+
 /** A virtuális ültetés az ellenőrzésekhez. */
 function virtualPlanting(plant: PlantListItem, fit: Fit, target: SuggestionTarget): PlantingListItem {
   return {
     ...blankPlanting(),
+    id: VIRTUAL_ID,
     year: target.year,
     plant_id: plant.id,
     plant_name: plant.name_hu,

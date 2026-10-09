@@ -1,6 +1,6 @@
 import { Navigate, createBrowserRouter, RouterProvider } from 'react-router';
 import { AppLayout } from './layout/AppLayout.tsx';
-import { useIsMobile } from './lib/useIsMobile.ts';
+import { useIsMobile } from './lib/useDevice.ts';
 import { PlantsPage } from './features/plants/PlantsPage.tsx';
 import { PlantDetailPage } from './features/plants/PlantDetailPage.tsx';
 import { VarietyPage } from './features/plants/VarietyPage.tsx';

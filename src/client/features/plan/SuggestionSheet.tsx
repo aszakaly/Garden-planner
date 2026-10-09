@@ -1,5 +1,4 @@
-import { ChevronRight } from 'lucide-react';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { bedAxes } from '@shared/domain/geometry.ts';
 import {
   suggestPlantings,
@@ -7,15 +6,13 @@ import {
   SUGGESTION_RANKS,
   type Suggestion,
   type SuggestionRank,
-  type SuggestionReason,
 } from '@shared/domain/suggestions.ts';
-import { Chip } from '../../components/ui/Chip.tsx';
 import { DateInput, FormButton, FormGroup, FormRow, NumberInput, Select, Toggle } from '../../components/ui/Form.tsx';
 import { Sheet } from '../../components/ui/Sheet.tsx';
 import { cropColor } from '../../lib/cropColors.ts';
 import { todayISO } from '../../lib/format.ts';
 import { useBeds, useCropGroups, usePlants, useSeeds } from '../../lib/queries.ts';
-import { blankPlanting, datesSummary } from './plantingView.ts';
+import { SuggestionRow } from './SuggestionRow.tsx';
 import { useChecksContext } from './useChecks.ts';
 import s from './SuggestionSheet.module.css';
 
@@ -38,17 +35,6 @@ interface Props {
   onPick: (suggestion: Suggestion, bedId: number) => void;
 }
 
-const TONE: Record<SuggestionReason['level'], 'good' | 'neutral' | 'warn' | 'bad'> = {
-  ok: 'good',
-  info: 'neutral',
-  figyelem: 'warn',
-  kerulendo: 'bad',
-};
-const RANK_COLOR: Record<SuggestionRank, string> = {
-  ajanlott: 'var(--c-green)',
-  lehetseges: 'var(--c-gray)',
-  kerulendo: 'var(--c-red)',
-};
 const SHOWN = 8;
 
 /** Az év eleje, az idei évben a mai nap. */
@@ -176,7 +162,6 @@ export function SuggestionSheet({ open, onClose, year, request, onPick }: Props)
                 suggestion={sg}
                 year={year}
                 color={cropColor(codeOf.get(sg.plant.crop_group_id ?? 0))}
-                rankColor={RANK_COLOR[rank]}
                 onPick={() => bedId && onPick(sg, bedId)}
               />
             ))}
@@ -189,56 +174,5 @@ export function SuggestionSheet({ open, onClose, year, request, onPick }: Props)
         );
       })}
     </Sheet>
-  );
-}
-
-function SuggestionRow({
-  suggestion: sg,
-  year,
-  color,
-  rankColor,
-  onPick,
-}: {
-  suggestion: Suggestion;
-  year: number;
-  color: string;
-  rankColor: string;
-  onPick: () => void;
-}) {
-  const p = sg.placement;
-  const summary = datesSummary(
-    {
-      ...blankPlanting(),
-      year,
-      method: sg.method,
-      plan_sow_date: sg.dates.sow,
-      plan_transplant_date: sg.dates.transplant,
-      plan_harvest_start: sg.dates.harvestStart,
-      plan_end_date: sg.dates.end,
-    },
-    year,
-  );
-  const place = `${sg.rows} sor · ${Math.round(p.axis_start_cm)}–${Math.round(p.axis_start_cm + p.axis_span_cm)} cm`;
-  return (
-    <button type="button" className={s.row} onClick={onPick} style={{ '--sc': color, '--rc': rankColor } as CSSProperties}>
-      <span className={s.swatch} />
-      <span className={s.body}>
-        <span className={s.title}>
-          {sg.plant.name_hu}
-          {sg.variety_name && <span className={s.variety}> – {sg.variety_name}</span>}
-        </span>
-        <span className={s.meta}>
-          {summary} · {place}
-        </span>
-        <span className={s.chips}>
-          {sg.reasons.map((r) => (
-            <span key={r.text} title={r.detail}>
-              <Chip tone={TONE[r.level]}>{r.text}</Chip>
-            </span>
-          ))}
-        </span>
-      </span>
-      <ChevronRight size={16} className={s.chevron} />
-    </button>
   );
 }

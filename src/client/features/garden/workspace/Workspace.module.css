@@ -1,0 +1,334 @@
+/* Ágyás-munkalap: ágyáskép és sávlista balra, a kijelöléshez igazodó panel jobbra */
+
+.workspace {
+  container-type: inline-size;
+}
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: start;
+  margin: 6px var(--page-pad) 0;
+}
+.stage {
+  padding-bottom: 14px;
+  border-radius: 16px;
+  background: var(--bg-grouped);
+  transition: opacity 0.15s;
+}
+/* Mentés közben a munkalap zárolva */
+.stage[aria-busy='true'] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.loading {
+  padding: 20px;
+  color: var(--label-2);
+}
+.panel {
+  position: sticky;
+  top: 60px;
+  max-height: calc(100dvh - 76px);
+  overflow-y: auto;
+  padding: 14px 12px 16px;
+  border-radius: 16px;
+  background: var(--bg-grouped);
+  overscroll-behavior: contain;
+}
+@container (max-width: 860px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .panel {
+    position: static;
+    max-height: none;
+  }
+}
+
+/* A panel elemei */
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 6px 8px;
+}
+.headText {
+  flex: 1;
+  min-width: 0;
+}
+.kicker {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--label-2);
+}
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.titleDot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--sc);
+}
+.meta {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--label-2);
+}
+.close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--fill-3);
+  color: var(--label-2);
+}
+.groupTitle {
+  margin: 14px 8px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--label-2);
+}
+.group {
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--bg-grouped-2);
+}
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.muted {
+  margin: 4px 8px;
+  font-size: 13px;
+  color: var(--label-2);
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  font-size: 14px;
+  text-align: left;
+}
+.row + .row {
+  box-shadow: inset 12px 0 0 var(--bg-grouped-2), inset 0 var(--hairline) 0 var(--separator);
+}
+.rowText {
+  min-width: 0;
+}
+.sub {
+  display: block;
+  font-size: 12px;
+  color: var(--label-2);
+}
+.link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tint);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.actions button {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--bg-grouped-2);
+  box-shadow: 0 0 0 var(--hairline) var(--separator);
+  color: var(--tint);
+  font-size: 13px;
+  font-weight: 500;
+}
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.buttons button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  background: var(--bg-grouped-2);
+  color: var(--tint);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.buttons button:disabled {
+  color: var(--label-3);
+}
+.buttons .danger {
+  color: var(--c-red);
+}
+.bar {
+  display: grid;
+  grid-template-columns: 100px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+.barTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--fill-3);
+}
+.barFill {
+  display: block;
+  height: 100%;
+  background: var(--tint-fill);
+}
+.barValue {
+  text-align: right;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--bg-grouped-2);
+  color: var(--label-2);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  color: var(--label);
+}
+.more {
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tint);
+  text-align: left;
+}
+.foot {
+  margin: 10px 8px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--label-2);
+}
+
+/* Az oldal alsó blokkjai */
+.blockToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tint);
+}
+
+/* Mentés-sáv és üzenet: a lap alján tapadnak */
+.bottom {
+  position: sticky;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 16px var(--page-pad) 0;
+  pointer-events: none;
+}
+.bottom > * {
+  pointer-events: auto;
+}
+.saveBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 7px 7px 7px 16px;
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: var(--shadow-sheet);
+  font-size: 14px;
+}
+.saveCount {
+  font-weight: 600;
+}
+.saveAvoid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  color: #c4271d;
+}
+.discard,
+.save {
+  padding: 7px 14px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.discard {
+  background: var(--fill-3);
+  color: var(--label);
+}
+.save {
+  background: var(--tint-fill);
+  color: white;
+}
+.save:disabled {
+  opacity: 0.6;
+}
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 560px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c-red) 10%, white);
+  box-shadow: var(--shadow-panel);
+  color: #c4271d;
+  font-size: 13px;
+}
+.notice span {
+  flex: 1;
+}
+.notice button {
+  display: inline-flex;
+  padding: 2px;
+  color: inherit;
+}

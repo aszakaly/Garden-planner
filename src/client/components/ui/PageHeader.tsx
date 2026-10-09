@@ -1,7 +1,7 @@
 import { ChevronLeft } from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { useIsMobile } from '../../lib/useIsMobile.ts';
+import { useIsMobile } from '../../lib/useDevice.ts';
 import s from './PageHeader.module.css';
 
 interface Props {

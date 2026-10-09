@@ -1,5 +1,6 @@
+/* A munkalap széles: az ágyáskép mellett a panel */
 .page {
-  max-width: 920px;
+  max-width: 1320px;
   padding-bottom: 32px;
 }
 .muted {
@@ -12,7 +13,8 @@
   line-height: 1.5;
   white-space: pre-wrap;
 }
-.list {
-  --row-pad: 0px;
-  margin-top: -6px;
+.factsLink {
+  padding: 0;
+  font: inherit;
+  color: var(--tint);
 }

@@ -1,4 +1,4 @@
-import { GripVertical, Link2, Lock, Minus, Plus } from 'lucide-react';
+import { GripVertical, Lightbulb, Link2, Lock, Minus, Plus } from 'lucide-react';
 import {
   useId,
   useLayoutEffect,
@@ -32,7 +32,10 @@ interface Props {
   onMoveRow: (from: number, to: number) => void;
   onResizeRow: (index: number, delta: number) => void;
   /** A kijelölt sáv részletei: a sora alatt nyílik ki */
-  detail: ReactNode;
+  detail?: ReactNode;
+  /** A napon szabad szakaszok: a sorok között, kijelölhetők */
+  gaps?: { start: number; end: number; selected: boolean }[];
+  onSelectGap?: (index: number) => void;
 }
 
 interface Drag {
@@ -58,7 +61,7 @@ const SLOP_PX = 4;
  * A sávok soronként, az ágyás tengelye mentén. A fogantyúval egész sor húzható át (érintéssel is),
  * vagy fókuszban a fel és le nyíllal léptethető.
  */
-export function LayoutRowList({ rows, strips, reorderable, selected, onSelect, onMoveRow, onResizeRow, detail }: Props) {
+export function LayoutRowList({ rows, strips, reorderable, selected, onSelect, onMoveRow, onResizeRow, detail, gaps = [], onSelectGap }: Props) {
   const refs = useRef<(HTMLDivElement | null)[]>([]);
   /** A fogantyúk a sor kulcsa (az első sávja) szerint */
   const grips = useRef(new Map<number, HTMLElement>());
@@ -98,8 +101,41 @@ export function LayoutRowList({ rows, strips, reorderable, selected, onSelect, o
     if (now !== index && row) setAnnounce(`Áthelyezve: ${now + 1}. sor (${rangeOf(row)})`);
   };
 
-  if (!rows.length) return null;
+  if (!rows.length && !gaps.length) return null;
   const canReorder = reorderable && rows.length > 1;
+  /** A szabad szakasz sora: a sorok közé, a helye szerint */
+  const gapRow = (i: number) => {
+    const g = gaps[i]!;
+    const range = `${nf.format(g.start)}–${nf.format(g.end)} cm`;
+    return (
+      <div key={`gap-${g.start}`} className={`${s.row} ${s.gapRow}`}>
+        <div className={s.rowMain}>
+          <span className={s.grip} aria-hidden />
+          <span className={s.range}>{range}</span>
+          <span className={s.rowStrips}>
+            <button
+              type="button"
+              aria-pressed={g.selected}
+              className={`${s.stripButton} ${s.gapButton} ${g.selected ? s.gapButtonSelected : ''}`}
+              onClick={() => onSelectGap?.(i)}
+            >
+              <span className={s.stripTitle}>Szabad · {nf.format(g.end - g.start)} cm</span>
+              <span className={s.gapAsk}>
+                <Lightbulb size={13} /> Mi kerülhet ide?
+              </span>
+            </button>
+          </span>
+        </div>
+      </div>
+    );
+  };
+  /** A sor előtt álló, még ki nem rajzolt szabad szakaszok */
+  let nextGap = 0;
+  const gapsBefore = (start: number) => {
+    const out: ReactNode[] = [];
+    while (nextGap < gaps.length && gaps[nextGap]!.start < start) out.push(gapRow(nextGap++));
+    return out;
+  };
   return (
     <>
       <div className={dragging ? `${s.rowList} ${s.rowsDragging}` : s.rowList}>
@@ -112,7 +148,8 @@ export function LayoutRowList({ rows, strips, reorderable, selected, onSelect, o
           const range = rangeOf(row);
           const narrowest = row.span <= NARROWEST_CM;
           const offset = dragging?.index === index ? dragging.dy : null;
-          return (
+          return [
+            ...gapsBefore(row.start),
             <div
               key={rowKey}
               ref={(el) => {
@@ -235,9 +272,10 @@ export function LayoutRowList({ rows, strips, reorderable, selected, onSelect, o
                 )}
               </div>
               {selected != null && row.keys.includes(selected) && detail}
-            </div>
-          );
+            </div>,
+          ];
         })}
+        {gapsBefore(Infinity)}
       </div>
       {/* a lista után: a sorok közé téve elrontaná a szélső sorok kerekítését */}
       <span id={hintId} className="visually-hidden">

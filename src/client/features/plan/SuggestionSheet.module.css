@@ -76,3 +76,20 @@
     font-size: 17px;
   }
 }
+
+/* Azonnali felvétel (a munkalapon) */
+.add {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tint-fill) 15%, white);
+  color: var(--tint);
+}
+.row:hover .add,
+.row:focus-visible .add {
+  background: var(--tint-fill);
+  color: white;
+}

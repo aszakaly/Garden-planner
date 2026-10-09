@@ -42,8 +42,8 @@ Mindhárom eset a `kerttervezo-uitest` példányon, a 2027-es évben fut. Az E1 
 1. Nyitáskor semmi sincs kijelölve. Az áttekintés szerint az ágyás üres, a szabad helyek között a teljes ágyás szerepel.
 2. A fővetemény napján (júl. 1.) a szabad helyre kattintva a javaslatok között a paradicsom is ott van, mert máj. 10-től a helyén áll. A retek legfeljebb nyári vagy őszi vetéssel szerepelhet, a márciusival nem.
 3. A paradicsomot választva 80 cm-es sáv lesz belőle (sortáv 80 cm), kijelölve; a dátumai a vetési naptárból jönnek.
-4. A szélességét 30 cm-re állítva mellette 50 cm szabad hely jelenik meg. Erre kattintva a bazsalikom „Jó szomszéd: paradicsom” okkal ajánlott; választás után 30–60 cm-en áll.
-5. A paradicsomnál a „Még egy sáv ebből” a maradék 20 cm-es helyre teszi a másolatot. A bazsalikomot léptetővel 20 cm-re keskenyítve a mellette álló paradicsom enged, így a sorok 30–20–30 cm-esek.
+4. A szélességét 30 cm-re állítva mellette 50 cm szabad hely jelenik meg. Erre kattintva a bazsalikom „Jó szomszéd: paradicsom” okkal ajánlott; választás után kitölti a helyet (30–80 cm), mert az alapszélessége (kb. 60 cm-nyi sor) nem fér el.
+5. A paradicsomnál a „Még egy sáv ebből” hely híján a sorokat arányosan keskenyíti, és a másolat a végére kerül (20–35–25 cm). Léptetőkkel 30–20–30 cm-re állítom.
 6. A határokon zöld vonal látszik, a mentés-sávon „3 nem mentett módosítás”. Mentés után az adatbázisban három ültetés van: 0–30, 30–50 és 50–80 cm.
 
 **E2 – Utóvetemény a fokhagyma után:** Emelt ágyás 1, 4 × 1,2 m, keresztben futó sorok. A 2026 őszén ültetett fokhagyma tény adatos, 325–400 cm-en áll, a szedése 2027. júl. 20-ig tart.
