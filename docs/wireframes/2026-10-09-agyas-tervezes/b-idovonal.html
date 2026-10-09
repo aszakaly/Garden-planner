@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <title>B – Idővonal-vászon</title>
+    <link rel="stylesheet" href="wf.css" />
+    <script src="wf.js"></script>
+  </head>
+  <body>
+    <div class="page" id="root"></div>
+    <script>
+      const cursor = '07-25';
+      const onDay = at(cursor).map((p) => ({ ...p }));
+      const stage = `
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:stretch">
+          <div class="canvas" style="margin:0;position:relative">
+            ${mk(3, 'top:-9px;left:-9px')}
+            <div style="font-size:12px;font-weight:600;color:var(--label-2);margin:2px 0 2px">FELÜLNÉZET · ${short(cursor).toUpperCase()}</div>
+            ${bedSvg({ px: 0.95, strips: onDay, gaps: [{ a0: 270, a1: 325 }, { a0: 325, a1: 400, sel: true }], small: true })}
+          </div>
+          <div class="canvas" style="margin:0;font-size:13px;line-height:1.45;color:var(--label-2)">
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <span class="chip neutral">Elő · ápr. 12.</span><span class="chip neutral">Fő · júl. 1.</span><span class="chip neutral">Utó · szept. 22.</span>
+            </div>
+            A zöld vonal a vizsgált nap: húzható, vagy a gombokkal ugrik. A felülnézet ennek a napnak az ágyását mutatja (a fél soros megosztások is itt látszanak).
+          </div>
+        </div>
+        <div class="canvas" style="position:relative">
+          ${mk(1, 'top:-9px;left:-9px')}
+          ${mk(2, 'top:280px;left:600px')}
+          ${mk(5, 'top:52px;left:300px')}
+          ${timelineSvg({
+            W: 650,
+            H: 400,
+            cursor,
+            items: Object.values(P),
+            gap: { a0: 325, a1: 400, s: '07-20', e: '12-31', label: 'Szabad júl. 20-tól' },
+            clash: { a0: 45, a1: 75, s: '04-20', e: '05-25' },
+          })}
+          <p class="hint">Függőlegesen az ágyás hossza, vízszintesen az év. Kattints egy üres részre: a javaslat pontosan erre a helyre és időre szól. Az ültetést vízszintesen húzva a dátumait, függőlegesen a helyét állítod.</p>
+        </div>`;
+
+      const panel = `
+        ${mk(4, 'top:-9px;left:-9px')}
+        <div class="p-head">
+          <div class="p-kicker">Szabad · 325–400 cm · júl. 20.–dec. 31.</div>
+          <div class="p-title">Mi jöjjön a fokhagyma után?</div>
+          <div class="p-meta">Előtte: fokhagyma (hagymás), júl. 20-ig.<br />Szomszéd: szabad hely (270–325 cm).</div>
+        </div>
+        <div class="search">${icon('search', 15)} Keress bármilyen növényt…</div>
+        <div class="gt">Ajánlott (3)</div>
+        <div class="group">
+          ${sug({ name: 'Spenót', variety: 'Matador', color: C.level, meta: 'Vetés aug. 25. · szedés okt. 10.–nov. 30. · 4 sor', chips: [['good', 'Most levél következik'], ['good', 'Van vetőmag: Matador (2026)']] })}
+          ${sug({ name: 'Saláta', variety: 'Téli vajfej', color: C.level, meta: 'Vetés aug. 15. · szedés okt. 1.–nov. 15. · 3 sor', chips: [['good', 'Vetésforgó rendben'], ['good', 'Bevált (4,5★)']] })}
+          ${sug({ name: 'Retek', variety: 'Jégcsap', color: C.gyoker, meta: 'Vetés aug. 20. · szedés szept. 25.–okt. 20. · 4 sor', chips: [['good', 'Vetésforgó rendben'], ['good', 'Van vetőmag']] })}
+        </div>
+        <div class="gt">Lehetséges (1)</div>
+        <div class="group">
+          ${sug({ name: 'Pak choi', color: C.level, meta: 'Vetés aug. 10. · szedés szept. 20.–okt. 31. · 3 sor', chips: [['neutral', 'Nincs vetőmag']] })}
+        </div>
+        <div class="gt">Kerülendő (1)</div>
+        <div class="group">
+          ${sug({ name: 'Vöröshagyma', variety: 'őszi dughagyma', color: C.hagymas, meta: 'Ültetés okt. 5. · áttelel', chips: [['bad', 'Azonos család előtte'], ['warn', 'Ugyanaz a vetésforgó-szakasz']] })}
+        </div>`;
+
+      document.getElementById('root').innerHTML = `
+        <h1 class="wf-title">B · Idővonal-vászon – az év egyben</h1>
+        <p class="wf-sub">A fő felület az ágyás idővonala: függőlegesen a hely (cm), vízszintesen a hónapok. Az elő-, fő- és utóvetemény egyszerre látszik, az üres részek idő és hely szerint is szabadok. A panel ugyanaz, mint az A-ban. Itt a fokhagyma utáni üres részre kattintottunk.</p>
+        ${desktop({ stage, panel })}
+        ${notes([
+          '<b>Az év egy felületen:</b> minden ültetés egy téglalap (hely × idő). A vetésforgó az éven belül, és a helykihasználás is ránézésre látszik.',
+          '<b>Üres rész kijelölése:</b> a kattintás helye és ideje adja a kérdést („325–400 cm, júl. 20-tól”). Ez a legtermészetesebb módja az elő- és utóvetemény tervezésének.',
+          '<b>Felülnézet a vizsgált napra:</b> kicsi, mert a hossz menti megosztás (fél sor saláta, fél sor répa) csak itt látszik. Az idővonal csak a sávok sorrendjét mutatja.',
+          '<b>Panel:</b> ugyanaz a javaslat- és ültetés-panel, mint az A-ban, de a kérdés egy időablakra szól.',
+          '<b>Helyütközés:</b> az átfedés pirosan sraffozva, közvetlenül ott, ahol keletkezik.',
+          '<b>Húzás időben:</b> a téglalap vízszintes húzása a dátumokat módosítja. Ez új interakció: a design dokumentumban most a „Később” listán van.',
+        ])}
+        <div class="verdict">
+          <div class="pro"><h3>Erősségei</h3><ul><li>Az elő-, fő- és utóvetemény tervezése egy mozdulat, nem kell napot váltani.</li><li>A „mi jöjjön utána” kérdés magától adódik.</li><li>A helyütközés és a kihasználatlan idő ránézésre látszik.</li></ul></div>
+          <div class="con"><h3>Gyengéi</h3><ul><li>A sávok szélessége és a hossz menti megosztás a kis felülnézetben állítható csak kényelmesen.</li><li>Két egymáshoz kötött nézet (idővonal és felülnézet): többet kell figyelni.</li><li>Telefonon nehezen használható, és a legtöbb új kódot igényli (húzás időben).</li></ul></div>
+        </div>`;
+    </script>
+  </body>
+</html>

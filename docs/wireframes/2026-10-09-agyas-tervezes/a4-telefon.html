@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <title>A4 – Ágyáskép és panel: telefonon</title>
+    <link rel="stylesheet" href="wf.css" />
+    <script src="wf.js"></script>
+  </head>
+  <body>
+    <div class="page" id="root"></div>
+    <script>
+      const fo = (selKey) =>
+        ['bab1', 'repa', 'bab2', 'uborka', 'paradicsom', 'bazsalikom', 'fokhagyma'].map((k) => ({
+          ...P[k],
+          note: k === 'fokhagyma' ? 'júl. 20-ig' : undefined,
+          sel: k === selKey,
+        }));
+      const bounds = [
+        { at: 45, rel: 1 },
+        { at: 75, rel: 1 },
+        { at: 120, rel: 1 },
+        { at: 240, rel: 1 },
+      ];
+      const row = (pos, name, color, right, cls = '') =>
+        `<div class="rl ${cls}" style="--sc:${color};grid-template-columns:14px 74px minmax(0,1fr) auto"><span class="grip">⋮⋮</span><span class="pos">${pos}</span><span class="nm"><span class="dot"></span>${name}</span>${right}</div>`;
+      const st = (v) => `<span class="step"><i>−</i>${v}<i>+</i></span>`;
+
+      const phoneTop = (selKey, gapSel) => `
+        <div class="ph-status"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="ph-nav"><span class="l">‹ Kert</span><span class="r"><span class="d">Elvetés</span><span>Mentés</span></span></div>
+        <div class="ph-body">
+          <h1 class="h1">Emelt ágyás 1</h1>
+          <div class="subline" style="margin-bottom:0">4 × 1,2 m · sorok keresztben</div>
+          <div class="seg"><span>Elő</span><span class="on">Fő · júl. 1.</span><span>Utó</span><span>${icon('cal', 14)}</span></div>
+          <div class="canvas" style="padding:4px 0;margin:0">
+            ${bedSvg({ px: 0.81, strips: fo(selKey), gaps: [{ a0: 270, a1: 325, sel: gapSel }], bounds })}
+          </div>
+          <div class="rows" style="margin-top:8px;box-shadow:0 0 0 .5px var(--separator)">
+            ${row('0–45', 'Bokorbab', C.huvelyes, st('45'))}
+            ${row('45–75', 'Sárgarépa', C.gyoker, st('30'))}
+            ${row('75–120', 'Bokorbab', C.huvelyes, st('45'))}
+            ${row('120–180', 'Uborka', C.termes, st('60'))}
+          </div>
+        </div>`;
+
+      const phone1 = `<div class="phone">${phoneTop(null, true)}
+        <div class="ph-sheet" style="height:468px">
+          <div class="grabber"></div>
+          <div class="p-head">
+            <div class="p-kicker">Szabad hely · 270–325 cm</div>
+            <div class="p-title">Mi kerülhet ide?</div>
+            <div class="p-meta">júl. 1-től · szomszédok: bazsalikom, fokhagyma</div>
+          </div>
+          <div class="search">${icon('search', 15)} Keress bármilyen növényt…</div>
+          <div class="gt">Ajánlott (3)</div>
+          <div class="group">
+            ${sug({ name: 'Cékla', variety: 'Detroit 2', color: C.gyoker, meta: 'Vetés júl. 5. · 3 sor', chips: [['good', 'Vetésforgó rendben'], ['good', 'Van vetőmag']] })}
+            ${sug({ name: 'Saláta', variety: 'Nyári batávia', color: C.level, meta: 'Vetés júl. 3. · 3 sor', chips: [['good', 'Jó szomszéd: fokhagyma'], ['good', 'Bevált (4,5★)']] })}
+            ${sug({ name: 'Mangold', color: C.level, meta: 'Vetés júl. 1. · 2 sor', chips: [['good', 'Most levél következik']] })}
+          </div>
+        </div>
+      </div>`;
+
+      const phone2 = `<div class="phone">${phoneTop("paradicsom", false)}
+        <div class="ph-sheet" style="height:520px;--sc:${C.termes}">
+          <div class="grabber"></div>
+          <div class="p-head">
+            <div class="p-kicker">Fővetemény · 180–240 cm</div>
+            <div class="p-title"><span class="dot"></span>Paradicsom ${chip('bad', 'Kerülendő')}</div>
+            <div class="p-meta">Ökörszív · palántáról · máj. 10.–okt. 5.</div>
+          </div>
+          ${notice('kerulendo', '<b>Vetésforgó:</b> burgonyafélék 2028-tól – 2025-ben burgonya volt itt.<div class="n-act"><span>Mi kerülhetne ide?</span><span>Így hagyom</span></div>')}
+          <div class="gt">Ezen a helyen 2027-ben</div>
+          <div class="seq">
+            <div class="open">+ Elő<small>máj. 10-ig</small></div>
+            <div class="cur"><b>Paradicsom</b>máj. 10.–okt. 5.</div>
+            <div class="open">+ Utána<small>okt. 5-től</small></div>
+          </div>
+          <div class="gt">Növény</div>
+          <div class="group">
+            <div class="row">Fajta<span class="pop">Ökörszív</span></div>
+            <div class="row">Vetőmag<span class="pop">Ökörszív · 2025</span></div>
+            <div class="row">Kiültetés<span class="v">máj. 10.</span></div>
+          </div>
+        </div>
+      </div>`;
+
+      document.getElementById('root').innerHTML = `
+        <h1 class="wf-title">A · Ágyáskép és panel – telefonon</h1>
+        <p class="wf-sub">Ugyanaz az oldal telefonon: a panel alsó lappá válik (félmagasan nyílik, felhúzható). A tervezés gépen kényelmesebb, de telefonon is minden elérhető.</p>
+        <div class="phones">
+          <div>${phone1}<p class="ph-cap">Szabad helyre koppintva: javaslatok</p></div>
+          <div>${phone2}<p class="ph-cap">Sávra koppintva: az ültetés adatai</p></div>
+          ${notes(
+            [
+              '<b>Időválasztó szegmentált vezérlővel:</b> Elő, Fő, Utó és naptár. Az előnézetek telefonon elmaradnak.',
+              '<b>Ágyáskép teljes szélességben:</b> koppintással választasz, a méretezés fogantyúi nagyobb érintési felületet kapnak. Pontos állításhoz a sávlista léptetői valók.',
+              '<b>Alsó lap:</b> ugyanaz a tartalom, mint gépen a panel. Félmagasan az ágyáskép látszik fölötte, felhúzva a teljes lista vagy az összes mező.',
+              '<b>Mentés a fejlécben:</b> módosítás után jobbra fent „Elvetés” és „Mentés” jelenik meg, mint az iOS szerkesztő nézeteiben. A vissza gomb mentetlen módosításnál rákérdez.',
+            ],
+            'single',
+          ).replace('class="notes single"', 'class="notes single" style="width:480px;margin-top:0"')}
+        </div>`;
+    </script>
+  </body>
+</html>

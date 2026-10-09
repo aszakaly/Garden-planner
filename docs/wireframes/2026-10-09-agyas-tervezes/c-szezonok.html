@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <title>C – Szezonok egymás mellett</title>
+    <link rel="stylesheet" href="wf.css" />
+    <script src="wf.js"></script>
+  </head>
+  <body>
+    <div class="page" id="root"></div>
+    <script>
+      // Három álló ágyáskép (elő, fő, utó), a sávok soronként egymás mellett
+      const AX = 1.25; // px / cm a tengely mentén (függőleges)
+      const COLW = 170;
+      const GUT = 40;
+      const PL = 40;
+      const PT = 30;
+      const colX = (i) => PL + i * (COLW + GUT);
+      const yy = (cm) => PT + cm * AX;
+      const fmt = (p) => (p.cont ? `${short(p.e)}-ig` : `${short(p.s)}–${short(p.e)}`);
+
+      // [kezdő oszlop, záró oszlop, ültetés]
+      const spans = [
+        [0, 0, P.retek],
+        [0, 0, P.salata],
+        [0, 1, P.fokhagyma],
+        [1, 1, P.bab1],
+        [1, 2, P.repa],
+        [1, 1, P.bab2],
+        [1, 1, P.uborka],
+        [1, 2, P.paradicsom],
+        [1, 2, P.bazsalikom],
+        [2, 2, P.spenot],
+      ];
+      const gaps = [
+        [0, 120, 270, 'máj. 10-ig'],
+        [0, 270, 325, 'egész évben'],
+        [1, 270, 325, 'egész évben'],
+        [2, 75, 120, 'aug. 20-tól', true],
+        [2, 120, 180, 'szept. 15-től'],
+        [2, 270, 325, 'egész évben'],
+        [2, 325, 400, 'júl. 20-tól'],
+      ];
+      const arrows = [
+        [0, 22],
+        [0, 82],
+        [1, 97],
+        [1, 150],
+        [1, 22],
+        [0, 297],
+        [1, 362],
+      ];
+
+      let g = '<defs><pattern id="hc" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="#fafafc"/><line x1="0" y1="0" x2="0" y2="7" stroke="rgba(60,60,67,.10)" stroke-width="3"/></pattern><pattern id="hl" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="rgba(0,0,0,.10)" stroke-width="1.5"/></pattern></defs>';
+      const heads = [
+        ['Elővetemény', 'ápr. 12.'],
+        ['Fővetemény', 'júl. 1.'],
+        ['Utóvetemény', 'szept. 22.'],
+      ];
+      heads.forEach(([h, d], i) => {
+        g += `<text x="${colX(i)}" y="12" font-size="13" font-weight="700" fill="#000">${h}</text><text x="${colX(i) + COLW}" y="12" text-anchor="end" font-size="12" fill="${sub}">${d}</text>`;
+        g += `<rect x="${colX(i)}" y="${PT}" width="${COLW}" height="${400 * AX}" rx="4" fill="#fbfbfd" stroke="rgba(60,60,67,.28)"/>`;
+      });
+      for (let a = 0; a <= 400; a += 50) {
+        g += `<text x="${PL - 8}" y="${yy(a) + 4}" text-anchor="end" font-size="10.5" fill="${sub}">${a}</text>`;
+        g += `<line x1="${PL}" y1="${yy(a)}" x2="${colX(2) + COLW}" y2="${yy(a)}" stroke="rgba(60,60,67,.07)"/>`;
+      }
+      g += `<text x="${PL - 8}" y="${PT - 8}" text-anchor="end" font-size="10.5" fill="${sub}">cm</text>`;
+
+      for (const [i, a0, a1, label, sel] of gaps) {
+        const x = colX(i);
+        const y0 = yy(a0);
+        const h = (a1 - a0) * AX;
+        g += `<rect x="${x + 2}" y="${y0 + 2}" width="${COLW - 4}" height="${h - 4}" rx="4" fill="${sel ? 'rgba(52,199,89,.12)' : 'url(#hc)'}" stroke="${sel ? '#248a3d' : 'rgba(60,60,67,.38)'}" stroke-width="${sel ? 2 : 1.2}" stroke-dasharray="5 4"/>`;
+        const cy = y0 + h / 2;
+        g += `<circle cx="${x + 20}" cy="${cy}" r="9" fill="${sel ? '#34c759' : '#fff'}" stroke="${sel ? '#34c759' : 'rgba(60,60,67,.35)'}"/><path d="M${x + 16} ${cy}h8M${x + 20} ${cy - 4}v8" stroke="${sel ? '#fff' : '#248a3d'}" stroke-width="1.8" stroke-linecap="round"/>`;
+        g += `<text x="${x + 36}" y="${cy + 4}" font-size="11.5" font-weight="${sel ? 600 : 400}" fill="${sel ? '#248a3d' : sub}">Szabad · ${label}</text>`;
+      }
+      for (const [i, j, p] of spans) {
+        const x0 = colX(i);
+        const x1 = colX(j) + COLW;
+        const y0 = yy(p.a0);
+        const h = (p.a1 - p.a0) * AX;
+        if (j > i) {
+          // a szezonhatáron átnyúló ültetés: összefüggő sáv a köz fölött is
+          g += `<rect x="${colX(i) + COLW - 2}" y="${y0 + 1}" width="${GUT + 4}" height="${h - 2}" fill="${p.color}" fill-opacity=".16"/>`;
+        }
+        for (let k = i; k <= j; k++) {
+          g += `<rect x="${colX(k) + 1}" y="${y0 + 1}" width="${COLW - 2}" height="${h - 2}" rx="3" fill="${p.color}" fill-opacity=".3" stroke="${p.color}" stroke-opacity=".9" stroke-width="1.2"/>`;
+          if (p.fixed) g += `<rect x="${colX(k) + 1}" y="${y0 + 1}" width="${COLW - 2}" height="${h - 2}" rx="3" fill="url(#hl)"/>`;
+        }
+        const tx = colX(i) + 10;
+        const cy = y0 + h / 2;
+        g += `<text x="${tx}" y="${cy - 2}" font-size="12" font-weight="600" fill="${ink}">${p.name}</text><text x="${tx}" y="${cy + 12}" font-size="11" fill="${sub}">${fmt(p)}</text>`;
+        if (j > i) g += `<text x="${colX(j) + 10}" y="${cy + 4}" font-size="11" fill="${sub}">↳ folytatódik</text>`;
+        if (p.fixed) g += `<g transform="translate(${colX(j) + COLW - 20} ${y0 + 6})" color="${sub}">${icon('lock', 13)}</g>`;
+        if (p.issue) {
+          for (let k = i; k <= j; k++) g += `<circle cx="${colX(k) + COLW - 12}" cy="${y0 + 12}" r="8" fill="#ff3b30"/><text x="${colX(k) + COLW - 12}" y="${y0 + 16}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">!</text>`;
+        }
+        if (p.linked) g += `<g transform="translate(${colX(i) + COLW - 20} ${y0 + h - 18})" color="${sub}">${icon('link', 12)}</g>`;
+      }
+      for (const [i, a] of arrows) {
+        const x = colX(i) + COLW + GUT / 2;
+        const y = yy(a);
+        g += `<path d="M${x - 9} ${y}h16m-5 -5 5 5 -5 5" fill="none" stroke="rgba(60,60,67,.45)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+      }
+      // társítási határ a fő oszlopban (bab|répa|bab|uborka, paradicsom|bazsalikom)
+      for (const [k, a] of [[1, 45], [1, 75], [1, 120], [1, 240], [2, 240], [0, 45]]) {
+        g += `<line x1="${colX(k) + 3}" y1="${yy(a)}" x2="${colX(k) + COLW - 3}" y2="${yy(a)}" stroke="#34c759" stroke-width="3.5" stroke-linecap="round"/>`;
+      }
+      const W = colX(2) + COLW + 6;
+      const H = yy(400) + 6;
+      const board = `<svg width="${W}" height="${H}" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${g}</svg>`;
+
+      const stage = `
+        <div class="canvas" style="margin:0;position:relative">
+          ${mk(1, 'top:-9px;left:-9px')}
+          ${mk(2, 'top:283px;left:440px')}
+          ${mk(3, 'top:34px;left:229px')}
+          ${mk(4, 'top:140px;left:628px')}
+          ${board}
+          <p class="hint">Minden oszlop az ágyás felülnézete egy napon. A sorok egy magasságban vannak, így soronként olvasható, mi követ mit (retek → bokorbab → spenót).</p>
+        </div>
+        <div class="addbar" style="position:relative">${mk(5, 'top:4px;left:-12px')}<span class="lnk">${icon('cal', 14)} Másik nap…</span><small>a három időpont a fagyhatárokból jön, a beállításokban módosítható</small></div>`;
+
+      const panel = `
+        <div class="p-head">
+          <div class="p-kicker">Utóvetemény · 75–120 cm · aug. 20-tól</div>
+          <div class="p-title">Mi jöjjön a bokorbab után?</div>
+          <div class="p-meta">Előtte: bokorbab (hüvelyes), aug. 20-ig.<br />Szomszédok: sárgarépa, szabad (120–180 cm).</div>
+        </div>
+        <div class="search">${icon('search', 15)} Keress bármilyen növényt…</div>
+        <div class="gt">Ajánlott (3)</div>
+        <div class="group">
+          ${sug({ name: 'Spenót', variety: 'Matador', color: C.level, meta: 'Vetés aug. 25. · szedés okt. 10.–nov. 30. · 4 sor', chips: [['good', 'Most levél következik'], ['good', 'Van vetőmag']] })}
+          ${sug({ name: 'Saláta', variety: 'Téli vajfej', color: C.level, meta: 'Vetés aug. 22. · szedés okt. 5.–nov. 15. · 3 sor', chips: [['good', 'Most levél következik'], ['good', 'Bevált (4,5★)']] })}
+          ${sug({ name: 'Retek', variety: 'Jégcsap', color: C.gyoker, meta: 'Vetés aug. 25. · szedés okt. 1.–okt. 25. · 4 sor', chips: [['good', 'Vetésforgó rendben']] })}
+        </div>
+        <div class="gt">Kerülendő (1)</div>
+        <div class="group">
+          ${sug({ name: 'Zöldborsó', color: C.huvelyes, meta: 'Vetés aug. 20. · szedés okt. 10.–okt. 31.', chips: [['bad', 'Azonos család előtte']] })}
+        </div>
+        <p class="p-foot">Kijelölt sávnál ugyanaz az ültetés-panel jelenik meg, mint az A változatban.</p>`;
+
+      document.getElementById('root').innerHTML = `
+        <h1 class="wf-title">C · Szezonok egymás mellett</h1>
+        <p class="wf-sub">Az elő-, fő- és utóvetemény három álló ágyásképen, egymás mellett. A sorok egy magasságban állnak, ezért soronként olvasható az év. A szezonhatáron átnyúló ültetés összefüggő sáv. A panel ugyanaz, mint az A-ban. Itt az utóvetemény oszlopában a bokorbab utáni helyre kattintottunk.</p>
+        ${desktop({ stage, panel })}
+        ${notes([
+          '<b>Három pillanatkép egyszerre:</b> elő-, fő- és utóvetemény egy nézetben. Mindegyik oszlop szerkeszthető ugyanúgy, mint az A ágyásképe (méretezés, mozgatás).',
+          '<b>Átnyúló ültetés:</b> a fokhagyma (elő → fő) és a paradicsom (fő → utó) összefüggő sávként jelenik meg, így látszik, hogy ugyanaz az ültetés.',
+          '<b>Sorok egy magasságban:</b> a nyilak az éven belüli sorrendet mutatják. Így a vetésforgó az éven belül is olvasható: retek → bokorbab → spenót.',
+          '<b>Üres cella:</b> a javaslat az adott szezonra és helyre szól, az előző kultúra ismeretében („a bokorbab után”).',
+          '<b>Tetszőleges nap:</b> csak külön, a három időponton kívül. Ebben a változatban ez a leggyengébb pont.',
+        ])}
+        <div class="verdict">
+          <div class="pro"><h3>Erősségei</h3><ul><li>A szezon egésze egy pillantással áttekinthető, és könnyen érthető (táblázatszerű).</li><li>Az elő- és utóvetemény helye egyértelmű, a hossz menti megosztás is látszik.</li><li>Az A ágyásképének logikáját használja, csak háromszor.</li></ul></div>
+          <div class="con"><h3>Gyengéi</h3><ul><li>A három oszlop keskeny, a méretezés kevésbé pontos. Hosszú ágyásnál (6 m) még szűkebb.</li><li>A napra pontos állapot (pl. a saláta és a répa átfedése ápr. 20. és máj. 25. között) a három időpont között elveszik.</li><li>Telefonon csak lapozva, egyesével fér ki.</li></ul></div>
+        </div>`;
+    </script>
+  </body>
+</html>
