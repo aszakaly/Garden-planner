@@ -89,3 +89,26 @@ Egyetlen TypeScript projekt három réteggel; a `@shared/*` alias a `src/shared`
 - **Seed-adatok:** a `seed/*.json`. A `seed/companions.json` társítási adatai a `scripts/build-companions.ts` kimenetei (`npx tsx scripts/build-companions.ts`), a Wind River Greens Plant Variety Database alapján, CC BY 4.0 licenccel; a forrásmegjelölés a README-ben és a Beállítások → Források oldalon van.
 - **E2E teszt:** az `e2e/garden-flow.spec.ts` egyetlen hosszú teszt a design dokumentum 14. pontjának folyamatára. A böngésző órája 2027-03-15-re van rögzítve, `hu-HU` lokalizációval, Budapest időzónával.
 - **Indító:** a `Kerttervező.command` dupla kattintással indítja az éles módot, és felismeri, ha már fut egy fejlesztői szerver.
+
+## Munkamódszer
+
+Nagyobb funkciónál (a 2026-10-es „Ágyás kiosztása” tapasztalatai alapján):
+
+- **Tervezés:** a viselkedést 2–3 konkrét felhasználói esettel rögzítjük a felhasználóval (pl. paradicsom–bazsalikom–paradicsom egy 80 cm-es, hosszában futó soros ágyáson). A nyitott szabályok a tervezéskor dőlnek el, nem javítókörökben. A terv rövid: döntések, felületek, elfogadási esetek, kód nélkül, 3–4 nagyobb lépésben.
+- **Megvalósítás:** alapból a fő sessionben. Alügynök csak jól elkülönülő, gépies részre jár, olcsóbb modellel. Az első lépés végére legyen végigkattintható változat a `kerttervezo-uitest` példányon, hogy a felhasználó korán kipróbálhassa.
+- **Ellenőrzés:** egy átnézés egy nagyobb egység végén, nem lépésenként. Nézi a kódot, a háttérfolyamatokat (adatírás, API-szerződés, tranzakció, migráció, export és visszatöltés), és végigjátssza a felhasználói eseteket. Csak ellenőrzött, konkrét esettel alátámasztott találat számít; darabszám-korlát nincs, a lista súlyosság szerint rendezett.
+- **Súlyosság:**
+  - *Kritikus:* az alapműködés sérül, akkor is, ha a felhasználó nem látja (adatvesztés, hibás adatbázis-írás, elromló mentés vagy API-hívás, tranzakció-, migráció-, export- vagy visszatöltési hiba, biztonság).
+  - *Fontos:* hibás működés a felhasználónál (rossz eredmény, elakadás), vagy rejtett hiba, ami később adathibához vezet.
+  - *Kisebb:* ritka vagy elméleti eset, rossz üzenet, kényelmetlenség.
+  - *Csiszolás:* kódtisztaság, duplikáció, apró teljesítménygond; csak a lista végén, soronként.
+
+  Minden találatnál: mit érint (adat, folyamat vagy felület), a konkrét eset, és a javítás mérete (kicsi, közepes vagy nagy).
+- **Javítás:** egyetlen javítókör. A kritikusokat azonnal javítom, a többiről a lista alapján a felhasználó dönt. Ha egy javítás–átnézés kör ismétlődni kezdene, jelzem és megállok.
+- **Commitok:** lépésenként egy commit, a javításokkal együtt; a funkció ága squash-olva kerül a `main`-be.
+- **Összefoglaló** minden nagyobb egység végén, tömören (kb. 10 sor):
+  - mi készült el, felhasználói szemmel;
+  - a tesztek: automata és kézi próba;
+  - mit javítottam magamtól, és miért;
+  - a nyitott döntések és a találati lista;
+  - a hozzávetőleges költség (alügynök-futások) és a következő lépés.
