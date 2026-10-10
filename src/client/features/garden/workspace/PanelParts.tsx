@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import s from './Workspace.module.css';
 
@@ -9,6 +9,7 @@ export function PanelHead({
   meta,
   color,
   onClose,
+  back,
 }: {
   kicker: ReactNode;
   title: ReactNode;
@@ -16,6 +17,8 @@ export function PanelHead({
   /** A cím előtti pötty színe (a sáv zöldségcsoportja) */
   color?: string;
   onClose?: () => void;
+  /** A bezárás vissza a sávhoz visz (a sáv helyére kért javaslatnál) */
+  back?: boolean;
 }) {
   return (
     <div className={s.head}>
@@ -28,8 +31,14 @@ export function PanelHead({
         {meta && <div className={s.meta}>{meta}</div>}
       </div>
       {onClose && (
-        <button type="button" className={s.close} aria-label="Kijelölés megszüntetése" title="Kijelölés megszüntetése (Esc)" onClick={onClose}>
-          <X size={15} strokeWidth={2.4} />
+        <button
+          type="button"
+          className={s.close}
+          aria-label={back ? 'Vissza a sávhoz' : 'Kijelölés megszüntetése'}
+          title={back ? 'Vissza a sávhoz (Esc)' : 'Kijelölés megszüntetése (Esc)'}
+          onClick={onClose}
+        >
+          {back ? <ChevronLeft size={16} strokeWidth={2.4} /> : <X size={15} strokeWidth={2.4} />}
         </button>
       )}
     </div>

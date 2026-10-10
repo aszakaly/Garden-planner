@@ -537,6 +537,40 @@ export function insertPlacement(i: InsertInput): InsertResult | null {
   return target ? makeRoom(i.strips, target.key, i.span) : null;
 }
 
+// --- Újravetés ---------------------------------------------------------------------
+
+/**
+ * Az újravetés tagjainak helye (az első tag a fej, a helye adott; a többi `offsets` nappal később):
+ * - oda, ahol egy korábbi tag addigra lekerül (a legkorábbi ilyen tag helyére);
+ * - különben a fej mellé: a fejhez legközelebbi, a teljes időszakára szabad, ugyanolyan széles helyre
+ *   (egyenlő távolságnál utána);
+ * - ha sehol nincs hely, a fej helyére (az ütközést a jelzés mutatja).
+ * A keresztirányú hely mindig a fejé.
+ */
+export function placeSuccession(head: Occupant, offsets: number[], size: LayoutSize, others: Occupant[]): Occupant[] {
+  const taken = [...others];
+  const out: Occupant[] = [];
+  const { placement: hp } = head;
+  const cross = { start: hp.cross_start_cm, span: hp.cross_span_cm };
+  offsets.forEach((offset, i) => {
+    const period = { start: addDaysISO(head.period.start, offset), end: addDaysISO(head.period.end, offset) };
+    const free = (pl: Placement) => !taken.some((o) => periodsOverlap(o.period, period) && placementsOverlap(o.placement, pl));
+    let placement = hp;
+    if (i > 0) {
+      const again = out.map((o) => o.placement).find(free);
+      const near = freeAxisRanges(size.axis, taken, period, cross)
+        .filter(([s, e]) => e - s + EPS >= hp.axis_span_cm)
+        .map(([s, e]) => clamp(hp.axis_start_cm, s, e - hp.axis_span_cm))
+        .sort((a, b) => Math.abs(a - hp.axis_start_cm) - Math.abs(b - hp.axis_start_cm) || b - a)[0];
+      placement = again ?? (near != null ? { ...hp, axis_start_cm: near } : hp);
+    }
+    const item = { placement, period };
+    taken.push(item);
+    out.push(item);
+  });
+  return out;
+}
+
 /** Teljes hosszú-e a sáv: a keresztirányban az ágyás egész hosszán fut. */
 export const isFullLength = (pl: Placement, crossLength: number) =>
   Math.abs(pl.cross_start_cm) < EPS && Math.abs(pl.cross_span_cm - crossLength) < EPS;

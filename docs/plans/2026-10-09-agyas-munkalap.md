@@ -48,7 +48,7 @@ Mindhárom eset a `kerttervezo-uitest` példányon, a 2027-es évben fut. Az E1 
 
 **E2 – Utóvetemény a fokhagyma után:** Emelt ágyás 1, 4 × 1,2 m, keresztben futó sorok. A 2026 őszén ültetett fokhagyma tény adatos, 325–400 cm-en áll, a szedése 2027. júl. 20-ig tart.
 1. A fokhagymára kattintva a panel lakatot mutat: a hely nem módosítható. Az „Ezen a helyen 2027-ben” sorban: fokhagyma → „+ Utána · júl. 20-tól”.
-2. A „+ Utána” javaslatai júl. 20-tól szólnak erre a helyre. A hagymafélék „Azonos család előtte” okkal kerülendők, a spenót a javaslatok között van.
+2. A „+ Utána” javaslatai júl. 20-tól szólnak erre a helyre. A hagymafélék kerülendők (a fokhagyma a 2026-os évhez tartozik, ezért „Családi szünet” vagy „Tavaly is itt volt” okkal), a spenót a javaslatok között van.
 3. A spenótot választva a vetési naptár szerinti nyár végi vagy őszi vetéssel 325–400 cm-re kerül, kijelölve. Az ágyáskép a spenót kezdetének napjára vált.
 4. A panelen fajtát és vetőmagot választok, majd mentek. A spenót az utóvetemény napján is látszik.
 

@@ -9,12 +9,16 @@ import {
   applyStrips,
   copyPlanting,
   draftFrom,
+  editPlan,
   isDirty,
   isFixed,
   plantingFor,
   removeItem,
   replaceItem,
+  replaceWith,
+  setSuccession,
   stripsAt,
+  successionOf,
   toBatch,
   type LayoutDraft,
 } from './layoutDraft.ts';
@@ -409,5 +413,67 @@ describe('mentés', () => {
     expect(applyFix(d, { kind: 'kesobbi_eltolas', plantingId: 1, days: 26, date: '2027-06-05' }).items[0]).toMatchObject({
       plan_sow_date: '2027-04-10', plan_transplant_date: '2027-06-05', plan_harvest_start: '2027-08-09', plan_end_date: '2027-11-07',
     });
+  });
+});
+
+describe('tervezési adatok a panelről', () => {
+  const twin = { ...tomato, id: 4, axis_start_cm: 40 };
+
+  it('a kapcsolt párra is átkerül a fajta és a dátum, a hely és a sorszám nem', () => {
+    const next = { ...tomato, variety_id: 70, variety_name: 'Ökörszív', plan_end_date: '2027-10-01', rows: 2 };
+    const d = editPlan(draft([tomato, twin]), next, true);
+    expect(d.items[1]).toMatchObject({ variety_id: 70, variety_name: 'Ökörszív', plan_end_date: '2027-10-01', rows: 1, axis_start_cm: 40 });
+    expect(editPlan(draft([tomato, twin]), next, false).items[1]).toEqual(twin);
+  });
+
+  it('csere: az új sáv azonosítója marad, a mentett ültetés törlendő, a csere új sávként kerül be', () => {
+    const bean = { ...salad, plant_id: 11, plant_name: 'Bokorbab' };
+    const kept = replaceWith(draft([copyPlanting(salad, -1)], { nextId: -2 }), -1, bean);
+    expect(kept.id).toBe(-1);
+    expect(kept.draft.items.map((p) => [p.id, p.plant_name])).toEqual([[-1, 'Bokorbab']]);
+    const swapped = replaceWith(draft([salad]), 2, bean);
+    expect(swapped.id).toBe(-1);
+    expect(toBatch([salad], swapped.draft)).toMatchObject({ create: [{ plant_id: 11 }], update: [], delete: [2] });
+  });
+});
+
+describe('újravetés a piszkozatban', () => {
+  // a saláta márc. 20. – jún. 5. áll a 0–40 cm-en (a tengely a 80 cm-es szélesség)
+  const s3 = { count: 3, interval: 40 };
+
+  it('a tagok eltolt dátumokkal, közös kulccsal; mellé, majd a lekerült fej helyére', () => {
+    const d = setSuccession(draft([salad]), 2, s3, bed);
+    expect(d.items.map((p) => [p.id, p.series_id, p.series_index, p.axis_start_cm, p.plan_sow_date, p.plan_end_date])).toEqual([
+      [2, 'uj:2', 1, 0, '2027-03-20', '2027-06-05'],
+      [-1, 'uj:2', 2, 40, '2027-04-29', '2027-07-15'],
+      [-2, 'uj:2', 3, 0, '2027-06-08', '2027-08-24'],
+    ]);
+    expect(successionOf(d, 2)).toEqual(s3);
+    // a mentett fej a sorozatkulccsal együtt módosításként megy (a terve nem változott)
+    const b = toBatch([salad], d);
+    expect(b.update).toEqual([{ id: 2, data: expect.objectContaining({ plant_id: 8 }), series_key: 'uj:2', series_index: 1 }]);
+    expect(b.create.map((c) => [c.series_key, c.series_index, c.plan_sow_date])).toEqual([
+      ['uj:2', 2, '2027-04-29'],
+      ['uj:2', 3, '2027-06-08'],
+    ]);
+  });
+
+  it('új beállításnál a korábbi tagok helyett újak; kikapcsolva a fej is kiválik, nincs mit menteni', () => {
+    const d = setSuccession(draft([salad]), 2, s3, bed);
+    const two = setSuccession(d, 2, { count: 2, interval: 21 }, bed);
+    expect(two.items.map((p) => [p.series_index, p.plan_sow_date])).toEqual([
+      [1, '2027-03-20'],
+      [2, '2027-04-10'],
+    ]);
+    const off = setSuccession(two, 2, null, bed);
+    expect(off.items).toEqual([salad]);
+    expect(isDirty([salad], off)).toBe(false);
+  });
+
+  it('mentett sorozat tagjánál és dátum nélküli fejnél nem változik semmi', () => {
+    const member = { ...salad, series_id: 'abc', series_index: 2 };
+    expect(setSuccession(draft([member]), 2, s3, bed).items).toEqual([member]);
+    const undated = { ...salad, plan_sow_date: null, plan_harvest_start: null, plan_end_date: null };
+    expect(setSuccession(draft([undated]), 2, s3, bed).items).toEqual([undated]);
   });
 });

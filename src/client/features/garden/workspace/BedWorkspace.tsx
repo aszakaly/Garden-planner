@@ -17,7 +17,7 @@ import { byStart } from '../../plan/plantingView.ts';
 import { LayoutCanvas } from '../LayoutCanvas.tsx';
 import { LayoutPhasePicker } from '../LayoutPhasePicker.tsx';
 import { LayoutRowList } from '../LayoutRowList.tsx';
-import { GapPanel } from './GapPanel.tsx';
+import { SuggestPanel } from './SuggestPanel.tsx';
 import { OverviewPanel } from './OverviewPanel.tsx';
 import { StripPanel } from './StripPanel.tsx';
 import { useBedWorkspace } from './useBedWorkspace.ts';
@@ -89,7 +89,11 @@ export function BedWorkspace({ bed, year, children }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (anySheetOpen()) return;
       const w = latest.current;
-      if (e.key === 'Escape' && !isTyping(e.target) && w.selection.kind !== 'none') w.setSelection({ kind: 'none' });
+      if (e.key === 'Escape' && !isTyping(e.target) && w.selection.kind !== 'none') {
+        // a sáv helyére kért javaslatból vissza a sávhoz
+        const sel = w.selection;
+        w.setSelection(sel.kind === 'before' || sel.kind === 'after' || sel.kind === 'replace' ? { kind: 'strip', id: sel.id } : { kind: 'none' });
+      }
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && w.dirty && !w.saving) {
         e.preventDefault();
         w.commit();
@@ -99,8 +103,9 @@ export function BedWorkspace({ bed, year, children }: Props) {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
-  // Az előnézet csak a javaslatlista mellett él
-  const showPreview = preview && (selection.kind === 'gap' || selection.kind === 'new');
+  // Az előnézet csak a javaslatlista mellett él, és ott, ahol a javaslat a napon látszana
+  const showPreview = preview && (selection.kind === 'gap' || selection.kind === 'replace' || (selection.kind === 'new' && ws.request?.mode === 'new'));
+  const selectedStrip = 'id' in selection ? selection.id : null;
   const ghost = showPreview
     ? {
         placement: preview.placement,
@@ -126,7 +131,7 @@ export function BedWorkspace({ bed, year, children }: Props) {
                   bed={bed}
                   strips={ws.canvasStrips}
                   boundaries={ws.canvasBoundaries}
-                  selected={selection.kind === 'strip' ? selection.id : null}
+                  selected={selectedStrip}
                   linked={ws.linkedIds}
                   onSelect={ws.selectStrip}
                   onChange={ws.drag}
@@ -145,7 +150,7 @@ export function BedWorkspace({ bed, year, children }: Props) {
                 rows={ws.rows}
                 strips={ws.rowStrips}
                 reorderable={ws.reorderable}
-                selected={selection.kind === 'strip' ? selection.id : null}
+                selected={selectedStrip}
                 onSelect={ws.selectStrip}
                 onMoveRow={ws.moveRowAt}
                 onResizeRow={ws.resizeRowAt}
@@ -153,7 +158,7 @@ export function BedWorkspace({ bed, year, children }: Props) {
                 onSelectGap={ws.selectGap}
               />
               <div className={ls.addBar}>
-                <button type="button" className={ls.addButton} disabled={!ws.plants.length} onClick={() => ws.setSelection({ kind: 'new' })}>
+                <button type="button" className={ls.addButton} disabled={!ws.plants.length} onClick={() => ws.setSelection({ kind: 'new', after: selectedStrip })}>
                   <Plus size={15} /> Új sáv
                 </button>
                 <span className={ls.free}>
@@ -166,12 +171,12 @@ export function BedWorkspace({ bed, year, children }: Props) {
 
         <aside className={s.panel} aria-label="Részletek">
           {selection.kind === 'strip' ? (
-            <StripPanel ws={ws} id={selection.id} />
+            <StripPanel key={selection.id} ws={ws} id={selection.id} />
           ) : selection.kind === 'none' ? (
             <OverviewPanel ws={ws} />
           ) : (
-            <GapPanel
-              key={selection.kind === 'gap' ? `gap-${selection.start}-${selection.end}-${ws.day}` : `new-${ws.day}`}
+            <SuggestPanel
+              key={selection.kind === 'gap' ? `gap-${selection.start}-${selection.end}-${ws.day}` : `${selection.kind}-${'id' in selection ? selection.id : ''}-${ws.day}`}
               ws={ws}
               onPreview={setPreview}
             />
@@ -260,7 +265,7 @@ export function BedWorkspace({ bed, year, children }: Props) {
       </div>
 
       {detailsPlanting && (
-        <PlantingEditSheet open onClose={ws.closeDetails} planting={detailsPlanting} year={detailsPlanting.year} />
+        <PlantingEditSheet open onClose={ws.closeDetails} planting={detailsPlanting} year={detailsPlanting.year} actualOnly />
       )}
     </div>
   );

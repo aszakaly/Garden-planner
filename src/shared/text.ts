@@ -23,6 +23,9 @@ function backVowelNumber(n: number): boolean {
 /** „2026-ban”, „2027-ben” */
 export const yearIn = (y: number) => `${y}-${backVowelNumber(y) ? 'ban' : 'ben'}`;
 
+/** A -tól/-től toldalék egy számhoz („20-tól”, „5-től”). */
+export const fromSuffix = (n: number) => (backVowelNumber(n) ? 'tól' : 'től');
+
 /** „2028-tól”, „2029-től” */
 export const yearFrom = (y: number) => `${y}-${backVowelNumber(y) ? 'tól' : 'től'}`;
 

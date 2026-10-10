@@ -130,6 +130,36 @@ describe('Mi kerülhet ide?', () => {
     for (const s of out) expect(s.period.end > '2027-07-01').toBe(true);
   });
 
+  it('elővetemény: csak a megadott napig felszabaduló időzítés jön szóba', () => {
+    const out = suggestPlantings({ target: target({ until: '2027-05-10' }), plants, seeds: [], ctx: ctx([]) });
+    expect(names(out)).toEqual(['Retek']);
+    for (const s of out) expect(s.period.end <= '2027-05-10').toBe(true);
+  });
+
+  it('a sáv egészére: csak amikor a teljes sáv szabad (a sáv egy részén álló korábbi ültetés után)', () => {
+    // a sáv (0–100 cm) 60–100 cm-es részén május végéig retek áll
+    const early = planting(14, retek, { year: 2027, plan_sow_date: '2027-03-01', plan_end_date: '2027-05-31', axis_start_cm: 60, axis_span_cm: 40 });
+    const strip = { start: 0, span: 100 };
+    const [part] = suggestPlantings({ target: target({ strip }), plants: [sargarepa], seeds: [], ctx: ctx([early]) });
+    expect(part).toMatchObject({ placement: { axis_start_cm: 0, axis_span_cm: 60 }, dates: { sow: '2027-03-10' } });
+    const [whole] = suggestPlantings({ target: target({ strip, whole: true }), plants: [sargarepa], seeds: [], ctx: ctx([early]) });
+    expect(whole).toMatchObject({ placement: { axis_start_cm: 0, axis_span_cm: 100 }, dates: { sow: '2027-05-31' } });
+  });
+
+  it('beszúrás: a megadott helyre szól, szabad hely és szélesség nélkül is, a szomszédokkal', () => {
+    const full = planting(13, sargarepa, { year: 2027, plan_sow_date: '2027-03-10', plan_end_date: '2027-10-30', axis_start_cm: 0, axis_span_cm: 100 });
+    const place = { axis_start_cm: 100, axis_span_cm: 30, cross_start_cm: 0, cross_span_cm: 100 };
+    const out = suggestPlantings({
+      target: target({ place, day: '2027-07-01' }),
+      plants: [paradicsom],
+      seeds: [],
+      ctx: ctx([full], [{ a: paradicsom.id, b: sargarepa.id, relation: 1 }]),
+    });
+    // a 80 cm-es sortávú paradicsom is (a helyét a többi sáv engedése adja)
+    expect(out[0]).toMatchObject({ placement: place, rows: 1 });
+    expect(out[0]!.reasons.map((r) => r.text)).toContain('Jó szomszéd: sárgarépa');
+  });
+
   it('a munkalap még nem mentett (negatív azonosítójú) sávja is szomszédnak számít', () => {
     // a piszkozat első új sávja -1-es azonosítót kap
     const fresh = planting(-1, paradicsom, {

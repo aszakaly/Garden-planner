@@ -1,18 +1,21 @@
-import { completeDates, EMPTY_DATES, usesSow, usesTransplant, type FrostDates } from '@shared/domain/dates.ts';
+import { completeDates, EMPTY_DATES, seriesOffsets, shiftDates, usesSow, usesTransplant, type FrostDates } from '@shared/domain/dates.ts';
 import { bedAxes, EPS, rowsForSpan, spanForRows, type Placement } from '@shared/domain/geometry.ts';
 import {
   applyClashFix,
   isFullLength,
+  linkedPlantings,
   pickWindowForDay,
+  placeSuccession,
   samePlacement,
   type ClashFix,
   type LayoutStrip,
 } from '@shared/domain/layout.ts';
-import { blankPlanting, effectiveBedId, occupancyPeriod, placementOf, startedOrRecorded } from '@shared/domain/plantings.ts';
+import { diffDays } from '@shared/domain/isoDate.ts';
+import { blankPlanting, effectiveBedId, occupancyPeriod, placementOf, planDates, startedOrRecorded } from '@shared/domain/plantings.ts';
 import type { Suggestion } from '@shared/domain/suggestions.ts';
 import type { PlantingBatchInput } from '@shared/schemas.ts';
 import type { Bed, PlantListItem, PlantingListItem } from '@shared/types.ts';
-import { plantingInputOf } from '../plan/plantingView.ts';
+import { followLinked, placedInBed, plantingInputOf } from '../plan/plantingView.ts';
 
 /**
  * A sorszám alapja: a sáv szélessége és sorszáma (üres is lehet), amikor a piszkozatba került.
@@ -278,6 +281,32 @@ export function replaceItem(draft: LayoutDraft, p: PlantingListItem): LayoutDraf
   };
 }
 
+/**
+ * Csere más ültetésre ugyanott (pl. másik növény): az új sávé lesz a régi helye (a hívó helyezi el).
+ * Az új (negatív azonosítójú) sáv azonosítója marad; a mentett ültetés törlendő lesz, és a csere új
+ * sávként kerül be, hogy a régi feladatállapota és naplókapcsolata ne szálljon át egy másik növényre.
+ */
+export function replaceWith(draft: LayoutDraft, oldId: number, fresh: PlantingListItem): { draft: LayoutDraft; id: number } {
+  if (oldId < 0) return { draft: replaceItem(draft, { ...fresh, id: oldId }), id: oldId };
+  const id = draft.nextId;
+  return { draft: addItem(removeItem(draft, oldId), { ...fresh, id }), id };
+}
+
+/**
+ * A tervezési adatok módosítása (a panelről): az ültetés helyére az új változata kerül; `follow`
+ * esetén a kapcsolt párjaira is átkerül a fajta, a vetőmag, az időszak, a módszer és a dátumok
+ * változása (`followLinked`). A sorszám alapja nem változik.
+ */
+export function editPlan(draft: LayoutDraft, next: PlantingListItem, follow: boolean): LayoutDraft {
+  const before = draft.items.find((x) => x.id === next.id);
+  if (!before) return draft;
+  const linked = new Set(follow ? linkedPlantings(before, draft.items).map((x) => x.id) : []);
+  return {
+    ...draft,
+    items: draft.items.map((x) => (x.id === next.id ? next : linked.has(x.id) ? followLinked(x, next, before) : x)),
+  };
+}
+
 /** Eltávolítás; csak a piszkozatban lévő mentett ültetés kerül (egyszer) a törlendők közé. */
 export function removeItem(draft: LayoutDraft, id: number): LayoutDraft {
   const present = draft.items.some((p) => p.id === id);
@@ -297,14 +326,96 @@ export function applyFix(draft: LayoutDraft, fix: ClashFix): LayoutDraft {
   };
 }
 
-/** A mentendő különbség: új ültetések, megváltozott tervek, törlések (a sorszám alapja nem számít). */
+// --- Újravetés -----------------------------------------------------------------------
+
+/** A piszkozatban indított (még nem mentett) sorozat kulcsának előtagja; mentéskor a szerver ad azonosítót. */
+export const DRAFT_SERIES = 'uj:';
+export const isDraftSeries = (p: Pick<PlantingListItem, 'series_id'>) => !!p.series_id?.startsWith(DRAFT_SERIES);
+
+/** A sorozat tagjai sorszám szerint (sorozaton kívül csak maga). */
+export function seriesMembers(draft: LayoutDraft, p: PlantingListItem): PlantingListItem[] {
+  if (!p.series_id) return [p];
+  return draft.items.filter((x) => x.series_id === p.series_id).sort((a, b) => (a.series_index ?? 0) - (b.series_index ?? 0));
+}
+
+export interface Succession {
+  /** A vetések száma a fejjel együtt */
+  count: number;
+  /** A vetések időköze napokban */
+  interval: number;
+}
+
+/** A piszkozatban indított újravetés beállítása a fejéből (a fej az 1. tag); egyébként null. */
+export function successionOf(draft: LayoutDraft, headId: number): Succession | null {
+  const head = draft.items.find((x) => x.id === headId);
+  if (!head || !isDraftSeries(head) || head.series_index !== 1) return null;
+  const members = seriesMembers(draft, head);
+  if (members.length < 2) return null;
+  const a = occupancyPeriod(members[0]!);
+  const b = occupancyPeriod(members[1]!);
+  return { count: members.length, interval: a && b ? diffDays(a.start, b.start) : 14 };
+}
+
+/**
+ * Újravetés a piszkozatban: a fej mögé `count - 1` új tag kerül, `interval` naponként eltolt
+ * tervezett dátumokkal, a `placeSuccession` szerinti helyre; a tagokat közös ideiglenes kulcs köti
+ * össze (mentéskor egy sorozat lesz belőlük). A korábban így felvett tagok előbb kikerülnek; null
+ * (vagy egy vetés) esetén csak ez történik, és a fej is kiválik a sorozatból. Mentett sorozat
+ * tagjánál, hely vagy dátum nélküli fejnél nem változik semmi.
+ */
+export function setSuccession(draft: LayoutDraft, headId: number, s: Succession | null, bed: Bed): LayoutDraft {
+  const head = draft.items.find((x) => x.id === headId);
+  if (!head || (head.series_id && !isDraftSeries(head))) return draft;
+  const period = occupancyPeriod(head);
+  const placement = placementOf(head, bed);
+  if (s && s.count >= 2 && (!period || !placement)) return draft;
+  let d = draft;
+  if (isDraftSeries(head)) {
+    for (const m of draft.items) if (m.series_id === head.series_id && m.id !== headId) d = removeItem(d, m.id);
+  }
+  if (!s || s.count < 2 || !period || !placement) {
+    return { ...d, items: d.items.map((x) => (x.id === headId ? { ...x, series_id: null, series_index: null } : x)) };
+  }
+  const key = isDraftSeries(head) ? head.series_id! : `${DRAFT_SERIES}${headId}`;
+  const lead: PlantingListItem = { ...head, series_id: key, series_index: 1 };
+  d = { ...d, items: d.items.map((x) => (x.id === headId ? lead : x)) };
+  const offsets = seriesOffsets(s.count, s.interval);
+  const others = placedInBed(d.items.filter((x) => x.id !== headId), bed);
+  const spots = placeSuccession({ placement, period }, offsets, bedAxes(bed), others);
+  offsets.slice(1).forEach((offset, i) => {
+    const id = d.nextId;
+    const dates = shiftDates(planDates(lead), offset);
+    const member: PlantingListItem = {
+      ...copyPlanting(lead, id),
+      plan_sow_date: dates.sow,
+      plan_transplant_date: dates.transplant,
+      plan_harvest_start: dates.harvestStart,
+      plan_end_date: dates.end,
+      plant_count: lead.plant_count,
+      notes: lead.notes,
+      series_id: key,
+      series_index: i + 2,
+    };
+    d = applyStrips(addItem(d, member), [{ key: id, placement: spots[i + 1]!.placement }], bed);
+  });
+  return d;
+}
+
+/** A piszkozatbeli sorozat jelölése a mentéshez (a mentett sorozaté nem változik). */
+const seriesFields = (p: PlantingListItem) =>
+  isDraftSeries(p) ? { series_key: p.series_id!, series_index: p.series_index ?? 1 } : {};
+
+/**
+ * A mentendő különbség: új ültetések, megváltozott tervek, törlések (a sorszám alapja nem számít).
+ * A piszkozatban indított sorozat tagjai a közös kulccsal mennek; a sorozatba lépő mentett fej is.
+ */
 export function toBatch(original: PlantingListItem[], draft: LayoutDraft): PlantingBatchInput {
   const before = new Map(original.map((p) => [p.id, JSON.stringify(plantingInputOf(p))]));
   return {
-    create: draft.items.filter((p) => p.id < 0).map(plantingInputOf),
+    create: draft.items.filter((p) => p.id < 0).map((p) => ({ ...plantingInputOf(p), ...seriesFields(p) })),
     update: draft.items
-      .filter((p) => p.id > 0 && before.get(p.id) !== JSON.stringify(plantingInputOf(p)))
-      .map((p) => ({ id: p.id, data: plantingInputOf(p) })),
+      .filter((p) => p.id > 0 && (isDraftSeries(p) || before.get(p.id) !== JSON.stringify(plantingInputOf(p))))
+      .map((p) => ({ id: p.id, data: plantingInputOf(p), ...seriesFields(p) })),
     delete: draft.deleted,
   };
 }

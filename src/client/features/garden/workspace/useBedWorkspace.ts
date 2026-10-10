@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LAYOUT_PHASES, type LayoutPhase } from '@shared/labels.ts';
 import { relationOf } from '@shared/domain/companions.ts';
-import { bedAxes, findClashes, spanForRows } from '@shared/domain/geometry.ts';
-import { maxISO } from '@shared/domain/isoDate.ts';
+import { bedAxes, findClashes, placementsOverlap, spanForRows, type Period } from '@shared/domain/geometry.ts';
+import { diffDays, maxISO } from '@shared/domain/isoDate.ts';
 import {
   boundaries as stripBoundaries,
   clashFixes,
@@ -33,7 +33,7 @@ import {
   type PlantingIssue,
 } from '@shared/domain/plantingChecks.ts';
 import { occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
-import type { Suggestion } from '@shared/domain/suggestions.ts';
+import type { Suggestion, SuggestionTarget } from '@shared/domain/suggestions.ts';
 import { DEFAULT_SETTINGS } from '@shared/settings.ts';
 import type { PlantingBatchInput } from '@shared/schemas.ts';
 import type { Bed, PlantingListItem } from '@shared/types.ts';
@@ -42,7 +42,8 @@ import { cropColor } from '../../../lib/cropColors.ts';
 import { errorMessage } from '../../../lib/errors.ts';
 import { todayISO } from '../../../lib/format.ts';
 import { qk, useApiMutation, useCropGroups, usePlantings, usePlants, useSeeds, useSettings } from '../../../lib/queries.ts';
-import { placedInBed, plantingTitle } from '../../plan/plantingView.ts';
+import { defaultRows } from '../../plan/plantingForm.ts';
+import { placedInBed, plantingTitle, type PlacedPlanting } from '../../plan/plantingView.ts';
 import { useChecksContext } from '../../plan/useChecks.ts';
 import type { CanvasBoundary, CanvasGap, CanvasStrip } from '../LayoutCanvas.tsx';
 import type { PhasePreview } from '../LayoutPhasePicker.tsx';
@@ -53,14 +54,20 @@ import {
   applyStrips,
   copyPlanting,
   draftFrom,
+  editPlan,
+  isDraftSeries,
   isFixed,
   plantingFor,
   plantingFromSuggestion,
   removeItem,
-  replaceItem,
+  replaceWith,
+  seriesMembers,
+  setSuccession,
   stripsAt,
+  successionOf,
   toBatch,
   type LayoutDraft,
+  type Succession,
 } from '../layoutDraft.ts';
 
 /** Mire vonatkozik a panel. */
@@ -68,11 +75,42 @@ export type Selection =
   | { kind: 'none' }
   /** A napon szabad szakasz a tengely mentén: javaslat oda */
   | { kind: 'gap'; start: number; end: number }
-  /** Új sáv bárhová az ágyásba („+ Új sáv”) */
-  | { kind: 'new' }
-  | { kind: 'strip'; id: number };
+  /** Új sáv („+ Új sáv”): szabad hely híján az `after` sáv (ennek híján az utolsó sor) mellé kerül */
+  | { kind: 'new'; after: number | null }
+  | { kind: 'strip'; id: number }
+  /** Javaslat a sáv helyére: előtte (elővetemény), utána, vagy helyette */
+  | { kind: 'before' | 'after' | 'replace'; id: number };
+
+/** A javaslatlista fajtája: szabad hely, új sáv (szabad hellyel vagy beszúrással), a sáv előtt, után, helyette. */
+export type SuggestMode = 'gap' | 'new' | 'insert' | 'before' | 'after' | 'replace';
+
+/** A panel javaslatlistájának kérése: a javaslatmotor célja és az ellenőrzések, amelyekkel számol. */
+export interface SuggestRequest {
+  mode: SuggestMode;
+  /** A motor célja (az ágyás, az év és a mai nap nélkül); null: sehogy sincs hely */
+  target: Omit<SuggestionTarget, 'bed' | 'year' | 'today'> | null;
+  /** Beszúrásnál a helycsinálás utáni kiosztással */
+  ctx: ChecksContext;
+  /** A sáv, amelynek a helyére (elé, után, helyette) a javaslat szól */
+  strip?: PlantingListItem;
+  /** Beszúrásnál ez után kerül az új sor (null: a végére) */
+  after?: PlantingListItem | null;
+}
+
+/** „Ezen a helyen [év]”: a sáv helyén előtte és utána álló ültetések és a szabad idő. */
+export interface PlaceChain {
+  own: PlacedPlanting;
+  before: PlacedPlanting[];
+  after: PlacedPlanting[];
+  freeBefore: Period | null;
+  freeAfter: Period | null;
+}
 
 const NONE: Selection = { kind: 'none' };
+/** A beszúrási javaslat névleges szélessége (a szomszédok megállapításához; a valódi a növényé) */
+const NOMINAL_CM = 30;
+/** Ennyi szabad nap alatt nem kínál elő- vagy utóveteményt */
+const MIN_FREE_DAYS = 14;
 const nf = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 1 });
 export const NO_ROOM = 'Nincs hely az új sávnak: keskeníts egy sávot, vagy válassz másik napot.';
 const PLANTS_LOADING = 'A növények adatai még töltődnek: próbáld újra egy pillanat múlva.';
@@ -125,6 +163,8 @@ export function useBedWorkspace(bed: Bed, year: number) {
   const [selection, setSelection] = useState<Selection>(NONE);
   const [notice, setNotice] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<number | null>(null);
+  // A tervezési adatok változása a kapcsolt sávokra is átkerül (sávonként, alapból be)
+  const [linkOn, setLinkOn] = useState(true);
 
   const initial = useMemo(() => (plantings ? draftFrom(plantings, bed) : null), [plantings, bed]);
   const draft = session?.draft ?? null;
@@ -226,7 +266,8 @@ export function useBedWorkspace(bed: Bed, year: number) {
         return rel && rel.relation !== 0 ? [{ ...b, relation: rel.relation, reason: rel.reason }] : [];
       })
     : [];
-  const selectedId = selection.kind === 'strip' ? selection.id : null;
+  /** A kijelölt sáv (a helyére kért javaslatnál is) */
+  const selectedId = 'id' in selection ? selection.id : null;
   const sel = selectedId != null ? byId.get(selectedId) : undefined;
   const linkedIds = new Set(sel ? linkedPlantings(sel, items).map((p) => p.id) : []);
   const rowStrips = new Map<number, RowStrip>(
@@ -266,6 +307,82 @@ export function useBedWorkspace(bed: Bed, year: number) {
   /** Az év elhelyezésre váró ültetései: nincs helyük vagy dátumuk, így az ágyásképen nem látszanak */
   const unplaced = items.filter((p) => p.year === year && p.status !== 'elmaradt' && !placed.some((o) => o.id === p.id));
 
+  /** „Ezen a helyen [év]”: ami a sáv helyén előtte és utána áll, és a szabad idő közvetlenül előtte és utána. */
+  const placeChain = (id: number): PlaceChain | null => {
+    const own = placed.find((o) => o.id === id);
+    if (!own) return null;
+    const yearStart = `${year}-01-01`;
+    const yearEnd = `${year + 1}-01-01`;
+    const same = placed.filter(
+      (o) => o.id !== id && placementsOverlap(o.placement, own.placement) && o.period.start < yearEnd && o.period.end > yearStart,
+    );
+    const byStartDay = (a: PlacedPlanting, b: PlacedPlanting) => a.period.start.localeCompare(b.period.start);
+    const before = same.filter((o) => o.period.end <= own.period.start).sort(byStartDay);
+    const after = same.filter((o) => o.period.start >= own.period.end).sort(byStartDay);
+    const from = before.reduce((d, o) => maxISO(d, o.period.end), yearStart);
+    const to = after[0]?.period.start ?? yearEnd;
+    const roomy = (a: string, b: string) => a < b && diffDays(a, b) >= MIN_FREE_DAYS;
+    return {
+      own,
+      before,
+      after,
+      freeBefore: own.period.start > yearStart && roomy(from, own.period.start) ? { start: from, end: own.period.start } : null,
+      freeAfter: own.period.end < yearEnd && roomy(own.period.end, to) ? { start: own.period.end, end: to } : null,
+    };
+  };
+
+  // A panel javaslatlistájának kérése a kijelölésből
+  const request: SuggestRequest | null = useMemo(() => {
+    if (!ctx || !draft) return null;
+    const from = `${year}-01-01`;
+    const around = (id: number) => {
+      const p = byId.get(id);
+      const pl = p && placementOf(p, bed);
+      const period = p && occupancyPeriod(p);
+      if (!p || !pl || !period) return null;
+      const cross = isFullLength(pl, size.cross) ? null : { start: pl.cross_start_cm, span: pl.cross_span_cm };
+      return { p, period, base: { strip: { start: pl.axis_start_cm, span: pl.axis_span_cm }, cross, fill: true, whole: true } };
+    };
+    switch (selection.kind) {
+      case 'gap':
+        return {
+          mode: 'gap',
+          ctx,
+          target: { strip: { start: selection.start, span: selection.end - selection.start }, cross: null, from, day, fill: false },
+        };
+      case 'new': {
+        if (gaps.length) return { mode: 'new', ctx, target: { strip: null, cross: null, from, day, fill: false } };
+        // Szabad hely nélkül: a kijelölt (ennek híján az utolsó) sor után, a többi sor arányos engedésével
+        const after = selection.after != null && strips.some((x) => x.key === selection.after) ? selection.after : null;
+        const res = insertPlacement({ size, span: NOMINAL_CM, period: null, on: day, occupants: placed, strips, selected: after });
+        const afterItem = after != null ? byId.get(after) : rows.length ? byId.get(rows[rows.length - 1]!.keys[0]!) : null;
+        if (!res) return { mode: 'insert', ctx, target: null, after: afterItem ?? null };
+        const moved = res.strips ? applyStrips(draft, res.strips, bed) : draft;
+        const insertCtx = { ...ctx, all: [...ctx.all.filter((p) => !byId.has(p.id)), ...moved.items] };
+        return {
+          mode: 'insert',
+          ctx: insertCtx,
+          target: { strip: null, cross: null, from, day, place: res.placement },
+          after: afterItem ?? null,
+        };
+      }
+      case 'before': {
+        const a = around(selection.id);
+        return a && { mode: 'before', ctx, strip: a.p, target: { ...a.base, from, until: a.period.start } };
+      }
+      case 'after': {
+        const a = around(selection.id);
+        return a && { mode: 'after', ctx, strip: a.p, target: { ...a.base, from: maxISO(from, a.period.end) } };
+      }
+      case 'replace': {
+        const a = around(selection.id);
+        return a && { mode: 'replace', ctx, strip: a.p, target: { ...a.base, from, day, excludeId: a.p.id } };
+      }
+      default:
+        return null;
+    }
+  }, [ctx, draft, year, day, selection, byId, bed, size, gaps, strips, rows, placed]);
+
   // --- Kijelölés és nap ----------------------------------------------------------------
 
   /** Az ültetés napja: ha a választott napon nem áll az ágyásban, a pillanatkép az ágyásba kerülésére ugrik. */
@@ -279,7 +396,8 @@ export function useBedWorkspace(bed: Bed, year: number) {
     setNotice(null);
     setSelection((cur) => {
       if (cur.kind === 'gap') return NONE;
-      if (cur.kind !== 'strip') return cur;
+      // az elő- és utóvetemény a sáv idejéhez igazodik, nem a naphoz
+      if (cur.kind !== 'strip' && cur.kind !== 'replace') return cur;
       // a kijelölt sáv marad, ha az új napon is az ágyásban áll
       const period = byId.get(cur.id) && occupancyPeriod(byId.get(cur.id)!);
       return period && period.start <= d && d < period.end ? cur : NONE;
@@ -288,6 +406,8 @@ export function useBedWorkspace(bed: Bed, year: number) {
 
   const selectStrip = (id: number | null) => {
     setNotice(null);
+    // másik sávnál a kapcsolt sávok követése újra alapállásban
+    if (id !== selectedId) setLinkOn(true);
     setSelection(id == null ? NONE : { kind: 'strip', id });
   };
 
@@ -345,7 +465,7 @@ export function useBedWorkspace(bed: Bed, year: number) {
    * helycsinálás azt a napot nézi, amikor az új ültetés az ágyásban áll: a választottat, vagy ha
    * akkor még (már) nincs ott, az ágyásba kerülését.
    */
-  const insert = (item: PlantingListItem, atEnd = false) => {
+  const insert = (item: PlantingListItem, opts: { atEnd?: boolean; after?: number | null } = {}) => {
     const ok = update((d) => {
       const period = occupancyPeriod(item);
       const on = period && !(period.start <= day && day < period.end) ? maxISO(period.start, `${year}-01-01`) : day;
@@ -356,8 +476,8 @@ export function useBedWorkspace(bed: Bed, year: number) {
         on,
         occupants: placedInBed(d.items, bed),
         strips: on === day ? strips : stripsAt(d, bed, year, on),
-        selected: selectedId,
-        atEnd,
+        selected: opts.after !== undefined ? opts.after : selectedId,
+        atEnd: opts.atEnd,
       });
       if (!res) return null;
       const room = res.strips ? applyStrips(d, res.strips, bed) : d;
@@ -376,25 +496,46 @@ export function useBedWorkspace(bed: Bed, year: number) {
   };
 
   /** Bármelyik növény felvétele (a keresőből, ha a javaslatok között nincs): az új sáv szabálya szerint. */
-  const addPlant = (plantId: number) => {
+  const addPlant = (plantId: number, after?: number | null) => {
     if (!draft) return;
     const item = newFor(plantId, draft.nextId);
-    if (item) insert(item);
+    if (item) insert(item, { after });
     else setNotice(PLANTS_LOADING);
   };
 
-  /** A javaslat felvétele: a helye a teljes időszakára szabad, így más sáv nem mozdul. */
-  const addSuggestion = (sg: Suggestion) => {
-    if (!draft) return;
+  const fromSuggestion = (sg: Suggestion, id: number) => {
     const stock = seeds.find((x) => x.id === sg.seed_stock_id);
-    const item = plantingFromSuggestion(sg, {
-      id: draft.nextId,
+    return plantingFromSuggestion(sg, {
+      id,
       year,
       bedId: bed.id,
       cropGroupCode: groupCode(sg.plant.crop_group_id),
       seedVintage: stock?.vintage_year ?? null,
       bed,
     });
+  };
+
+  /** Beszúrási javaslat (szabad hely nélkül): a növény alapszélességével, a többi sor arányosan enged. */
+  const insertSuggestion = (sg: Suggestion, after: number | null) => {
+    if (!draft) return;
+    const rows = defaultRows(sg.plant.row_spacing_cm);
+    insert(
+      {
+        ...fromSuggestion(sg, draft.nextId),
+        rows,
+        axis_span_cm: spanForRows(rows, sg.plant.row_spacing_cm),
+        axis_start_cm: null,
+        cross_start_cm: null,
+        cross_span_cm: null,
+      },
+      { after },
+    );
+  };
+
+  /** A javaslat felvétele: a helye a teljes időszakára szabad, így más sáv nem mozdul. */
+  const addSuggestion = (sg: Suggestion) => {
+    if (!draft) return;
+    const item = fromSuggestion(sg, draft.nextId);
     if (update((d) => addItem(d, item))) {
       showOnDay(item);
       selectStrip(item.id);
@@ -405,7 +546,7 @@ export function useBedWorkspace(bed: Bed, year: number) {
     const p = byId.get(key);
     if (!p || !draft) return;
     // A másolat hely híján az utolsó sor után kerül: így lesz paradicsom–bazsalikom–paradicsom
-    insert({ ...copyPlanting(p, draft.nextId), axis_span_cm: placementOf(p, bed)?.axis_span_cm ?? p.axis_span_cm }, true);
+    insert({ ...copyPlanting(p, draft.nextId), axis_span_cm: placementOf(p, bed)?.axis_span_cm ?? p.axis_span_cm }, { atEnd: true });
   };
 
   const split = (key: number) => {
@@ -427,21 +568,73 @@ export function useBedWorkspace(bed: Bed, year: number) {
       setNotice('Ez az ültetés már elkezdődött vagy más évhez tartozik: a részletes lapon módosítható vagy törölhető.');
       return;
     }
-    if (update((d) => removeItem(d, key))) setSelection(NONE);
+    // a piszkozatban indított újravetés tagjai a fejjel együtt mennek
+    if (update((d) => removeItem(headless(d, key), key))) setSelection(NONE);
   };
 
-  /** Új sáv növényének cseréje: a hely marad, a dátumok és a sorszám az új növényé. */
-  const changePlant = (key: number, plantId: number) => {
-    let fresh: PlantingListItem | null = null;
+  /** A piszkozatban indított újravetés fejénél előbb a tagok kikerülnek (a sáv cseréje vagy törlése előtt). */
+  const headless = (d: LayoutDraft, key: number) => {
+    const p = d.items.find((x) => x.id === key);
+    return p && isDraftSeries(p) && p.series_index === 1 ? setSuccession(d, key, null, bed) : d;
+  };
+
+  /**
+   * Csere ugyanott: a hely és a szélesség marad, a többi (dátumok, sorszám) az új ültetésé. A mentett
+   * ültetés helyett új kerül be (`replaceWith`); a csere kijelölődik.
+   */
+  const replaceBy = (key: number, make: (id: number) => PlantingListItem | null, failMessage: string) => {
+    let made: { id: number; item: PlantingListItem } | null = null;
     const ok = update((d) => {
       const old = d.items.find((x) => x.id === key);
       const where = old ? placementOf(old, bed) : null;
-      fresh = newFor(plantId, key);
-      if (!where || !fresh) return null;
-      return applyStrips(replaceItem(d, fresh), [{ key, placement: where }], bed);
-    }, PLANTS_LOADING);
-    if (ok && fresh) showOnDay(fresh);
+      if (!old || !where || isFixed(old, year)) return null;
+      const base = headless(d, key);
+      const item = make(key < 0 ? key : base.nextId);
+      if (!item) return null;
+      const r = replaceWith(base, key, item);
+      made = { id: r.id, item };
+      return applyStrips(r.draft, [{ key: r.id, placement: where }], bed);
+    }, failMessage);
+    if (ok && made) {
+      const { id, item } = made;
+      showOnDay(item);
+      setNotice(null);
+      setSelection({ kind: 'strip', id });
+    }
   };
+  /** Másik növény ugyanott, a vetési naptár szerint (a nap ablakából). */
+  const changePlant = (key: number, plantId: number) => replaceBy(key, (id) => newFor(plantId, id), PLANTS_LOADING);
+  /** „Mi kerülhetne ide helyette?” választása. */
+  const replaceWithSuggestion = (key: number, sg: Suggestion) => replaceBy(key, (id) => fromSuggestion(sg, id), PLANTS_LOADING);
+
+  /**
+   * A tervezési adatok módosítása a panelről (fajta, vetőmag, időszak, módszer, dátumok, tőszám,
+   * megjegyzés): bekapcsolt követésnél a kapcsolt sávokra is átkerül; a piszkozatban indított
+   * újravetés tagjai a fej új adataiból újraképződnek.
+   */
+  const editPlanting = (next: PlantingListItem) =>
+    update((d) => {
+      const series = successionOf(d, next.id);
+      const edited = editPlan(d, next, linkOn);
+      return series ? setSuccession(edited, next.id, series, bed) : edited;
+    });
+
+  /** A sorok száma (a szélesség marad); ez lesz a sáv saját sűrűsége a további méretezéshez. */
+  const setRows = (key: number, rows: number) =>
+    update((d) => {
+      const p = d.items.find((x) => x.id === key);
+      if (!p || p.rows === rows) return null;
+      const next = { ...p, rows };
+      const rowBase = next.axis_span_cm ? { ...d.rowBase, [key]: { span: next.axis_span_cm, rows } } : d.rowBase;
+      return { ...editPlan(d, next, false), rowBase };
+    });
+
+  /** Újravetés be- és kikapcsolása, a vetések száma és időköze (a fej a kijelölt sáv). */
+  const setSeries = (key: number, s: Succession | null) =>
+    update((d) => {
+      const next = setSuccession(d, key, s, bed);
+      return next === d && s ? null : next;
+    }, 'Az újravetéshez a sávnak hely és dátum kell.');
 
   /** A sor hossza mentén: a kezdete (mozgatás) vagy a hossza (a vége mozdul). */
   const crossStep = (key: number, field: 'start' | 'span', delta: number) =>
@@ -467,6 +660,21 @@ export function useBedWorkspace(bed: Bed, year: number) {
   };
   const moveRowAt = (from: number, to: number) => update(withStrips(moveRow(strips, rows, from, to)));
   const fix = (f: ClashFix) => update((d) => applyFix(d, f));
+
+  /** A javaslatlista választása a kérés szerint: szabad helyre, beszúrással vagy cserével. */
+  const pickSuggestion = (sg: Suggestion) => {
+    if (!request) return;
+    if (request.mode === 'insert') insertSuggestion(sg, request.after?.id ?? null);
+    else if (request.mode === 'replace' && request.strip) replaceWithSuggestion(request.strip.id, sg);
+    else addSuggestion(sg);
+  };
+  /** A keresőben talált, a javaslatok közé nem férő növény (szabad helyre, beszúrással vagy cserével). */
+  const pickPlant = (plantId: number) => {
+    if (!request) return;
+    if (request.mode === 'replace' && request.strip) changePlant(request.strip.id, plantId);
+    else if (request.mode === 'insert') addPlant(plantId, request.after?.id ?? null);
+    else addPlant(plantId);
+  };
 
   /** Hely kijelölése egy elhelyezésre váró ültetésnek (dátum nélkül nem lehet). */
   const placeUnplaced = (id: number) => {
@@ -547,9 +755,9 @@ export function useBedWorkspace(bed: Bed, year: number) {
     day,
     setDay,
     selection,
-    setSelection: (s: Selection) => {
+    setSelection: (next: Selection) => {
       setNotice(null);
-      setSelection(s);
+      setSelection(next);
     },
     selectStrip,
     selectGap,
@@ -569,6 +777,12 @@ export function useBedWorkspace(bed: Bed, year: number) {
     previews,
     usage,
     unplaced,
+    placeChain,
+    request,
+    /** A piszkozatban indított újravetés beállítása a fejből */
+    succession: (id: number) => (draft ? successionOf(draft, id) : null),
+    /** A sorozat tagjai sorszám szerint */
+    seriesOf: (p: PlantingListItem) => (draft ? seriesMembers(draft, p) : [p]),
     ctx,
     issues,
     warnings,
@@ -584,12 +798,19 @@ export function useBedWorkspace(bed: Bed, year: number) {
     setNotice,
     // műveletek
     drag,
+    pickSuggestion,
+    pickPlant,
     addSuggestion,
     addPlant,
     duplicate,
     split,
     remove,
     changePlant,
+    editPlanting,
+    setRows,
+    setSeries,
+    linkOn,
+    setLinkOn,
     stepCross,
     canStepCross,
     resizeRowAt,

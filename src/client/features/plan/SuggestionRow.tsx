@@ -27,10 +27,12 @@ interface Props {
   onPreview?: (on: boolean) => void;
   /** A sor végén: nyíl (új lapot nyit) vagy plusz (azonnal felveszi) */
   action?: 'open' | 'add';
+  /** A hely leírása a sorszám és a hely helyett (pl. beszúrásnál, ahol a hely a választáskor készül el) */
+  place?: string;
 }
 
 /** Egy „Mi kerülhet ide?” javaslat: időzítés, hely és az okok címkékkel. */
-export function SuggestionRow({ suggestion: sg, year, color, onPick, onPreview, action = 'open' }: Props) {
+export function SuggestionRow({ suggestion: sg, year, color, onPick, onPreview, action = 'open', place: placeText }: Props) {
   const p = sg.placement;
   const summary = datesSummary(
     {
@@ -44,7 +46,7 @@ export function SuggestionRow({ suggestion: sg, year, color, onPick, onPreview, 
     },
     year,
   );
-  const place = `${sg.rows} sor · ${Math.round(p.axis_start_cm)}–${Math.round(p.axis_start_cm + p.axis_span_cm)} cm`;
+  const place = placeText ?? `${sg.rows} sor · ${Math.round(p.axis_start_cm)}–${Math.round(p.axis_start_cm + p.axis_span_cm)} cm`;
   return (
     <button
       type="button"

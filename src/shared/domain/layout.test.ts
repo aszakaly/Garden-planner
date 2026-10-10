@@ -20,6 +20,7 @@ import {
   phaseDays,
   pickWindowForDay,
   placeInFree,
+  placeSuccession,
   resizeRow,
   resizeStrip,
   rowsReorderable,
@@ -416,6 +417,34 @@ describe('új sáv beszúrása', () => {
   it('ha sehogy sincs hely, null', () => {
     const strips = [strip(1, 0, 80, 0, 200, true)];
     expect(insertPlacement({ ...base, span: 30, period: year, occupants: [occ(1, 0, 80)], strips })).toBeNull();
+  });
+});
+
+describe('újravetés helye', () => {
+  const head = (axis: number, span: number, start: string, end: string) => ({
+    period: { start, end },
+    placement: { axis_start_cm: axis, axis_span_cm: span, cross_start_cm: 0, cross_span_cm: 200 },
+  });
+  const starts = (out: { placement: { axis_start_cm: number } }[]) => out.map((o) => o.placement.axis_start_cm);
+
+  it('ahol egy korábbi tag addigra lekerül, oda kerül; különben a fej mellé', () => {
+    // a fej ápr. 1. – máj. 10. áll a 0–40 cm-en; 3 hetente újravetve
+    const out = placeSuccession(head(0, 40, '2027-04-01', '2027-05-10'), [0, 21, 42, 63], { axis: 100, cross: 200 }, []);
+    expect(starts(out)).toEqual([0, 40, 0, 40]);
+    expect(out.map((o) => o.period.start)).toEqual(['2027-04-01', '2027-04-22', '2027-05-13', '2027-06-03']);
+  });
+
+  it('mellé: a fejhez legközelebbi elég széles szabad hely, egyenlő távolságnál utána', () => {
+    const h = head(40, 20, '2027-04-01', '2027-06-01');
+    expect(starts(placeSuccession(h, [0, 14], { axis: 100, cross: 200 }, []))).toEqual([40, 60]);
+    // a fej utáni rész foglalt: elé kerül
+    const busy = { id: 9, ...head(60, 40, '2027-01-01', '2027-12-31') };
+    expect(starts(placeSuccession(h, [0, 14], { axis: 100, cross: 200 }, [busy]))).toEqual([40, 20]);
+  });
+
+  it('ha sehol nincs hely, a fej helyére kerül (az ütközést a jelzés mutatja)', () => {
+    const busy = { id: 9, ...head(40, 20, '2027-01-01', '2027-12-31') };
+    expect(starts(placeSuccession(head(0, 40, '2027-04-01', '2027-06-01'), [0, 14], { axis: 60, cross: 200 }, [busy]))).toEqual([0, 0]);
   });
 });
 

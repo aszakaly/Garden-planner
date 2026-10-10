@@ -332,3 +332,62 @@
   padding: 2px;
   color: inherit;
 }
+
+/* Sáv-panel: tervezési adatok */
+.value {
+  font-size: 15px;
+  color: var(--label-2);
+}
+.chevron {
+  flex: none;
+  color: var(--label-3);
+}
+.chainDot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--sc);
+  vertical-align: 1px;
+}
+.chainSelf {
+  font-weight: 600;
+  background: var(--fill-4);
+}
+.groupFoot {
+  margin: 0;
+  padding: 8px 12px 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--label-2);
+}
+.inlineButtons {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+}
+.inlineButtons button {
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: var(--fill-3);
+  color: var(--tint);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.inlineButtons button:disabled {
+  color: var(--label-3);
+}
+.error {
+  margin: 6px 8px 0;
+  font-size: 13px;
+  color: #c4271d;
+}
+.row:disabled {
+  color: var(--label-3);
+}
+
+.newVariety input {
+  flex: 1;
+  text-align: left;
+}
