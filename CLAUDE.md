@@ -106,7 +106,11 @@ Nagyobb funkciónál (a 2026-10-es „Ágyás kiosztása” tapasztalatai alapj�
 
   Minden találatnál: mit érint (adat, folyamat vagy felület), a konkrét eset, és a javítás mérete (kicsi, közepes vagy nagy).
 - **Javítás:** egyetlen javítókör. A kritikusokat azonnal javítom, a többiről a lista alapján a felhasználó dönt. Ha egy javítás–átnézés kör ismétlődni kezdene, jelzem és megállok.
-- **Commitok:** lépésenként egy commit, a javításokkal együtt; a funkció ága squash-olva kerül a `main`-be.
+- **Commitok és pull request:**
+  - Minden munka saját ágon folyik, a `main`-re közvetlenül nem pusholok. Lépésenként egy commit, a javításokkal együtt; az ág közben is felkerül a GitHubra.
+  - Az egység végén pull requestet nyitok a `main` felé (`gh pr create`). A leírásban: a cél, a lépések (commitonként), a tesztek (automata és kézi), a döntések és a nyitott tételek; a záró összefoglaló ugyanez.
+  - A felhasználó a GitHubon „Squash and merge”-dzsel vonja össze: a `main`-re egy commit kerül, a PR számával. Utána az ág törölhető, mert a PR megőrzi a lépésenkénti commitokat és a leírást.
+  - Kisebb módosítás (pl. dokumentáció) is ágon és PR-ral megy.
 - **Összefoglaló** minden nagyobb egység végén, tömören (kb. 10 sor):
   - mi készült el, felhasználói szemmel;
   - a tesztek: automata és kézi próba;
