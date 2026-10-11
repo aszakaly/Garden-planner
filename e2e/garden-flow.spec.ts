@@ -255,4 +255,58 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
         ['Paradicsom', 155, 65],
       ]);
   });
+
+  await test.step('13. figyelmeztetésből a munkalapra: a kerülendő kiváltása cserével, újravetés, mentés', async () => {
+    await page.getByLabel('Tervezési év').selectOption('2027');
+    await page.goto('/figyelmeztetesek');
+    await page.getByRole('button', { name: /^Paradicsom – Ökörszív.*Kerülendő szomszéd: gumós édeskömény/ }).click();
+
+    // A munkalap nyílik, az ültetés kijelölve, a napja odaállítva; mentetlen módosítás nincs
+    await expect(page).toHaveURL(/\/agyas\/\d+$/);
+    const stage = page.getByRole('region', { name: 'Ágyás kiosztása' });
+    const panel = page.getByRole('complementary', { name: 'Részletek' });
+    await expect(panel.getByRole('heading', { name: /^Paradicsom – Ökörszív/ })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Mentetlen módosítások' })).toBeHidden();
+    // A szomszéd az év ültetései között: a sorára kattintva kijelölődik, a nap is odaáll
+    await expect(stage.getByRole('button', { name: /^Gumós édeskömény/ })).toHaveCount(0);
+    await page.getByRole('button', { name: /^Megnyitás/ }).click();
+    await page.getByRole('button', { name: /^Gumós édeskömény/ }).click();
+    await expect(panel.getByRole('heading', { name: /^Gumós édeskömény/ })).toContainText('Kerülendő');
+    await expect(stage.getByRole('button', { name: /^Gumós édeskömény/ })).toHaveAttribute('aria-pressed', 'true');
+
+    // „Mi kerülhetne ide helyette?”: a hely marad, a figyelmeztetés eltűnik
+    await panel.getByRole('button', { name: 'Mi kerülhetne ide helyette?' }).click();
+    await expect(panel.getByRole('heading', { name: 'Mi kerülhetne ide helyette?' })).toBeVisible();
+    const first = panel.getByRole('button').filter({ hasText: /\d+ sor ·/ }).first();
+    const plantName = (await first.locator('span').nth(2).textContent())!.split(' – ')[0]!.trim();
+    expect(plantName).not.toBe('Gumós édeskömény');
+    await first.click();
+    const heading = panel.getByRole('heading', { name: new RegExp(`^${plantName}`) });
+    await expect(heading).toBeVisible();
+    await expect(heading).not.toContainText('Kerülendő');
+
+    // Újravetés: 3 vetés 3 hetente, a tagok azonnal a piszkozatba kerülnek
+    await panel.getByRole('switch', { name: 'Újravetés' }).click();
+    await field(panel, 'Vetések száma').fill('3');
+    await field(panel, 'Időköz').fill('21');
+    await expect(panel.getByRole('button', { name: /^3\. vetés/ })).toBeVisible();
+
+    const saveBar = page.getByRole('region', { name: 'Mentetlen módosítások' });
+    await saveBar.getByRole('button', { name: 'Mentés' }).click();
+    await expect(saveBar).toBeHidden();
+    await expect
+      .poll(async () => {
+        const items: { plant_name: string; bed_name: string; series_id: string | null; series_index: number | null }[] = await (
+          await page.request.get('/api/plantings?year=2027')
+        ).json();
+        const mine = items.filter((p) => p.bed_name === 'E2E ágyás');
+        const members = mine.filter((p) => p.plant_name === plantName);
+        return {
+          fennel: mine.some((p) => p.plant_name === 'Gumós édeskömény'),
+          series: new Set(members.map((p) => p.series_id)).size === 1 && members[0]?.series_id != null,
+          indexes: members.map((p) => p.series_index).sort(),
+        };
+      })
+      .toEqual({ fennel: false, series: true, indexes: [1, 2, 3] });
+  });
 });
