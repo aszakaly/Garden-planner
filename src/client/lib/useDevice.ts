@@ -1,21 +1,22 @@
 import { useSyncExternalStore } from 'react';
 
-/** Van-e ujjal kezelt mutató (érintőképernyős laptopon is, egér mellett) */
-const COARSE = '(any-pointer: coarse)';
-let coarseMql: MediaQueryList | null = null;
-/** Egyetlen, első használatkor létrehozott lekérdezés (nem minden pillanatképnél új) */
-const coarseQuery = () => (coarseMql ??= window.matchMedia(COARSE));
-
-function subscribeCoarse(cb: () => void) {
-  const mql = coarseQuery();
-  mql.addEventListener('change', cb);
-  return () => mql.removeEventListener('change', cb);
+/** Médialekérdezés hookként: egyetlen, első használatkor létrehozott `MediaQueryList` lekérdezésenként. */
+function mediaHook(query: string): () => boolean {
+  let mql: MediaQueryList | null = null;
+  const get = () => (mql ??= window.matchMedia(query));
+  const subscribe = (cb: () => void) => {
+    const m = get();
+    m.addEventListener('change', cb);
+    return () => m.removeEventListener('change', cb);
+  };
+  return () => useSyncExternalStore(subscribe, () => get().matches, () => false);
 }
 
-/** Ujjal is kezelhető eszköz-e (nagyobb érintési terület kell). */
-export function useCoarsePointer(): boolean {
-  return useSyncExternalStore(subscribeCoarse, () => coarseQuery().matches, () => false);
-}
+/** Ujjal is kezelhető eszköz-e (érintőképernyős laptopon is, egér mellett): nagyobb érintési terület kell. */
+export const useCoarsePointer = mediaHook('(any-pointer: coarse)');
+
+/** Telefonos elrendezés (keskeny ablak). */
+export const useIsMobile = mediaHook('(max-width: 760px)');
 
 function subscribeResize(cb: () => void) {
   window.addEventListener('resize', cb);

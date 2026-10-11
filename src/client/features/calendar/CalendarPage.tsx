@@ -9,7 +9,7 @@ import { Section } from '../../components/ui/Section.tsx';
 import { SegmentedControl } from '../../components/ui/SegmentedControl.tsx';
 import { formatDay, formatWeekday, relativeDayLabel, todayISO } from '../../lib/format.ts';
 import { useBeds, useJournal, useSettings, useTasks } from '../../lib/queries.ts';
-import { useIsMobile } from '../../lib/useIsMobile.ts';
+import { useIsMobile } from '../../lib/useDevice.ts';
 import { useStoredState } from '../../lib/useStoredState.ts';
 import { useYear } from '../../lib/year.tsx';
 import { useYearChecks } from '../plan/useChecks.ts';

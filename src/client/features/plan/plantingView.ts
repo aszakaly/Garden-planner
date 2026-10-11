@@ -68,6 +68,30 @@ export function linkedUpdate(x: PlantingListItem, update: PlantingInput, before:
   return data;
 }
 
+/**
+ * A munkalap piszkozatában ugyanez a szabály: a kapcsolt sávra a szerkesztett ültetés változott
+ * átvihető mezői kerülnek át (`before` a szerkesztés előtti, `after` az utáni változat). Fajta-
+ * váltáskor a fajtából jövő megjelenítési és ellenőrzési mezők (név, sor- és tőtáv, tenyészidő)
+ * is, a vetőmagtétellel az évjárat és a készlet. Ha semmi nem változott, maga a sáv.
+ */
+export function followLinked(x: PlantingListItem, after: PlantingListItem, before: PlantingListItem): PlantingListItem {
+  const data = linkedUpdate(x, plantingInputOf(after), before);
+  if (!data) return x;
+  const next: PlantingListItem = { ...x };
+  for (const k of LINKED_FIELDS) Object.assign(next, { [k]: data[k] ?? null });
+  if (data.variety_id !== x.variety_id) {
+    next.variety_name = after.variety_name;
+    next.row_spacing_cm = after.row_spacing_cm;
+    next.in_row_spacing_cm = after.in_row_spacing_cm;
+    next.days_to_harvest = after.days_to_harvest;
+  }
+  if (data.seed_stock_id !== x.seed_stock_id || data.variety_id !== x.variety_id) {
+    next.seed_vintage = after.seed_vintage;
+    next.has_seed = after.has_seed;
+  }
+  return next;
+}
+
 /** Az ágyásba kerülés napja (rendezéshez), ugyanaz, amitől a foglaltság számít; dátum nélkül null. */
 export function startOf(p: PlantingListItem): string | null {
   const d = effectiveDates(p);

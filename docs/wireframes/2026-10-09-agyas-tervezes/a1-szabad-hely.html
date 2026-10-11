@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <title>A1 – Ágyáskép és panel: szabad hely</title>
+    <link rel="stylesheet" href="wf.css" />
+    <script src="wf.js"></script>
+  </head>
+  <body>
+    <div class="page" id="root"></div>
+    <script>
+      const fo = [
+        { ...P.bab1 },
+        { ...P.repa },
+        { ...P.bab2 },
+        { ...P.uborka },
+        { ...P.paradicsom },
+        { ...P.bazsalikom },
+        { ...P.fokhagyma, note: 'júl. 20-ig' },
+      ];
+      const row = (pos, name, color, right, cls = '', extra = '') =>
+        `<div class="rl ${cls}" style="--sc:${color}"><span class="grip">⋮⋮</span><span class="pos">${pos}</span><span class="nm"><span class="dot"></span>${name}${extra}</span>${right}</div>`;
+      const st = (v) => `<span class="step"><i>−</i>${v}<i>+</i></span>`;
+
+      const stage = `
+        ${mk(1, 'top:-9px;left:-9px')}
+        ${phaseCards('fo')}
+        <div class="canvas">
+          ${mk(2, 'top:40px;left:512px')}
+          ${bedSvg({
+            px: 1.65,
+            strips: fo,
+            gaps: [{ a0: 270, a1: 325, label: 'Szabad · 55 cm', sel: true }],
+            ghost: { a0: 270, a1: 325, name: 'Saláta', color: C.level, note: 'előnézet' },
+            bounds: [
+              { at: 45, rel: 1 },
+              { at: 75, rel: 1 },
+              { at: 120, rel: 1 },
+              { at: 240, rel: 1 },
+              { at: 325, rel: 1 },
+            ],
+          })}
+          <p class="hint">Kattints egy szabad helyre (javaslatok) vagy egy sávra (adatok, méretezés). A határon zöld vonal: jó szomszédok, piros: kerülendők.</p>
+        </div>
+        <div style="position:relative">${mk(8, 'top:236px;left:-9px')}<div class="rows">
+          ${row('0–45 cm', 'Bokorbab', C.huvelyes, st('45 cm'), '', ` <span style="color:var(--label-3)">${icon('link', 12)}</span>`)}
+          ${row('45–75 cm', 'Sárgarépa', C.gyoker, st('30 cm'))}
+          ${row('75–120 cm', 'Bokorbab', C.huvelyes, st('45 cm'), '', ` <span style="color:var(--label-3)">${icon('link', 12)}</span>`)}
+          ${row('120–180 cm', 'Uborka', C.termes, st('60 cm'))}
+          ${row('180–240 cm', 'Paradicsom', C.termes, st('60 cm'), '', ` <span style="color:#ff3b30">${icon('ban', 13)}</span>`)}
+          ${row('240–270 cm', 'Bazsalikom', C.fuszer, st('30 cm'))}
+          ${row('270–325 cm', 'Szabad · 55 cm', 'transparent', `<span style="color:var(--tint);font-weight:500">${icon('bulb', 13)} Mi kerülhet ide?</span>`, 'free sel')}
+          ${row('325–400 cm', 'Fokhagyma', C.hagymas, `<span style="color:var(--label-2);font-size:12.5px">${icon('lock', 12)} júl. 20-ig</span>`)}
+        </div></div>
+        <div class="addbar"><span class="lnk">${icon('plus', 14)} Új sáv</span><small>szabad júl. 1-én: 0,66 m²</small></div>`;
+
+      const panel = `
+        ${mk(3, 'top:-9px;left:-9px')}
+        <div class="p-head">
+          <div class="p-kicker">Szabad hely · fővetemény</div>
+          <div class="p-title">Mi kerülhet ide?</div>
+          <div class="p-meta">270–325 cm (55 cm) · teljes hossz · júl. 1-től<br />Szomszédok: bazsalikom, fokhagyma (júl. 20-ig)</div>
+        </div>
+        <div class="search" style="position:relative">${mk(6, 'top:5px;right:-9px')}${icon('search', 15)} Keress bármilyen növényt…</div>
+        <div class="gt">Ajánlott (3)</div>
+        <div style="position:relative">${mk(4, 'top:10px;left:-9px')}${mk(5, 'top:150px;right:-9px')}<div class="group">
+          ${sug({
+            name: 'Cékla',
+            variety: 'Detroit 2',
+            color: C.gyoker,
+            meta: 'Vetés júl. 5. · szedés szept. 15.–okt. 31. · 3 sor',
+            chips: [
+              ['good', 'Vetésforgó rendben'],
+              ['good', 'Van vetőmag: Detroit 2 (2026)'],
+            ],
+          })}
+          ${sug({
+            name: 'Saláta',
+            variety: 'Nyári batávia',
+            color: C.level,
+            hover: true,
+            meta: 'Vetés júl. 3. · szedés aug. 20.–szept. 20. · 3 sor',
+            chips: [
+              ['good', 'Most levél következik'],
+              ['good', 'Jó szomszéd: fokhagyma'],
+              ['good', 'Bevált (4,5★)'],
+            ],
+          })}
+          ${sug({
+            name: 'Mangold',
+            color: C.level,
+            meta: 'Vetés júl. 1. · szedés aug. 25.–nov. 15. · 2 sor',
+            chips: [
+              ['good', 'Most levél következik'],
+              ['neutral', 'Nincs vetőmag'],
+            ],
+          })}
+        </div></div>
+        <div class="gt">Lehetséges (2)</div>
+        <div class="group">
+          ${sug({ name: 'Kapor', color: C.fuszer, meta: 'Vetés júl. 1. · szedés aug. 10.–szept. 30. · 2 sor', chips: [['good', 'Vetésforgó rendben'], ['neutral', 'Nincs vetőmag']] })}
+          ${sug({ name: 'Retek', color: C.gyoker, meta: 'Vetés júl. 1. · szedés júl. 28.–aug. 15. · 4 sor', chips: [['neutral', 'Gyengén szerepelt (2,0★)']] })}
+        </div>
+        <div class="group" style="margin-top:10px"><div class="row link">Kerülendők megjelenítése (4)<span class="v">${icon('down', 15)}</span></div></div>
+        <p class="p-foot">A sorrend a vetésforgót, a ténylegesen mellette álló sávokat, a vetőmagkészletet és a korábbi értékeléseidet nézi. Egy kattintás: a sáv a helyére kerül a vetési naptár dátumaival, és kijelölődik.</p>`;
+
+      document.getElementById('root').innerHTML = `
+        <h1 class="wf-title">A · Ágyáskép és panel – szabad hely kijelölve</h1>
+        <p class="wf-sub">Az ágyás oldala maga a munkalap. Balra az ágyáskép és a sávlista a választott napon, jobbra a panel, amely mindig arról szól, amire rákattintottál. Itt egy szabad helyre kattintottunk a fővetemény napján.</p>
+        ${desktop({ stage, panel, extra: mk(7, 'bottom:52px;left:calc(250px + (100% - 250px) / 2 - 190px)') })}
+        ${notes([
+          '<b>Időválasztó:</b> elő-, fő- és utóvetemény vagy tetszőleges nap, kis előnézettel (a mostani Kiosztásból). Az ágyáskép mindig ennek a napnak az állapota.',
+          '<b>Szabad hely az ágyásképen:</b> szaggatott keret és „+”. Rákattintva kijelölődik, a panel javaslatokat ad pontosan erre a helyre és napra.',
+          '<b>A panel a kijelöléshez igazodik:</b> semmi → ágyás-áttekintés, szabad hely → „Mi kerülhet ide?”, sáv → az ültetés adatai. Nincs külön lap.',
+          '<b>Rangsorolt javaslatok okokkal:</b> a mostani „Mi kerülhet ide?” motorja, de a sáv valódi szomszédaival és a választott nappal számolva.',
+          '<b>Előnézet:</b> a javaslat fölé víve a sáv halványan megjelenik a helyén, a szomszédsági határ színével együtt. A „+” vagy kattintás felveszi.',
+          '<b>Keresés:</b> bármelyik növény választható. A találatok ugyanígy rangsorolva, okokkal jönnek, így a kerülendő választás is látszik, mielőtt felveszed.',
+          '<b>Piszkozat:</b> módosításkor megjelenik a mentés-sáv, amely a kerülendők számát is mutatja (de nem tiltja a mentést). Az Elvetés mindent visszaállít.',
+          '<b>Sávlista:</b> a szabad hely itt is sor, „Mi kerülhet ide?” gombbal. A sorrend fogantyúval, a szélesség léptetővel állítható, mint most.',
+        ])}`;
+    </script>
+  </body>
+</html>

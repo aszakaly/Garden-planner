@@ -79,8 +79,8 @@ type Recorded = Pick<
 /**
  * Megkezdett vagy rögzített ültetés: gyors előzmény, nem tervezett a státusza (folyamatban, lezárt,
  * elmaradt, sikertelen), van tény dátuma vagy tényleges helye, vagy tényleges ágyásban – akár
- * máshol, hely nélkül – valósult meg. A kiosztás-szerkesztő ilyet nem mozdít és nem töröl (a szerver
- * sem engedi onnan törölni); ez csak a részletes lapon lehet.
+ * máshol, hely nélkül – valósult meg. A munkalap ilyet nem mozdít és nem töröl (a szerver sem
+ * engedi a tömeges mentésből törölni); ez csak a Tény és napló lapon lehet.
  */
 export function startedOrRecorded(p: Recorded): boolean {
   return (

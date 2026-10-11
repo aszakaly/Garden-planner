@@ -10,12 +10,12 @@ import {
   type FrostDates,
   type PlantingDates,
 } from './dates.ts';
-import { EPS, periodsOverlap, placementsOverlap, rangesOverlap, type Period, type Placement } from './geometry.ts';
+import { EPS, freeAxisRanges, periodsOverlap, placementsOverlap, rangesOverlap, type Occupant, type Period, type Placement } from './geometry.ts';
 import { addDaysISO, diffDays, isoFromMonthDay } from './isoDate.ts';
 import { bedStartField, effectiveBedId, effectiveDates, occupancyPeriod, planDates } from './plantings.ts';
 
 /**
- * A kiosztás-szerkesztő tiszta logikája. Minden érték cm, a `geometry.ts` koordinátáiban:
+ * Az ágyás-munkalap kiosztásának tiszta logikája. Minden érték cm, a `geometry.ts` koordinátáiban:
  * a tengely mentén követik egymást a sorok, a keresztirány egy sor hossza.
  */
 
@@ -466,6 +466,118 @@ export function makeRoomEvenly(
     strips: out,
     placement: { axis_start_cm: start, axis_span_cm: rest, cross_start_cm: 0, cross_span_cm: size.cross },
   };
+}
+
+/**
+ * A napon szabad, teljes hosszú szakaszok a tengely mentén, a rácsra igazítva (az eleje felfelé,
+ * a vége lefelé); a minimális sávnál keskenyebb maradék nem számít. Ezekre kattintva kér
+ * javaslatot a munkalap.
+ */
+export function freeOnDay(occupants: Occupant[], size: LayoutSize, day: string): { start: number; end: number }[] {
+  return freeAxisRanges(size.axis, occupants, { start: day, end: addDaysISO(day, 1) }, { start: 0, span: size.cross })
+    .map(([s, e]) => ({
+      start: Math.max(0, Math.ceil((s - EPS) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM),
+      end: Math.min(size.axis, Math.floor((e + EPS) / LAYOUT_GRID_CM) * LAYOUT_GRID_CM),
+    }))
+    .filter((r) => r.end - r.start >= LAYOUT_MIN_CM - EPS);
+}
+
+export interface InsertInput {
+  size: LayoutSize;
+  /** Az új sáv kért szélessége */
+  span: number;
+  /** Az új ültetés teljes időszaka; null: nincs dátuma */
+  period: Period | null;
+  /** A nap, amikor az új ültetés az ágyásban áll: a napi szabad hely és a helycsinálás ezt nézi */
+  on: string;
+  /** Az ágyás elhelyezett ültetései (foglaltság, az új nélkül) */
+  occupants: Occupant[];
+  /** Az `on` napon látható sávok */
+  strips: LayoutStrip[];
+  /** A kijelölt sáv: a sora után kerül az új sor, illetve ő ad helyet */
+  selected: number | null;
+  /** A sorok végére kerüljön (pl. a „Még egy sáv ebből” másolata) */
+  atEnd?: boolean;
+}
+
+export interface InsertResult {
+  placement: Placement;
+  /** A helyet adó sávok új helye; null: szabad helyre került, más nem mozdult */
+  strips: LayoutStrip[] | null;
+}
+
+/**
+ * Az új (vagy másolt) sáv helye, ebben a sorrendben:
+ * 1. az egész időszakára szabad, elég széles hely;
+ * 2. az `on` napon szabad, elég széles hely (elő- és utóveteménynél az ütközést a javítás oldja fel);
+ * 3. a legszélesebb szabad szakasz (az egész időszakra, majd az `on` napra), kitöltve;
+ * 4. hely híján minden sor arányosan enged, és az új sor a kijelölt sor után (`atEnd`: a végére) kerül;
+ * 5. ha ez sem megy (pl. rögzített sáv áll az ágyásban), a kijelölt vagy az utolsó mozdítható sáv ad helyet.
+ * null: sehogy sincs hely.
+ */
+export function insertPlacement(i: InsertInput): InsertResult | null {
+  const whole = { start: 0, span: i.size.cross };
+  const free = i.period ? freeAxisRanges(i.size.axis, i.occupants, i.period, whole) : [];
+  const freeOn = freeAxisRanges(i.size.axis, i.occupants, { start: i.on, end: addDaysISO(i.on, 1) }, whole);
+  // a `placeInFree` elég hely híján a legszélesebb szakaszt adja: előbb a teljes szélesség kell
+  const fit = (ranges: [number, number][]) => {
+    const p = placeInFree(ranges, i.span, i.size.cross);
+    return p && p.axis_span_cm >= i.span - EPS ? p : null;
+  };
+  const placed = fit(free) ?? fit(freeOn) ?? placeInFree(free, i.span, i.size.cross) ?? placeInFree(freeOn, i.span, i.size.cross);
+  if (placed) return { placement: placed, strips: null };
+
+  const rows = layoutRows(i.strips);
+  const selRow = rows.findIndex((r) => i.selected != null && r.keys.includes(i.selected));
+  const room = makeRoomEvenly(i.strips, i.size, i.span, i.atEnd || selRow < 0 ? rows.length : selRow + 1);
+  if (room) return room;
+  const movable = i.strips.filter((x) => !x.fixed);
+  const last = [...movable].sort((a, b) => endOf(a.placement, 'axis') - endOf(b.placement, 'axis')).at(-1);
+  const target = movable.find((x) => x.key === i.selected) ?? last;
+  return target ? makeRoom(i.strips, target.key, i.span) : null;
+}
+
+// --- Újravetés ---------------------------------------------------------------------
+
+/**
+ * Az újravetés tagjainak helye (az első tag a fej, a helye adott; a többi `offsets` nappal később):
+ * - a `kept` szerinti helyén, ha a tagnak már van helye (pl. kézzel áthúzták): az nem változik;
+ * - oda, ahol egy korábbi tag addigra lekerül (a legkorábbi ilyen tag helyére);
+ * - különben a fej mellé: a fejhez legközelebbi, a teljes időszakára szabad, ugyanolyan széles helyre
+ *   (egyenlő távolságnál utána);
+ * - ha sehol nincs hely, a fej helyére (az ütközést a jelzés mutatja).
+ * A keresztirányú hely mindig a fejé.
+ */
+export function placeSuccession(
+  head: Occupant,
+  offsets: number[],
+  size: LayoutSize,
+  others: Occupant[],
+  kept: (Placement | null | undefined)[] = [],
+): Occupant[] {
+  const taken = [...others];
+  const out: Occupant[] = [];
+  const { placement: hp } = head;
+  const cross = { start: hp.cross_start_cm, span: hp.cross_span_cm };
+  offsets.forEach((offset, i) => {
+    const period = { start: addDaysISO(head.period.start, offset), end: addDaysISO(head.period.end, offset) };
+    const free = (pl: Placement) => !taken.some((o) => periodsOverlap(o.period, period) && placementsOverlap(o.placement, pl));
+    let placement = hp;
+    const own = i > 0 ? kept[i] : null;
+    if (own) placement = own;
+    else if (i > 0) {
+      const again = out.map((o) => o.placement).find(free);
+      const near = freeAxisRanges(size.axis, taken, period, cross)
+        .filter(([s, e]) => e - s + EPS >= hp.axis_span_cm)
+        .map(([s, e]) => clamp(hp.axis_start_cm, s, e - hp.axis_span_cm))
+        .sort((a, b) => Math.abs(a - hp.axis_start_cm) - Math.abs(b - hp.axis_start_cm) || b - a)[0];
+      placement = again ?? (near != null ? { ...hp, axis_start_cm: near } : hp);
+    }
+    const item = { placement, period };
+    taken.push(item);
+    out.push(item);
+  });
+  return out;
 }
 
 /** Teljes hosszú-e a sáv: a keresztirányban az ágyás egész hosszán fut. */

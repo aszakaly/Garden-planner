@@ -7,6 +7,8 @@ import {
   applyClashFix,
   boundaries,
   clashFixes,
+  freeOnDay,
+  insertPlacement,
   isFullLength,
   layoutRows,
   layoutValid,
@@ -18,6 +20,7 @@ import {
   phaseDays,
   pickWindowForDay,
   placeInFree,
+  placeSuccession,
   resizeRow,
   resizeStrip,
   rowsReorderable,
@@ -364,6 +367,112 @@ describe('egyenletes engedés új sávnak', () => {
     expect(makeRoomEvenly([strip(1, 0, 50, 0, 200, true), strip(2, 50, 30)], size, 30, 2)).toBeNull();
     const full = [10, 20, 30, 40, 50, 60, 70].map((a, i) => strip(i + 1, a, 10)).concat(strip(8, 0, 10));
     expect(makeRoomEvenly(full, size, 30, 8)).toBeNull();
+  });
+});
+
+describe('új sáv beszúrása', () => {
+  const year = { start: '2027-03-01', end: '2027-10-01' };
+  const occ = (id: number, axis: number, span: number, period = year) => ({
+    id,
+    period,
+    placement: { axis_start_cm: axis, axis_span_cm: span, cross_start_cm: 0, cross_span_cm: 200 },
+  });
+  const base = { size, on: '2027-07-01', selected: null };
+
+  it('az egész időszakára szabad, elég széles helyre kerül, más nem mozdul', () => {
+    const out = insertPlacement({ ...base, span: 30, period: year, occupants: [occ(1, 0, 30)], strips: [strip(1, 0, 30)] });
+    expect(out).toEqual({ placement: { axis_start_cm: 30, axis_span_cm: 30, cross_start_cm: 0, cross_span_cm: 200 }, strips: null });
+  });
+
+  it('ha csak a napon szabad a hely (utóvetemény), oda kerül', () => {
+    // a 30–80 cm-es részt máj. 31-ig egy korábbi ültetés foglalja
+    const early = occ(2, 30, 50, { start: '2027-03-01', end: '2027-05-31' });
+    const out = insertPlacement({ ...base, span: 30, period: year, occupants: [occ(1, 0, 30), early], strips: [strip(1, 0, 30)] });
+    expect(out!.placement).toMatchObject({ axis_start_cm: 30, axis_span_cm: 30 });
+  });
+
+  it('keskenyebb szabad helyen a legszélesebb szakaszt tölti ki', () => {
+    const out = insertPlacement({ ...base, span: 30, period: year, occupants: [occ(1, 0, 60)], strips: [strip(1, 0, 60)] });
+    expect(out).toMatchObject({ placement: { axis_start_cm: 60, axis_span_cm: 20 }, strips: null });
+  });
+
+  it('hely híján a sorok arányosan engednek, az új sor a kijelölt után kerül', () => {
+    const strips = [strip(1, 0, 50), strip(2, 50, 30)];
+    const occupants = [occ(1, 0, 50), occ(2, 50, 30)];
+    const after1 = insertPlacement({ ...base, span: 50, period: year, occupants, strips, selected: 1 });
+    expect(after1!.placement).toMatchObject({ axis_start_cm: 30, axis_span_cm: 30 });
+    expect(at(after1!.strips, 2)).toMatchObject({ axis_start_cm: 60, axis_span_cm: 20 });
+    const atEnd = insertPlacement({ ...base, span: 50, period: year, occupants, strips, selected: 1, atEnd: true });
+    expect(atEnd!.placement).toMatchObject({ axis_start_cm: 50, axis_span_cm: 30 });
+  });
+
+  it('rögzített sáv mellett a kijelölt (ennek híján az utolsó) mozdítható sáv ad helyet', () => {
+    const strips = [strip(1, 0, 40, 0, 200, true), strip(2, 40, 40)];
+    const occupants = [occ(1, 0, 40), occ(2, 40, 40)];
+    const out = insertPlacement({ ...base, span: 20, period: year, occupants, strips });
+    expect(at(out!.strips, 2)).toMatchObject({ axis_start_cm: 40, axis_span_cm: 20 });
+    expect(out!.placement).toMatchObject({ axis_start_cm: 60, axis_span_cm: 20 });
+  });
+
+  it('ha sehogy sincs hely, null', () => {
+    const strips = [strip(1, 0, 80, 0, 200, true)];
+    expect(insertPlacement({ ...base, span: 30, period: year, occupants: [occ(1, 0, 80)], strips })).toBeNull();
+  });
+});
+
+describe('újravetés helye', () => {
+  const head = (axis: number, span: number, start: string, end: string) => ({
+    period: { start, end },
+    placement: { axis_start_cm: axis, axis_span_cm: span, cross_start_cm: 0, cross_span_cm: 200 },
+  });
+  const starts = (out: { placement: { axis_start_cm: number } }[]) => out.map((o) => o.placement.axis_start_cm);
+
+  it('ahol egy korábbi tag addigra lekerül, oda kerül; különben a fej mellé', () => {
+    // a fej ápr. 1. – máj. 10. áll a 0–40 cm-en; 3 hetente újravetve
+    const out = placeSuccession(head(0, 40, '2027-04-01', '2027-05-10'), [0, 21, 42, 63], { axis: 100, cross: 200 }, []);
+    expect(starts(out)).toEqual([0, 40, 0, 40]);
+    expect(out.map((o) => o.period.start)).toEqual(['2027-04-01', '2027-04-22', '2027-05-13', '2027-06-03']);
+  });
+
+  it('mellé: a fejhez legközelebbi elég széles szabad hely, egyenlő távolságnál utána', () => {
+    const h = head(40, 20, '2027-04-01', '2027-06-01');
+    expect(starts(placeSuccession(h, [0, 14], { axis: 100, cross: 200 }, []))).toEqual([40, 60]);
+    // a fej utáni rész foglalt: elé kerül
+    const busy = { id: 9, ...head(60, 40, '2027-01-01', '2027-12-31') };
+    expect(starts(placeSuccession(h, [0, 14], { axis: 100, cross: 200 }, [busy]))).toEqual([40, 20]);
+  });
+
+  it('a már elhelyezett tag a helyén marad, a többi ehhez igazodik', () => {
+    const h = head(0, 40, '2027-04-01', '2027-05-10');
+    const moved = { axis_start_cm: 60, axis_span_cm: 40, cross_start_cm: 0, cross_span_cm: 200 };
+    // a 2. tag kézzel a 60–100 cm-re került: a 3. a lekerült fej helyére, a 4. a 2. helyére
+    expect(starts(placeSuccession(h, [0, 21, 42, 63], { axis: 100, cross: 200 }, [], [null, moved]))).toEqual([0, 60, 0, 60]);
+  });
+
+  it('ha sehol nincs hely, a fej helyére kerül (az ütközést a jelzés mutatja)', () => {
+    const busy = { id: 9, ...head(40, 20, '2027-01-01', '2027-12-31') };
+    expect(starts(placeSuccession(head(0, 40, '2027-04-01', '2027-06-01'), [0, 14], { axis: 60, cross: 200 }, [busy]))).toEqual([0, 0]);
+  });
+});
+
+describe('szabad szakaszok a napon', () => {
+  const occ = (id: number, axis: number, span: number, start = '2027-03-01', end = '2027-10-01', cross = 0, crossSpan = 200) => ({
+    id,
+    period: { start, end },
+    placement: { axis_start_cm: axis, axis_span_cm: span, cross_start_cm: cross, cross_span_cm: crossSpan },
+  });
+
+  it('a napon álló sávok közötti és melletti teljes hosszú szakaszok, a rácsra igazítva', () => {
+    expect(freeOnDay([occ(1, 0, 22.5), occ(2, 50, 20)], size, '2027-07-01')).toEqual([
+      { start: 25, end: 50 },
+      { start: 70, end: 80 },
+    ]);
+  });
+
+  it('a máskor álló ültetés nem foglal; a félhosszú sáv igen; a túl keskeny maradék kimarad', () => {
+    const later = occ(1, 0, 40, '2027-08-01', '2027-10-01');
+    const half = occ(2, 40, 35, '2027-03-01', '2027-10-01', 0, 100);
+    expect(freeOnDay([later, half], size, '2027-07-01')).toEqual([{ start: 0, end: 40 }]);
   });
 });
 

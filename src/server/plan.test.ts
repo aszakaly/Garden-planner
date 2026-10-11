@@ -140,7 +140,6 @@ describe('tömeges mentés', () => {
     expect(created).toHaveLength(1);
     const list = await listed();
     expect(list.find((p) => p.id === keep!.id)?.axis_start_cm).toBe(10);
-    // az azonosító újra kiosztódhat, ezért a törölt sáv helye alapján ellenőrzünk
     expect(list.some((p) => p.axis_start_cm === 30)).toBe(false);
     expect(list).toHaveLength(2);
     expect(list.find((p) => p.id === created[0])?.plant_name).toBe('Paradicsom');
@@ -170,15 +169,15 @@ describe('tömeges mentés', () => {
     expect((await listed()).some((x) => x.id === p!.id)).toBe(true);
   });
 
-  it('az újra kiosztott azonosítóhoz nem marad feladatállapot', async () => {
+  it('a törölt ültetés azonosítója nem kerül újra kiosztásra, és a feladatállapota sem marad meg', async () => {
     const [p]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
     const maxId = (db.prepare('SELECT MAX(id) AS m FROM planting').get() as { m: number }).m;
-    // előfeltétel: a törlendő a legnagyobb azonosítójú, így az új ültetés ezt kapja meg újra
+    // a törlendő a legnagyobb azonosítójú: AUTOINCREMENT nélkül az új ültetés ezt kapná meg újra
     expect(p!.id).toBe(maxId);
     db.prepare('INSERT INTO task_state (task_key, note) VALUES (?, ?)').run(`kiultetes:${maxId}`, 'régi jegyzet');
     const res = await batch({ delete: [maxId], create: [basil({ axis_start_cm: 0 })] });
     expect(res.statusCode).toBe(200);
-    expect((res.json() as { created: number[] }).created).toEqual([maxId]);
+    expect((res.json() as { created: number[] }).created[0]).toBeGreaterThan(maxId);
     expect(db.prepare('SELECT 1 FROM task_state WHERE task_key LIKE ?').get(`%:${maxId}`)).toBeUndefined();
   });
 
@@ -203,8 +202,41 @@ describe('tömeges mentés', () => {
     expect((await listed()).find((x) => x.id === p!.id)?.axis_start_cm).toBe(20);
   });
 
+  it('az azonos sorozatkulcsú elemek egy újravetés-sorozatba kerülnek, a mentett fej is beléphet', async () => {
+    const [head]: PlantingListItem[] = (await post(basil({ axis_start_cm: 0 }))).json();
+    const res = await batch({
+      create: [
+        basil({ axis_start_cm: 30, plan_transplant_date: '2029-06-05', series_key: 'uj:1', series_index: 2 }),
+        basil({ axis_start_cm: 0, plan_transplant_date: '2029-06-26', series_key: 'uj:1', series_index: 3 }),
+        basil({ axis_start_cm: 60 }),
+      ],
+      update: [{ id: head!.id, data: basil({ axis_start_cm: 0 }), series_key: 'uj:1', series_index: 1 }],
+    });
+    expect(res.statusCode).toBe(200);
+    const { created } = res.json() as { created: number[] };
+    const list = await listed();
+    const members = [head!.id, created[0]!, created[1]!].map((id) => list.find((p) => p.id === id)!);
+    expect(new Set(members.map((p) => p.series_id)).size).toBe(1);
+    expect(members[0]!.series_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(members.map((p) => [p.series_index, p.series_size])).toEqual([[1, 3], [2, 3], [3, 3]]);
+    // sorozatkulcs nélkül nem lesz sorozat
+    expect(list.find((p) => p.id === created[2])).toMatchObject({ series_id: null, series_index: null });
+    // a sorozat egyben törölhető
+    const del = await app.inject({ method: 'DELETE', url: `/api/plantings/${head!.id}?series=1` });
+    expect(del.statusCode).toBe(204);
+    expect((await listed()).some((p) => members.some((m) => m.id === p.id))).toBe(false);
+  });
+
+  it('a sorozatban egy sorszám csak egyszer szerepelhet', async () => {
+    const res = await batch({
+      create: [basil({ series_key: 'uj:1', series_index: 2 }), basil({ series_key: 'uj:1', series_index: 2 })],
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().issues).toContainEqual({ path: '', message: 'Egy újravetés-sorozatban minden sorszám csak egyszer szerepelhet.' });
+  });
+
   it('megkezdett vagy rögzített ültetés nem törölhető, semmi sem változik', async () => {
-    const msg = 'Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.';
+    const msg = 'Megkezdett vagy rögzített ültetés a munkalapról nem törölhető; a Tény és napló lapon törölhető.';
     const other: Bed = (
       await app.inject({ method: 'POST', url: '/api/beds', payload: { name: 'Emelt 2', length_cm: 200, width_cm: 80, bed_type: 'emelt' } })
     ).json();

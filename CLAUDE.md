@@ -50,7 +50,7 @@ Egyetlen TypeScript projekt három réteggel; a `@shared/*` alias a `src/shared`
 - **Ellenőrzések:** a vetésforgó- és társítás-ellenőrzés a **kliensen** fut, a `features/plan/useChecks.ts` hívja a `domain/plantingChecks.ts`-t. Bemenete a kliensre letöltött ültetés-előzmény és a törzsadatok.
 - **Feladatok:** a `domain/tasks.ts` determinisztikusan, stabil kulccsal generálja őket a tervből. Az adatbázisban csak az állapotuk van (`task_state`: elvégezve, áthelyezve); a saját feladatok külön táblában (`custom_task`).
 - **Dátumok:** mindenhol `ÉÉÉÉ-HH-NN` szövegként. A vetési ablakok `HH-NN` formájúak, az évhatáron átnyúlóknál `year_offset`-tel.
-- **Kiosztás:** a `domain/layout.ts` a kiosztás-szerkesztő tiszta logikája (méretezés a szomszéd engedésével, csere, szétvágás, új sáv helye és arányos helycsinálás, elő-, fő- és utóvetemény, kapcsolt ültetések, ütközésjavítás). A szerkesztő piszkozatát (sorszám-alap, mentendő különbség) a `features/garden/layoutDraft.ts` kezeli; a „megkezdett vagy rögzített” ültetés közös feltétele a `domain/plantings.ts` `startedOrRecorded` függvénye.
+- **Kiosztás:** a `domain/layout.ts` a munkalap kiosztásának tiszta logikája (méretezés a szomszéd engedésével, szétvágás, az új sáv helye – `insertPlacement` – és arányos helycsinálás, szabad helyek a napon, elő-, fő- és utóvetemény, újravetés helye, kapcsolt ültetések, ütközésjavítás). A javaslatmotor (`domain/suggestions.ts`) a kijelölt helyre, napra, elő- vagy utóveteménynek, cserének és beszúrásnak is rangsorol. A „megkezdett vagy rögzített” ültetés közös feltétele a `domain/plantings.ts` `startedOrRecorded` függvénye.
 
 ### `src/server/` – Fastify + node:sqlite
 
@@ -64,9 +64,9 @@ Egyetlen TypeScript projekt három réteggel; a `@shared/*` alias a `src/shared`
 - **Segédfüggvények (`db/helpers.ts`, `db/index.ts`):**
   - Az `insert`/`update` objektumból épít SQL-t. Az `update` kihagyja az `undefined` mezőket, ezért a teljes cserét végző PUT-nál a hiányzó opcionális mezőket kifejezetten `null`-ra kell állítani; minta: `updateBed`.
   - A `transaction()` (`db/index.ts`) nem ágyazható egymásba.
-  - A `repos/plantings.ts` tranzakció nélküli belső függvényei (`insertPlantings`, `replacePlanting`, `removePlantings`) a tömeges mentéshez kellenek: a `POST /api/plantings/batch` ezeket fogja össze egyetlen tranzakcióba.
+  - A `repos/plantings.ts` tranzakció nélküli belső függvényei (`insertPlantings`, `replacePlanting`, `removePlantings`) a tömeges mentéshez kellenek: a `POST /api/plantings/batch` ezeket fogja össze egyetlen tranzakcióba. Az azonos `series_key`-ű elemek egy újravetés-sorozatba kerülnek.
 - **Migrációk:**
-  - Számozott SQL-fájlok a `db/migrations/`-ben, induláskor sorban futnak le. Mindegyik külön tranzakcióban fut, kikapcsolt idegenkulcs-ellenőrzéssel, utána `foreign_key_check` jön, így a táblák újraépítése is megengedett.
+  - Számozott SQL-fájlok a `db/migrations/`-ben, induláskor sorban futnak le; ha van futtatandó, előtte mindig mentés készül. Mindegyik külön tranzakcióban fut, kikapcsolt idegenkulcs-ellenőrzéssel, utána `foreign_key_check` jön, így a táblák újraépítése is megengedett (minta: `005_planting_autoincrement.sql`).
   - A seed csak üres adatbázisra fut (`seedIfEmpty`), ezért a seed-adatok változását a meglévő adatbázisokba migrációval kell átvinni; minta: `004_plant_source.sql`.
 - **JSON export/import (`db/exchange.ts`):**
   - Új táblát fel kell venni az `EXPORT_TABLES`-be, függőségi sorrendben.
@@ -81,13 +81,14 @@ Egyetlen TypeScript projekt három réteggel; a `@shared/*` alias a `src/shared`
   - Minden kulcs a `qk` objektumban van, és **hierarchikus**: a feladatok, az előzmények és az átvitel kulcsai a `['plantings', …]` alá tartoznak, így a `qk.plantings` érvénytelenítése ezeket is frissíti.
   - Írás a `useApiMutation(fn, [érvénytelenítendő kulcsok])` hookkal, a `lib/api.ts` fetch-burkolóján keresztül.
 - **Tervezési év:** a kiválasztott év a `YearProvider`/`useYear` állapota (`lib/year.tsx`, localStorage-ban).
+- **Ágyás-munkalap** (`features/garden/workspace/`): az ágyás oldala a tervezés helye. A `useBedWorkspace` tartja az állapotot: a piszkozatot (`features/garden/layoutDraft.ts`: negatív azonosítójú új ültetések, sorszám-alap, újravetés ideiglenes sorozatkulccsal, a mentendő különbség a `POST /api/plantings/batch`-hez), a napot, a kijelölést és a piszkozatra futó ellenőrzéseket. A panelek: `OverviewPanel` (kijelölés nélkül), `SuggestPanel` (javaslatok), `StripPanel` (a sáv tervezési adatai). Az ültetési lap és a panel közös űrlaplogikája a `features/plan/plantingForm.ts`; a munkalapról a lap Terv fül nélkül nyílik (`actualOnly`). Az ágyáshoz kötött belépések a `workspace/openPlanting.ts`-sel nyitják a munkalapot (`/agyas/:id?ultetes=…`, `?javaslat=1`).
 - **Szerkesztés:** a `components/ui/Sheet.tsx` modális lapon történik. A Cmd/Ctrl+Enter megerősít, az Escape bezár, és mindig csak a legfelső lap kezeli a billentyűket. Az űrlapsorok a `Form.tsx` építőelemei (`FormGroup`, `FormRow`, `NumberInput` …). Az e2e teszt `field()` segédje a `FormRow` felirata alapján találja meg a mezőket.
 - **Stílus:** CSS modulok és a `styles/tokens.css` változói (iOS rendszerszínek), csak világos téma.
 
 ### Egyéb
 
 - **Seed-adatok:** a `seed/*.json`. A `seed/companions.json` társítási adatai a `scripts/build-companions.ts` kimenetei (`npx tsx scripts/build-companions.ts`), a Wind River Greens Plant Variety Database alapján, CC BY 4.0 licenccel; a forrásmegjelölés a README-ben és a Beállítások → Források oldalon van.
-- **E2E teszt:** az `e2e/garden-flow.spec.ts` egyetlen hosszú teszt a design dokumentum 14. pontjának folyamatára. A böngésző órája 2027-03-15-re van rögzítve, `hu-HU` lokalizációval, Budapest időzónával.
+- **E2E teszt:** az `e2e/garden-flow.spec.ts` egyetlen hosszú teszt a design dokumentum 14. pontjának folyamatára, a végén az ágyás-munkalap elfogadási eseteivel. A böngésző órája 2027-03-15-re van rögzítve, `hu-HU` lokalizációval, Budapest időzónával.
 - **Indító:** a `Kerttervező.command` dupla kattintással indítja az éles módot, és felismeri, ha már fut egy fejlesztői szerver.
 
 ## Munkamódszer

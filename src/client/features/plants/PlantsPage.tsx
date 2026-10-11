@@ -7,7 +7,7 @@ import { Section } from '../../components/ui/Section.tsx';
 import { SegmentedControl } from '../../components/ui/SegmentedControl.tsx';
 import { useCropGroups, usePlants } from '../../lib/queries.ts';
 import { useStoredState } from '../../lib/useStoredState.ts';
-import { useIsMobile } from '../../lib/useIsMobile.ts';
+import { useIsMobile } from '../../lib/useDevice.ts';
 import { GROUPING_OPTIONS, groupPlants, type Grouping } from './grouping.ts';
 import { MiniCalendar, MiniCalendarHeader } from './SeasonCalendar.tsx';
 import { PlantEditSheet } from './PlantEditSheet.tsx';

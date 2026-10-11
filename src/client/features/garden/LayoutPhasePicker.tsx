@@ -1,13 +1,15 @@
-import { useState } from 'react';
 import { LAYOUT_PHASES, LAYOUT_PHASE_LABEL, type LayoutPhase } from '@shared/labels.ts';
 import { shortDate } from '@shared/domain/isoDate.ts';
 import type { Placement } from '@shared/domain/geometry.ts';
 import type { Bed } from '@shared/types.ts';
-import { DateInput } from '../../components/ui/Form.tsx';
+import { GuardedDateInput } from '../../components/ui/Form.tsx';
 import { rectOf } from './canvasGeometry.ts';
 import s from './BedLayout.module.css';
 
 export type PhasePreview = { placement: Placement; color: string }[];
+
+/** Telefonon a szegmentált vezérlő rövid feliratai */
+const SHORT: Record<LayoutPhase, string> = { elo: 'Elő', fo: 'Fő', uto: 'Utó' };
 
 interface Props {
   bed: Bed;
@@ -21,11 +23,6 @@ interface Props {
 /** Elő-, fő- és utóvetemény kis előnézettel, valamint tetszőleges nap. */
 export function LayoutPhasePicker({ bed, year, days, day, previews, onChange }: Props) {
   const across = bed.row_direction === 'keresztben';
-  // A félig begépelt nap csak a mezőben látszik: a Chrome az évet számjegyenként jelenti
-  // (0002-07-01, 0020-07-01 …), ezért csak a tervezési év napja jut tovább. Az elhagyott,
-  // éven kívüli érték visszaáll a választott napra. A piszkozat ahhoz a naphoz tartozik,
-  // amelyikből kiindult: ha a nap közben máshonnan változik, az új nap látszik.
-  const [draft, setDraft] = useState<{ base: string; value: string } | null>(null);
   return (
     <div className={s.phases}>
       {LAYOUT_PHASES.map((phase) => {
@@ -38,7 +35,10 @@ export function LayoutPhasePicker({ bed, year, days, day, previews, onChange }: 
             className={`${s.phase} ${on ? s.phaseOn : ''}`}
             onClick={() => onChange(days[phase])}
           >
-            <span className={s.phaseName}>{LAYOUT_PHASE_LABEL[phase]}</span>
+            <span className={s.phaseName}>
+              <span className={s.phaseLong}>{LAYOUT_PHASE_LABEL[phase]}</span>
+              <span className={s.phaseShort}>{SHORT[phase]}</span>
+            </span>
             <span className={s.phaseDay}>{shortDate(days[phase])}</span>
             <svg className={s.mini} viewBox={`0 0 ${bed.length_cm} ${bed.width_cm}`} preserveAspectRatio="none" aria-hidden>
               <rect className={s.miniBed} width={bed.length_cm} height={bed.width_cm} />
@@ -52,17 +52,13 @@ export function LayoutPhasePicker({ bed, year, days, day, previews, onChange }: 
       })}
       <label className={s.dayPick}>
         <span>Nap</span>
-        <DateInput
-          value={draft?.base === day ? draft.value : day}
+        {/* csak a tervezési év napja jut tovább; az éven kívüli vagy félig begépelt érték elhagyáskor visszaáll */}
+        <GuardedDateInput
+          value={day}
           min={`${year}-01-01`}
           max={`${year}-12-31`}
-          onChange={(v) => {
-            if (v?.startsWith(`${year}-`)) {
-              setDraft(null);
-              onChange(v);
-            } else setDraft({ base: day, value: v ?? '' });
-          }}
-          onBlur={() => setDraft(null)}
+          valid={(v) => !!v?.startsWith(`${year}-`)}
+          onChange={(v) => v && onChange(v)}
         />
       </label>
     </div>

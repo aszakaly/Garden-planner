@@ -35,6 +35,28 @@ export interface SuggestionTarget {
   today: string;
   /** A szerkesztett ültetés (nem számít foglaltságnak) */
   excludeId?: number;
+  /**
+   * A kijelölt nap (a munkalap pillanatképe): csak olyan időzítés jön szóba, amelynél a növény
+   * ezen a napon vagy utána áll a helyén. Üresen nincs ilyen megkötés.
+   */
+  day?: string | null;
+  /** Legkésőbb ekkor szabaduljon fel a hely (elővetemény: a sáv kezdetéig); üresen nincs ilyen megkötés */
+  until?: string | null;
+  /**
+   * Beszúrás: a hely adott, a választáskor készül el (a többi sáv enged). Nem keres szabad szakaszt,
+   * a szélessége sem szab határt; csak az időzítést és az ellenőrzéseket nézi ezen a helyen.
+   */
+  place?: Placement | null;
+  /**
+   * Sávnál kitöltse-e a teljes sávot (alapértelmezés). Hamis: legfeljebb az alapértelmezett
+   * szélesség (kb. 60 cm-nyi sor), a sáv elejétől.
+   */
+  fill?: boolean;
+  /**
+   * A sáv egészére szóljon (csere, elő- és utóvetemény): csak olyan időzítés jön szóba, amelyben a
+   * teljes sáv szabad; különben a sáv egy elég széles szabad része is megfelel.
+   */
+  whole?: boolean;
 }
 
 export interface SuggestionInput {
@@ -129,7 +151,7 @@ function findFit(plant: PlantListItem, w: GrowingWindow, target: SuggestionTarge
   const strip = target.strip ?? { start: 0, span: axis };
   const cross = target.cross ?? { start: 0, span: crossLen };
   const minSpan = spanForRows(1, rowSpacing);
-  if (minSpan > strip.span + 0.5) return null;
+  if (!target.place && minSpan > strip.span + 0.5) return null;
 
   for (const preferred of methodsForWindow(w.method)) {
     const base = suggestDates({ year, window: w, method: preferred, crop, frost: ctx.frost });
@@ -138,7 +160,7 @@ function findFit(plant: PlantListItem, w: GrowingWindow, target: SuggestionTarge
     const endMd = usesTransplant(preferred) ? w.transplant_end : w.sow_end;
     const lastStart = endMd ? isoFromMonthDay(year, endMd) : s0;
     const first = maxISO(s0, target.from);
-    const starts = [first, ...occupants.map((o) => o.period.end).filter((d) => d > first && d <= lastStart)].sort();
+    const starts = target.place ? [first] : [first, ...occupants.map((o) => o.period.end).filter((d) => d > first && d <= lastStart)].sort();
 
     for (const start of [...new Set(starts)]) {
       if (start > lastStart) break;
@@ -174,14 +196,27 @@ function findFit(plant: PlantListItem, w: GrowingWindow, target: SuggestionTarge
         actual_end_date: null,
       });
       if (!period) continue;
+      // a kijelölt napra tervezünk: ami addigra már lekerül, az nem ide való
+      if (target.day && period.end <= target.day) continue;
+      // elővetemény: a későbbi kezdés még később végezne
+      if (target.until && period.end > target.until) break;
+
+      if (target.place) {
+        const placement = target.place;
+        return { method, dates, period, placement, rows: rowsForSpan(placement.axis_span_cm, rowSpacing), waited: false };
+      }
 
       // Szabad szakasz a sávon belül
-      const range = freeAxisRanges(axis, occupants, period, cross)
-        .map(([s, e]) => [Math.max(s, strip.start), Math.min(e, strip.start + strip.span)] as const)
-        .find(([s, e]) => e - s + 0.5 >= minSpan);
+      const ranges = freeAxisRanges(axis, occupants, period, cross).map(
+        ([s, e]) => [Math.max(s, strip.start), Math.min(e, strip.start + strip.span)] as const,
+      );
+      const range = target.whole
+        ? ranges.find(([s, e]) => s <= strip.start + 0.5 && e >= strip.start + strip.span - 0.5)
+        : ranges.find(([s, e]) => e - s + 0.5 >= minSpan);
       if (!range) continue;
       const room = range[1] - range[0];
-      const span = target.strip ? room : Math.min(room, spanForRows(defaultRows(rowSpacing), rowSpacing));
+      const fill = !!target.strip && target.fill !== false;
+      const span = fill ? room : Math.min(room, spanForRows(defaultRows(rowSpacing), rowSpacing));
       const rows = rowsForSpan(span, rowSpacing);
       return {
         method,
@@ -196,10 +231,17 @@ function findFit(plant: PlantListItem, w: GrowingWindow, target: SuggestionTarge
   return null;
 }
 
+/**
+ * A virtuális ültetés azonosítója: nem ütközhet a munkalap piszkozatának új (-1, -2 …) ültetéseivel,
+ * különben az ellenőrzések a szomszédos új sávot önmagának tekintenék.
+ */
+const VIRTUAL_ID = Number.MIN_SAFE_INTEGER;
+
 /** A virtuális ültetés az ellenőrzésekhez. */
 function virtualPlanting(plant: PlantListItem, fit: Fit, target: SuggestionTarget): PlantingListItem {
   return {
     ...blankPlanting(),
+    id: VIRTUAL_ID,
     year: target.year,
     plant_id: plant.id,
     plant_name: plant.name_hu,

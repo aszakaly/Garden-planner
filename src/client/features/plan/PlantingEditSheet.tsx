@@ -1,27 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  PLANTING_METHODS,
-  PLANTING_METHOD_LABEL,
-  SEASON_LABEL,
-  SEED_ORIGIN_LABEL,
-  type CheckLevel,
-  type PlantingMethod,
-  type WindowMethod,
-} from '@shared/labels.ts';
+import { PLANTING_METHODS, PLANTING_METHOD_LABEL, SEED_ORIGIN_LABEL, type CheckLevel, type PlantingMethod } from '@shared/labels.ts';
 import {
   checkDates,
-  completeDates,
   EMPTY_DATES,
-  methodsForWindow,
   seriesOffsets,
-  setDateShifting,
-  suggestDates,
-  suggestedSeriesCount,
   usesSow,
   usesTransplant,
   type CropTiming,
   type DateField,
-  type PlantingDates,
 } from '@shared/domain/dates.ts';
 import {
   bedAxes,
@@ -33,14 +19,14 @@ import {
   spanForRows,
   type Placement,
 } from '@shared/domain/geometry.ts';
-import { occupancyPeriod, placeSeries } from '@shared/domain/plantings.ts';
+import { placeSeries } from '@shared/domain/plantings.ts';
 import { addDaysISO, shortDate } from '@shared/domain/isoDate.ts';
 import { DEFAULT_SETTINGS } from '@shared/settings.ts';
 import type { PlantingCreateInput } from '@shared/schemas.ts';
 import type { Suggestion } from '@shared/domain/suggestions.ts';
 import type { BedListItem, GrowingWindow, PlantListItem, PlantingListItem, Variety, VarietyWithWindows } from '@shared/types.ts';
 import {
-  DateInput,
+  GuardedDateInput,
   FormButton,
   FormGroup,
   FormRow,
@@ -74,20 +60,28 @@ import { axisLabel, blankPlanting, linkedUpdate, placedInBed, plantingTitle } fr
 import { useChecksContext } from './useChecks.ts';
 import { actualFromPlanting, actualPayload, PlantingActualPanel, type ActualForm } from './PlantingActualPanel.tsx';
 import { PlantingJournalPanel } from './PlantingJournalPanel.tsx';
+import {
+  cropOf,
+  defaultRows,
+  defaultWindow,
+  hasSeedInStock,
+  NEW_VARIETY,
+  newestStock,
+  periodOfPlan,
+  seriesDefaults,
+  sowLabel as sowLabelOf,
+  windowOptions,
+  withDate,
+  withMethod,
+  withSuggestedDates,
+  withWindow as withPlanWindow,
+  type PlanFields,
+} from './plantingForm.ts';
 import { SuggestionSheet } from './SuggestionSheet.tsx';
 import s from './PlantingEditSheet.module.css';
 
-const NEW_VARIETY = -1;
-
-interface Form {
-  year: number;
-  plant_id: number | null;
-  variety_id: number | null;
+interface Form extends PlanFields {
   newVarietyName: string;
-  seed_stock_id: number | null;
-  window_id: number | null;
-  method: PlantingMethod;
-  dates: PlantingDates;
   bed_id: number | null;
   rows: number | null;
   axis_span_cm: number | null;
@@ -152,57 +146,8 @@ function fromPlanting(p: PlantingListItem, bed: BedListItem | undefined): Form {
   };
 }
 
-const METHOD_SHORT: Record<WindowMethod, string> = { helyrevetes: 'helyrevetés', palanta: 'palántáról', ultetes: 'ültetés' };
-
-function windowLabel(w: GrowingWindow, varietyName?: string): string {
-  const range =
-    w.method === 'palanta' && w.transplant_start && w.transplant_end
-      ? `kiültetés ${shortDate(w.transplant_start)} – ${shortDate(w.transplant_end)}`
-      : w.sow_start && w.sow_end
-        ? `${w.method === 'ultetes' ? 'ültetés' : 'vetés'} ${shortDate(w.sow_start)} – ${shortDate(w.sow_end)}`
-        : '';
-  return `${varietyName ? `${varietyName}: ` : ''}${SEASON_LABEL[w.season]} · ${METHOD_SHORT[w.method]}${range ? ` (${range})` : ''}`;
-}
-
-/** Az idei évben az első még elérhető időszak, egyébként az első. */
-function defaultWindow(windows: GrowingWindow[], year: number): GrowingWindow | null {
-  if (!windows.length) return null;
-  const now = new Date();
-  if (year !== now.getFullYear()) return windows[0]!;
-  const md = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const lastDay = (w: GrowingWindow) => (w.method === 'palanta' ? w.transplant_end : w.sow_end);
-  return windows.find((w) => (lastDay(w) ?? '') >= md) ?? windows[0]!;
-}
-
-const defaultRows = (rowSpacing: number | null) => (rowSpacing ? Math.max(1, Math.round(60 / rowSpacing)) : 1);
-
-function cropOf(plant: PlantListItem, variety?: Variety | null): CropTiming {
-  return {
-    daysToHarvest: variety?.days_to_harvest ?? plant.days_to_harvest,
-    harvestDurationDays: plant.harvest_duration_days,
-    frostSensitive: plant.frost_sensitive,
-    perennial: plant.perennial,
-  };
-}
-
 /** Az űrlap dátumai egy ültetés-szerű objektumként (a foglaltság számításához). */
-function periodOf(f: Form, perennial = false, carriedFrom: number | null = null) {
-  return occupancyPeriod({
-    year: f.year,
-    method: f.method,
-    status: 'terv',
-    perennial,
-    carried_from_id: carriedFrom,
-    plan_sow_date: usesSow(f.method) ? f.dates.sow : null,
-    plan_transplant_date: usesTransplant(f.method) ? f.dates.transplant : null,
-    plan_harvest_start: f.dates.harvestStart,
-    plan_end_date: f.dates.end,
-    actual_sow_date: null,
-    actual_transplant_date: null,
-    actual_harvest_start: null,
-    actual_end_date: null,
-  });
-}
+const periodOf = (f: Form, perennial = false, carriedFrom: number | null = null) => periodOfPlan(f, perennial, carriedFrom);
 
 function crossOf(f: Form, bed: BedListItem) {
   const { cross } = bedAxes(bed);
@@ -227,13 +172,18 @@ interface Props {
   year: number;
   /** Meglévő ültetésnél a nyitó fül */
   initialTab?: SheetTab;
+  /**
+   * Terv fül nélkül (a munkalapról: a terv a panelen szerkeszthető): csak a megvalósulás és a napló,
+   * a mentés csak a megvalósulást írja, a törlés a Megvalósulás fülön érhető el.
+   */
+  actualOnly?: boolean;
   /** Új ültetésnél a „Mi kerülhet ide?” lapon választott javaslat */
   suggestion?: Suggestion;
 }
 
 type SheetTab = 'terv' | 'teny' | 'naplo';
 
-export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, year, initialTab = 'terv', suggestion }: Props) {
+export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, year, initialTab = 'terv', actualOnly = false, suggestion }: Props) {
   const [form, setForm] = useState<Form>(() => emptyForm(year));
   const [tab, setTab] = useState<SheetTab>(initialTab);
   const [suggesting, setSuggesting] = useState(false);
@@ -285,7 +235,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     const key = String(planting?.id ?? 'uj');
     if (!ready || initialized.current === key) return;
     initialized.current = key;
-    setTab(planting ? initialTab : 'terv');
+    setTab(planting ? (actualOnly && initialTab === 'terv' ? 'teny' : initialTab) : 'terv');
     if (planting) {
       setLinkOn(true);
       setForm(fromPlanting(planting, beds.find((b) => b.id === planting.bed_id)));
@@ -306,10 +256,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
   const plant = plants.find((p) => p.id === form.plant_id);
   const varieties: VarietyWithWindows[] = detail?.plant.id === form.plant_id ? detail.varieties : [];
   const variety = varieties.find((v) => v.id === form.variety_id) ?? null;
-  const windows: { w: GrowingWindow; label: string }[] = [
-    ...(variety?.windows ?? []).map((w) => ({ w, label: windowLabel(w, variety!.name) })),
-    ...(plant?.windows ?? []).map((w) => ({ w, label: windowLabel(w) })),
-  ];
+  const windows: { w: GrowingWindow; label: string }[] = windowOptions(plant, variety);
   const window = windows.find((x) => x.w.id === form.window_id)?.w ?? null;
   const crop = plant ? cropOf(plant, variety) : null;
   const rowSpacing = variety?.row_spacing_cm ?? plant?.row_spacing_cm ?? null;
@@ -329,21 +276,12 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
 
   const apply = (fn: (f: Form) => Form) => setForm((f) => place(fn(f)));
 
+  /** Időszak választása; az újravetés alapértékei is az időszakból jönnek. */
   function withWindow(f: Form, w: GrowingWindow | null, c: CropTiming): Form {
-    if (!w) return { ...f, window_id: null };
-    const methods = methodsForWindow(w.method);
-    const method = methods.includes(f.method) ? f.method : methods[0]!;
-    const dates = suggestDates({ year: f.year, window: w, method, crop: c, frost });
-    const interval = w.succession_days ?? f.seriesInterval;
-    const first = dates.sow ?? dates.transplant;
-    return {
-      ...f,
-      window_id: w.id,
-      method,
-      dates,
-      seriesInterval: interval,
-      seriesCount: first && w.succession_days ? Math.max(2, suggestedSeriesCount(w, first, interval)) : f.seriesCount,
-    };
+    const next = withPlanWindow(f, w, c, frost);
+    if (!w) return next;
+    const series = seriesDefaults(w, next.dates, { count: f.seriesCount, interval: f.seriesInterval });
+    return { ...next, seriesInterval: series.interval, seriesCount: series.count };
   }
 
   function withPlant(f: Form, p: PlantListItem): Form {
@@ -384,9 +322,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
 
   const chooseVariety = (id: number | null) => {
     const v = varieties.find((x) => x.id === id);
-    const stock = seeds
-      .filter((x) => x.variety_id === id && x.in_stock)
-      .sort((a, b) => (b.vintage_year ?? 0) - (a.vintage_year ?? 0))[0];
+    const stock = newestStock(seeds, id);
     apply((f) => {
       let next: Form = { ...f, variety_id: id, seed_stock_id: stock?.id ?? null };
       const spacing = v?.row_spacing_cm ?? plant?.row_spacing_cm ?? null;
@@ -401,22 +337,11 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     apply((f) => (w && crop ? withWindow(f, w, crop) : { ...f, window_id: null }));
   };
 
-  const chooseMethod = (m: PlantingMethod) =>
-    apply((f) => {
-      if (window && crop) return { ...f, method: m, dates: suggestDates({ year: f.year, window, method: m, crop, frost }) };
-      return { ...f, method: m };
-    });
+  const chooseMethod = (m: PlantingMethod) => apply((f) => withMethod(f, m, window, crop, frost));
 
-  const setDate = (field: DateField, value: string | null) =>
-    apply((f) => {
-      let dates = setDateShifting(f.dates, field, value);
-      const startField: DateField = usesTransplant(f.method) ? 'transplant' : 'sow';
-      if (field === startField && crop) dates = completeDates(dates, f.method, crop, frost);
-      return { ...f, dates };
-    });
+  const setDate = (field: DateField, value: string | null) => apply((f) => withDate(f, field, value, crop, frost));
 
-  const resetDates = () =>
-    apply((f) => (window && crop ? { ...f, dates: suggestDates({ year: f.year, window, method: f.method, crop, frost }) } : f));
+  const resetDates = () => apply((f) => withSuggestedDates(f, window, crop, frost));
 
   const changeYear = (y: number) =>
     apply((f) => {
@@ -505,12 +430,8 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
 
   const stocks = seeds.filter((x) => x.variety_id === form.variety_id);
   const needsSeed = usesSow(form.method) && !!plant;
-  const hasSeedInStock =
-    form.variety_id && form.variety_id !== NEW_VARIETY
-      ? stocks.some((x) => x.in_stock)
-      : seeds.some((x) => x.plant_id === form.plant_id && x.in_stock);
   const seedIssues: { level: CheckLevel; message: string }[] =
-    needsSeed && !hasSeedInStock
+    needsSeed && !hasSeedInStock(seeds, form.plant_id, form.variety_id)
       ? [
           {
             level: 'info',
@@ -524,7 +445,13 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
   // --- Mentés ------------------------------------------------------------------
 
   const invalidate = [qk.plantings, qk.beds, qk.varieties, ['plants']];
+  /** A megvalósulás mentése, ha változott. */
+  const saveActual = async (id: number) => {
+    const payload = actual ? actualPayload(actual) : null;
+    if (payload && JSON.stringify(payload) !== actualInitial.current) await api.patch(`/plantings/${id}/actual`, payload);
+  };
   const save = useApiMutation(async (f: Form) => {
+    if (planting && actualOnly) return saveActual(planting.id);
     let varietyId = f.variety_id;
     if (varietyId === NEW_VARIETY) {
       varietyId = (await api.post<Variety>(`/plants/${f.plant_id}/varieties`, { name: f.newVarietyName.trim() })).id;
@@ -568,10 +495,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
         await api.put(`/plantings/${planting.id}`, update);
       }
       // A megvalósulás csak akkor megy, ha változott
-      const payload = actual ? actualPayload(actual) : null;
-      if (payload && JSON.stringify(payload) !== actualInitial.current) {
-        await api.patch(`/plantings/${planting.id}/actual`, payload);
-      }
+      await saveActual(planting.id);
       return;
     }
     return api.post('/plantings', body);
@@ -581,7 +505,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
     invalidate,
   );
 
-  const canSave = !!form.plant_id && (form.variety_id !== NEW_VARIETY || !!form.newVarietyName.trim());
+  const canSave = (planting && actualOnly) || (!!form.plant_id && (form.variety_id !== NEW_VARIETY || !!form.newVarietyName.trim()));
   const thisYear = new Date().getFullYear();
   const years = [...new Set([...Array.from({ length: 10 }, (_, i) => thisYear - 6 + i), form.year])].sort();
 
@@ -614,7 +538,25 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
   }
   const hasOthers = strips.some((x) => x.variant === 'muted' || x.variant === 'clash');
 
-  const sowLabel = form.method === 'palanta' ? 'Vetés (palántának)' : form.method === 'ultetes' ? 'Ültetés' : 'Vetés';
+  const deleteButtons = planting && (
+    <FormGroup>
+      <FormButton destructive onClick={() => confirm('Törlöd ezt az ültetést?') && remove.mutate(false, { onSuccess: onClose })}>
+        Ültetés törlése
+      </FormButton>
+      {(planting.series_size ?? 0) > 1 && (
+        <FormButton
+          destructive
+          onClick={() =>
+            confirm(`Törlöd a teljes újravetés-sorozatot (${planting.series_size} ültetés)?`) && remove.mutate(true, { onSuccess: onClose })
+          }
+        >
+          A teljes sorozat törlése ({planting.series_size} ültetés)
+        </FormButton>
+      )}
+    </FormGroup>
+  );
+
+  const sowLabel = sowLabelOf(form.method);
 
   return (
     <Sheet
@@ -632,7 +574,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
             label="Nézet"
             value={tab}
             options={[
-              { value: 'terv', label: 'Terv' },
+              ...(actualOnly ? [] : [{ value: 'terv' as const, label: 'Terv' }]),
               { value: 'teny', label: 'Megvalósulás' },
               { value: 'naplo', label: 'Napló' },
             ]}
@@ -643,6 +585,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
       {planting && tab === 'teny' && actual && (
         <PlantingActualPanel planting={planting} value={actual} onChange={setActual} beds={allBeds ?? []} />
       )}
+      {planting && tab === 'teny' && actualOnly && deleteButtons}
       {planting && tab === 'naplo' && <PlantingJournalPanel planting={planting} />}
       {tab === 'terv' && (
         <>
@@ -762,19 +705,19 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
               >
                 {usesSow(form.method) && (
                   <FormRow label={sowLabel}>
-                    <DateInput value={form.dates.sow} onChange={(v) => setDate('sow', v)} />
+                    <GuardedDateInput value={form.dates.sow} onChange={(v) => setDate('sow', v)} />
                   </FormRow>
                 )}
                 {usesTransplant(form.method) && (
                   <FormRow label="Kiültetés">
-                    <DateInput value={form.dates.transplant} onChange={(v) => setDate('transplant', v)} />
+                    <GuardedDateInput value={form.dates.transplant} onChange={(v) => setDate('transplant', v)} />
                   </FormRow>
                 )}
                 <FormRow label="Betakarítás kezdete">
-                  <DateInput value={form.dates.harvestStart} onChange={(v) => setDate('harvestStart', v)} />
+                  <GuardedDateInput value={form.dates.harvestStart} onChange={(v) => setDate('harvestStart', v)} />
                 </FormRow>
                 <FormRow label={plant.perennial ? 'Terület felszabadul (évelő)' : 'Terület felszabadul'}>
-                  <DateInput value={form.dates.end} onChange={(v) => setDate('end', v)} />
+                  <GuardedDateInput value={form.dates.end} onChange={(v) => setDate('end', v)} />
                 </FormRow>
                 {window && <FormButton onClick={resetDates}>Javasolt dátumok visszaállítása</FormButton>}
               </FormGroup>
@@ -923,27 +866,7 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
             </FormRow>
           </FormGroup>
 
-          {planting && (
-            <FormGroup>
-              <FormButton
-                destructive
-                onClick={() => confirm('Törlöd ezt az ültetést?') && remove.mutate(false, { onSuccess: onClose })}
-              >
-                Ültetés törlése
-              </FormButton>
-              {(planting.series_size ?? 0) > 1 && (
-                <FormButton
-                  destructive
-                  onClick={() =>
-                    confirm(`Törlöd a teljes újravetés-sorozatot (${planting.series_size} ültetés)?`) &&
-                    remove.mutate(true, { onSuccess: onClose })
-                  }
-                >
-                  A teljes sorozat törlése ({planting.series_size} ültetés)
-                </FormButton>
-              )}
-            </FormGroup>
-          )}
+          {deleteButtons}
         </>
       )}
       {!planting && (

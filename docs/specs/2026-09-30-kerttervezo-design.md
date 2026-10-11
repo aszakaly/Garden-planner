@@ -263,3 +263,49 @@ Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változat
 **Elvetve:**
 - Több sávos ültetés: az adatbázist és az ellenőrzéseket is át kellene írni hozzá.
 - A szomszédnál megálló méretezés.
+
+### Ágyás-munkalap (2026-10-09)
+**Cél:** egy ágyás teljes megtervezése egy képernyőn: kiosztás, ültetési adatok, javaslatok, vetésforgó- és társítási jelzések, külön lapok nélkül. Ez az alkalmazás központi felülete. Fejlesztés az `agyas-tervezes` branchen; a wireframe-ek a [docs/wireframes/2026-10-09-agyas-tervezes](../wireframes/2026-10-09-agyas-tervezes/index.html) mappában vannak (a választott irány az „A”).
+
+**Követelmények:**
+- Az ágyás oldala maga a munkalap. A Kiosztás lap és az ágyásból nyíló „Mi kerülhet ide?” lap megszűnik.
+- Gépen az ágyáskép és a panel egymás mellett áll, telefonon a panel alsó lappá válik. A tervezés elsősorban gépen történik.
+- A panel a kijelöléshez igazodik: kijelölés nélkül az ágyás áttekintése, szabad helyre kattintva javaslatok, sávra kattintva az ültetés tervezési adatai.
+- A javaslat arra a helyre és időre szól, ahová kattintottál. A keresőben bármely növény választható, ugyanazokkal az okokkal; a kerülendő is.
+- A figyelmeztetés a sávon (jel, határvonal) és a panelen is látszik, az okkal és a javítás lehetőségével. Tudomásul nem vehető, a mentést nem tiltja.
+- Piszkozat: módosításkor megjelenik a Mentés / Elvetés sáv, amely a kerülendők számát is mutatja. Mentetlen módosításnál az oldal elhagyása előtt rákérdez.
+- Minden tervezési adat a panelen szerkeszthető: növény, fajta, vetőmag, időszak és módszer, dátumok, hely, sorok, tőszám, újravetés, kapcsolt sávok. A tény és a napló a meglévő ültetési lapon marad.
+
+**Felület:**
+- **Fejléc:** az ágyás neve, alatta egy sorban az adatai. Az „Adatok” a szerkesztő lapot nyitja; a mostani adatrács megszűnik.
+- **Időválasztó:** elő-, fő- és utóvetemény vagy tetszőleges nap, mint a Kiosztásban. Nyitáskor az idei évben a mai nap, más évben a fővetemény napja.
+- **Ágyáskép és sávlista:** a Kiosztásból. A szabad hely a képen és a listában is kijelölhető elem.
+- **Panel:**
+  - Áttekintés: vetésforgó-javaslat az előzményekből, figyelmeztetések „Megmutatás”-sal, elhelyezésre váró (hely vagy dátum nélküli) ültetések, szabad helyek szezononként, kihasználtság.
+  - Szabad hely: rangsorolt javaslatok okokkal, kereső, előnézet az ágyásképen. Választáskor a sáv a helyére kerül, és kijelölődik.
+  - Sáv: figyelmeztetések; „Ezen a helyen [év]” (mi van előtte és utána, + elővetemény, + utána); tervezési adatok; műveletek (még egy sáv, szétvágás, törlés); „Tény és napló”.
+- **Az oldal alján:** az idővonal (napválasztó), az „Ültetések [év]” lista összecsukva (a sorra kattintva kijelöl, lapot nem nyit), a napló és az előzmények.
+
+**Szabályok:**
+- **Szabad hely javaslata:** azok az időzítések jönnek szóba, amelyek beférnek a hely szabad időszakába, és amelyeknél a növény a kijelölt napon vagy utána áll a helyén. A „+ Utána” a sáv végétől, a „+ Elővetemény” a sáv kezdetéig keres.
+- **Új sáv szabad hely nélkül:** a javaslat a kijelölt sáv (ennek híján az utolsó) melletti helyre szól; választáskor a többi sáv arányosan enged.
+- **Csere:** a hely és a szélesség marad, a dátumok és a sorszám az új növényé.
+- **Újravetés:** a tagok ugyanarra a helyre kerülnek, ha az előző tag addigra lekerül, különben mellé. A mentés egyben, sorozatként írja őket.
+- **Megkezdett vagy rögzített ültetés:** a helye és a törlése csak a „Tény és napló” lapon módosítható, mint eddig.
+
+**Belépések:** az ágyáshoz kötött belépések a munkalapot nyitják, a sávot a megfelelő napon kijelölve. Ilyen az Éves terv ágyásban álló ültetése és ágyásonkénti javaslata, valamint a Figyelmeztetések. A hely nélküli új ültetés, a feladatok és a naptár a meglévő ültetési lapot nyitja.
+
+**Tesztek:**
+- Egységtesztek: a javaslat a napra és a szabad időszakra, az új sáv helye, az újravetés elhelyezése.
+- API-teszt: a sorozatos tömeges mentés.
+- E2E: a 12. lépés helyett a terv elfogadási esetei.
+
+**Később:**
+- Húzás az idővonalon (a „B” wireframe legerősebb eleme).
+- A terv és a tény teljes logikai folyamatának átnézése (mikor melyik számít, mit lehet szerkeszteni a munkalapon és mit a Tény és napló lapon).
+- A javaslatok puhítása: a helyigény (sortáv, alapszélesség) most túlságosan meghatározza a rangsort és a kizárást; a valós gyakorlat sűrűbb (2026-10-11).
+
+**Elvetve:**
+- Az idővonal-vászon („B”) és a szezon-oszlopok („C”) mint fő felület.
+- A figyelmeztetés tudomásulvétele.
+- Az azonnali mentés.

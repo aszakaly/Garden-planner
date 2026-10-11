@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <title>A3 – Ágyáskép és panel: áttekintés</title>
+    <link rel="stylesheet" href="wf.css" />
+    <script src="wf.js"></script>
+  </head>
+  <body>
+    <div class="page" id="root"></div>
+    <script>
+      const elo = [{ ...P.retek }, { ...P.salata }, { ...P.fokhagyma, note: 'júl. 20-ig' }];
+      const row = (pos, name, color, right, cls = '', extra = '') =>
+        `<div class="rl ${cls}" style="--sc:${color}"><span class="grip">⋮⋮</span><span class="pos">${pos}</span><span class="nm"><span class="dot"></span>${name}${extra}</span>${right}</div>`;
+      const st = (v) => `<span class="step"><i>−</i>${v}<i>+</i></span>`;
+      const bar = (name, pct, md) =>
+        `<div style="display:grid;grid-template-columns:92px 1fr 40px;align-items:center;gap:10px;padding:7px 12px;font-size:13px">
+          <span>${name}</span>
+          <span style="height:8px;border-radius:4px;background:var(--fill-3);overflow:hidden"><span style="display:block;height:100%;width:${pct}%;background:var(--tint-fill)"></span></span>
+          <span style="color:var(--label-2);text-align:right">${pct}%</span></div>`;
+      const free = (title, sub) =>
+        `<div class="row"><span>${title}<span class="sub">${sub}</span></span><span style="color:var(--tint);font-weight:500;font-size:13px">${icon('bulb', 13)} Javaslatok</span></div>`;
+
+      const stage = `
+        ${phaseCards('elo')}
+        <div class="canvas">
+          ${bedSvg({
+            px: 1.65,
+            strips: elo,
+            gaps: [{ a0: 120, a1: 325, label: 'Szabad · 205 cm\nmáj. 10-ig' }],
+            bounds: [{ at: 45, rel: 1 }],
+          })}
+          <p class="hint">Április 12-én: retek, saláta és a tavaly ősszel ültetett fokhagyma. A középső rész a főveteményekig (máj. 10.) szabad.</p>
+        </div>
+        <div class="rows">
+          ${row('0–45 cm', 'Retek', C.gyoker, st('45 cm'))}
+          ${row('45–120 cm', 'Saláta', C.level, st('75 cm'), '', ` <span style="color:#ff9500">${icon('warn', 13)}</span>`)}
+          ${row('120–325 cm', 'Szabad · 205 cm', 'transparent', `<span style="color:var(--tint);font-weight:500">${icon('bulb', 13)} Mi kerülhet ide?</span>`, 'free')}
+          ${row('325–400 cm', 'Fokhagyma', C.hagymas, `<span style="color:var(--label-2);font-size:12.5px">${icon('lock', 12)} júl. 20-ig</span>`)}
+        </div>
+        <div class="addbar"><span class="lnk">${icon('plus', 14)} Új sáv</span><small>szabad ápr. 12-én: 2,46 m²</small></div>`;
+
+      const panel = `
+        ${mk(1, 'top:-9px;left:-9px')}
+        <div class="p-head">
+          <div class="p-kicker">Nincs kijelölés · 2027</div>
+          <div class="p-title">Az ágyás áttekintése</div>
+          <div class="p-meta">Kattints egy sávra vagy szabad helyre a részletekért.</div>
+        </div>
+        <div class="gt">Vetésforgó</div>
+        <div style="position:relative">${mk(2, 'top:-4px;left:-21px')}
+          ${notice('ok', 'Ide most <b>hüvelyes vagy levélzöldség</b> illik – 2026-ban hagymás (fokhagyma), 2025-ben burgonya volt itt.')}
+          ${notice('figyelem', 'Még ne kerüljön ide: <b>burgonyafélék</b> (2028-tól).')}
+        </div>
+        <div class="gt">Figyelmeztetések (2)</div>
+        <div style="position:relative">${mk(3, 'top:-4px;left:-21px')}
+          ${notice('kerulendo', '<b>Paradicsom (180–240 cm):</b> a burgonyafélék között legalább 3 évnek kell eltelnie – 2025-ben burgonya volt itt.<div class="n-act"><span>Megmutatás</span><span>Mi kerülhetne ide helyette?</span></div>')}
+          ${notice('figyelem', '<b>Helyütközés ápr. 20.–máj. 25.:</b> a saláta és a sárgarépa ugyanazt a helyet foglalná (45–75 cm).<div class="n-act"><span>Saláta: a hely ápr. 20-án szabadul fel</span><span>Sárgarépa később (máj. 25. után)</span></div>')}
+        </div>
+        <div class="gt">Szabad helyek az évben</div>
+        <div style="position:relative">${mk(4, 'top:-4px;left:-21px')}
+        <div class="group">
+          ${free('Elővetemény · 120–325 cm', 'ápr. 12-én szabad, máj. 10-ig')}
+          ${free('Fővetemény · 270–325 cm', 'egész évben szabad, 55 cm')}
+          ${free('A fokhagyma után · 325–400 cm', 'júl. 20-tól')}
+          ${free('A bokorbab után · 75–120 cm', 'aug. 20-tól')}
+        </div></div>
+        <div class="gt">Kihasználtság</div>
+        <div style="position:relative">${mk(5, 'top:-4px;left:-21px')}
+        <div class="group" style="padding:4px 0">
+          ${bar('Elővetemény', 49)}
+          ${bar('Fővetemény', 86)}
+          ${bar('Utóvetemény', 41)}
+        </div></div>`;
+
+      const below = `<div class="below">
+        <div class="blk" style="position:relative">${mk(6, 'top:6px;left:-30px')}<span>Idővonal 2027 <small>· kattintásra az ágyáskép arra a napra ugrik</small></span><span class="lnk">Bezárás ⌃</span></div>
+        <div style="padding:4px 0 10px">${timelineSvg({ W: 1040, H: 230, cursor: DAYS.elo, clash: { a0: 45, a1: 75, s: '04-20', e: '05-25' } })}</div>
+        <div class="blk"><span>Napló 2027 <small>· 2 bejegyzés</small></span><span class="lnk">+ Új bejegyzés</span></div>
+        <div class="blk"><span>Előzmények (vetésforgó) <small>· 2026 fokhagyma, 2025 burgonya</small></span><span class="lnk">+ Előzmény rögzítése</span></div>
+      </div>`;
+
+      document.getElementById('root').innerHTML = `
+        <h1 class="wf-title">A · Ágyáskép és panel – nincs kijelölés (áttekintés)</h1>
+        <p class="wf-sub">Az oldal megnyitásakor semmi sincs kijelölve: a panel az ágyás egészéről szól (vetésforgó, figyelmeztetések, szabad helyek), az ágyáskép most az elővetemény napját mutatja. Alatta lenyitva az idővonal, amely az év egészét adja és napválasztóként is működik.</p>
+        ${desktop({ stage, panel, below, bar: savebar(1, 1) })}
+        ${notes([
+          '<b>Áttekintés kijelölés nélkül:</b> ezzel nyílik az oldal, és ide tér vissza az Esc vagy az üres területre kattintás.',
+          '<b>Vetésforgó az előzményekből:</b> mi illik ide idén, és mi kerülendő (a mostani „Előzmények” blokk összegzése, előre hozva).',
+          '<b>Minden figyelmeztetés egy helyen:</b> a „Megmutatás” kijelöli a sávot, és a napot is odaállítja. A helyütközést egy kattintással javító gombok a mostani Kiosztásból jönnek.',
+          '<b>Szabad helyek az egész évre:</b> elő-, fő- és utóvetemény szerint, közvetlen javaslatokkal. Így látszik az is, mi jöhet a fokhagyma vagy a bab után.',
+          '<b>Kihasználtság szezononként:</b> gyors visszajelzés, hol van még hely.',
+          '<b>Idővonal:</b> a mostani ágyás-idővonal, összecsukható. Kattintásra a nap változik, és a választott ültetés kijelölődik. Fölötte a napló és az előzmények maradnak.',
+        ])}`;
+    </script>
+  </body>
+</html>

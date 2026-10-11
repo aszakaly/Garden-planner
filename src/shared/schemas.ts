@@ -232,11 +232,21 @@ export const plantingCreateInput = plantingInput.extend({
 });
 export type PlantingCreateInput = z.infer<typeof plantingCreateInput>;
 
-/** Tömeges mentés a kiosztás-szerkesztőből: egy tranzakcióban, vagy minden bekerül, vagy semmi. */
+/**
+ * A tömeges mentés sorozatjelölése: az azonos kulcsú elemek egy újravetés-sorozatba kerülnek (a
+ * kulcs csak a kérésen belül érvényes, a sorozat azonosítóját a szerver adja), a sorszámmal.
+ * Módosításnál a mentett ültetést lépteti be a sorozatba; nélküle a sorozat nem változik.
+ */
+const batchSeries = {
+  series_key: z.string().min(1).max(40).nullish(),
+  series_index: z.number().int().min(1).max(50).nullish(),
+};
+
+/** Tömeges mentés a munkalapról: egy tranzakcióban, vagy minden bekerül, vagy semmi. */
 export const plantingBatchInput = z
   .object({
-    create: z.array(plantingInput).default([]),
-    update: z.array(z.object({ id: z.number().int().positive(), data: plantingInput })).default([]),
+    create: z.array(plantingInput.extend(batchSeries)).default([]),
+    update: z.array(z.object({ id: z.number().int().positive(), data: plantingInput, ...batchSeries })).default([]),
     delete: z.array(z.number().int().positive()).default([]),
   })
   .refine((b) => b.create.length + b.update.length + b.delete.length > 0, { message: 'Nincs mit menteni.' })
@@ -249,7 +259,14 @@ export const plantingBatchInput = z
   )
   .refine((b) => b.create.length + b.update.length + b.delete.length <= 200, {
     message: 'Egyszerre legfeljebb 200 módosítás menthető.',
-  });
+  })
+  .refine(
+    (b) => {
+      const tags = [...b.create, ...b.update].flatMap((x) => (x.series_key ? [`${x.series_key}#${x.series_index ?? 1}`] : []));
+      return new Set(tags).size === tags.length;
+    },
+    { message: 'Egy újravetés-sorozatban minden sorszám csak egyszer szerepelhet.' },
+  );
 export type PlantingBatchInput = z.infer<typeof plantingBatchInput>;
 
 /** Generált vagy saját feladat állapotának módosítása (csak a megadott mezők változnak). */

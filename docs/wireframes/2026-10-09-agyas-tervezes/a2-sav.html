@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <title>A2 – Ágyáskép és panel: sáv kijelölve</title>
+    <link rel="stylesheet" href="wf.css" />
+    <script src="wf.js"></script>
+  </head>
+  <body>
+    <div class="page" id="root"></div>
+    <script>
+      const fo = [
+        { ...P.bab1 },
+        { ...P.repa },
+        { ...P.bab2 },
+        { ...P.uborka },
+        { ...P.paradicsom, sel: true },
+        { ...P.bazsalikom },
+        { ...P.fokhagyma, note: 'júl. 20-ig' },
+      ];
+      const row = (pos, name, color, right, cls = '', extra = '') =>
+        `<div class="rl ${cls}" style="--sc:${color}"><span class="grip">⋮⋮</span><span class="pos">${pos}</span><span class="nm"><span class="dot"></span>${name}${extra}</span>${right}</div>`;
+      const st = (v) => `<span class="step"><i>−</i>${v}<i>+</i></span>`;
+      const lnk = ` <span style="color:var(--label-3)">${icon('link', 12)}</span>`;
+
+      const stage = `
+        ${phaseCards('fo')}
+        <div class="canvas">
+          ${mk(1, 'top:18px;left:378px')}
+          ${bedSvg({
+            px: 1.65,
+            strips: fo,
+            gaps: [{ a0: 270, a1: 325, label: 'Szabad · 55 cm' }],
+            bounds: [
+              { at: 45, rel: 1 },
+              { at: 75, rel: 1 },
+              { at: 120, rel: 1 },
+              { at: 240, rel: 1 },
+            ],
+          })}
+          <p class="hint">A kijelölt sáv a szélénél és a sarkánál méretezhető, a közepénél mozgatható (mint most). A panel értékei és az ágyáskép együtt változnak.</p>
+        </div>
+        <div class="rows">
+          ${row('0–45 cm', 'Bokorbab', C.huvelyes, st('45 cm'), '', lnk)}
+          ${row('45–75 cm', 'Sárgarépa', C.gyoker, st('30 cm'))}
+          ${row('75–120 cm', 'Bokorbab', C.huvelyes, st('45 cm'), '', lnk)}
+          ${row('120–180 cm', 'Uborka', C.termes, st('60 cm'))}
+          ${row('180–240 cm', 'Paradicsom', C.termes, st('60 cm'), 'sel', ` <span style="color:#ff3b30">${icon('ban', 13)}</span>`)}
+          ${row('240–270 cm', 'Bazsalikom', C.fuszer, st('30 cm'))}
+          ${row('270–325 cm', 'Szabad · 55 cm', 'transparent', `<span style="color:var(--tint);font-weight:500">${icon('bulb', 13)} Mi kerülhet ide?</span>`, 'free')}
+          ${row('325–400 cm', 'Fokhagyma', C.hagymas, `<span style="color:var(--label-2);font-size:12.5px">${icon('lock', 12)} júl. 20-ig</span>`)}
+        </div>
+        <div class="addbar"><span class="lnk">${icon('plus', 14)} Új sáv</span><small>szabad júl. 1-én: 0,66 m²</small></div>`;
+
+      const panel = `
+        <div class="p-head" style="--sc:${C.termes}">
+          <div class="p-kicker">Fővetemény · 180–240 cm · teljes hossz</div>
+          <div class="p-title"><span class="dot"></span>Paradicsom ${chip('bad', 'Kerülendő')}</div>
+          <div class="p-meta">Ökörszív · palántáról · máj. 10.–okt. 5.</div>
+        </div>
+        <div style="position:relative">
+          ${mk(2, 'top:-4px;left:-21px')}
+          ${notice(
+            'kerulendo',
+            `<b>Vetésforgó:</b> a burgonyafélék között legalább 3 évnek kell eltelnie – 2025-ben burgonya volt itt (2028-tól lehet újra).<div class="n-act"><span>Mi kerülhetne ide helyette?</span><span>Így hagyom</span></div>`,
+          )}
+          ${notice('ok', '<b>Jó szomszéd:</b> bazsalikom – riasztja a kártevőket, javíthatja az ízét.')}
+        </div>
+        <div class="gt">Ezen a helyen 2027-ben</div>
+        <div style="position:relative">${mk(3, 'top:-4px;right:-9px')}
+        <div class="seq" style="--sc:${C.termes}">
+          <div class="open">+ Elővetemény<small>máj. 10-ig szabad</small></div>
+          <div class="arrow">${icon('arrow', 14)}</div>
+          <div class="cur"><b>Paradicsom</b>máj. 10.–okt. 5.</div>
+          <div class="arrow">${icon('arrow', 14)}</div>
+          <div class="open">+ Utána<small>okt. 5-től szabad</small></div>
+        </div></div>
+        <div class="gt">Növény</div>
+        <div style="position:relative">${mk(4, 'top:-4px;left:-21px')}
+        <div class="group">
+          <div class="row">Növény<span class="pop">Paradicsom</span></div>
+          <div class="row">Fajta<span class="pop">Ökörszív</span></div>
+          <div class="row">Vetőmag<span class="pop">Ökörszív · 2025</span></div>
+          <div class="row">Módszer<span class="pop">Palántáról</span></div>
+        </div></div>
+        <div class="gt">Dátumok</div>
+        <div class="group">
+          <div class="row">Palántanevelés<span class="v">márc. 15.</span></div>
+          <div class="row">Kiültetés<span class="v">máj. 10.</span></div>
+          <div class="row">Szedés<span class="v">júl. 20. – okt. 5.</span></div>
+        </div>
+        <div class="gt">Hely</div>
+        <div style="position:relative">${mk(5, 'top:-4px;left:-21px')}
+        <div class="group">
+          <div class="row">Szélesség<span class="step"><i>−</i>60 cm<i>+</i></span></div>
+          <div class="row"><span>Sorok<span class="sub">sortáv 30 cm</span></span><span class="step"><i>−</i>2<i>+</i></span></div>
+          <div class="row">Hossz<span class="pop">teljes (0–120 cm)</span></div>
+          <div class="row">Tövek<span class="v">kb. 6 tő · tőtáv 40 cm</span></div>
+        </div></div>
+        <div class="acts">
+          <span>${icon('copyplus', 14)} Még egy sáv ebből</span>
+          <span>${icon('scissors', 14)} Szétvágás hosszában</span>
+          <span class="danger">${icon('trash', 14)} Törlés</span>
+        </div>
+        <div style="position:relative;margin-top:12px">${mk(6, 'top:-4px;left:-21px')}
+        <div class="group">
+          <div class="row link"><span>Tény és napló<span class="sub">tényleges dátumok, termés, bejegyzések – külön lapon</span></span><span class="v">${icon('right', 15)}</span></div>
+        </div></div>`;
+
+      document.getElementById('root').innerHTML = `
+        <h1 class="wf-title">A · Ágyáskép és panel – sáv kijelölve</h1>
+        <p class="wf-sub">Ugyanaz a munkalap, egy sávra kattintva. A panel az ültetés tervezési adatait mutatja: itt szerkeszthető a növény, a fajta, a vetőmag, a módszer, a dátumok és a hely. A figyelmeztetés a sávon és a panel tetején is látszik, a javításhoz szükséges lépéssel együtt.</p>
+        ${desktop({ stage, panel })}
+        ${notes([
+          '<b>Kijelölt sáv:</b> fogantyúkkal méretezhető és mozgatható, mint most. A piros jel a sáv sarkában figyelmeztetést jelez, a zöld vagy piros határvonal a szomszédsági viszonyt.',
+          '<b>Figyelmeztetés magyarázattal és megoldással:</b> a „Mi kerülhetne ide helyette?” a javaslatlistát hozza erre a helyre, és a választott növény a hely megtartásával cseréli le ezt. Az „Így hagyom” tudomásul veszi, és eltünteti a mentés-sáv számlálójából.',
+          '<b>Ezen a helyen 2027-ben:</b> a sáv előtti és utáni szabad idő. A „+ Elővetemény” és a „+ Utána” a javaslatokat ennek az időszaknak a helyére adja, így a következő vetés (pl. a fokhagyma utáni) innen tervezhető.',
+          '<b>Tervezési adatok a panelen:</b> növény, fajta, vetőmag, módszer és dátumok. Kapcsolt sávnál (pl. a két bokorbab) a változás a párra is átkerül, mint most a részletes lapon.',
+          '<b>Hely:</b> a szélesség, a sorok száma és a hossz ugyanaz az adat, mint az ágyásképen, a kettő együtt változik. A tőszám a sor- és tőtávból számolódik.',
+          '<b>Tény és napló:</b> egyedül ez nyit külön lapot (a mostani ültetési lap tény és napló füle), mert ez már a megvalósításról szól, nem a tervezésről.',
+        ])}`;
+    </script>
+  </body>
+</html>

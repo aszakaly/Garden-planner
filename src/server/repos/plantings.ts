@@ -162,15 +162,21 @@ function occupantsInBed(db: DB, year: number, bedId: number): Occupant[] {
   });
 }
 
+/** Sorozattag: a sorozat azonosítója és a tag sorszáma. */
+type SeriesMember = {
+  series_id: string;
+  series_index: number;
+};
+
 /**
  * Új ültetés(ek) tranzakció nélkül – a hívó fogja tranzakcióba. Sorozatnál minden tag
  * időben eltolva, a következő szabad sávba kerül.
  */
-function insertPlantings(db: DB, input: PlantingCreateInput): number[] {
+function insertPlantings(db: DB, input: PlantingCreateInput, member?: SeriesMember): number[] {
   const { series, ...fields } = normalize(db, input);
   // A gyors előzmény már megtörtént ültetés
   const base = { ...fields, status: fields.is_history ? ('lezart' as const) : ('terv' as const) };
-  if (!series) return [insert(db, 'planting', base)];
+  if (!series) return [insert(db, 'planting', { ...base, ...member })];
 
   const offsets = seriesOffsets(series.count, series.interval_days);
   let starts = offsets.map(() => base.axis_start_cm ?? null);
@@ -300,25 +306,38 @@ export function deletePlanting(db: DB, id: number, wholeSeries = false): number 
 }
 
 /**
- * Tömeges mentés a kiosztás-szerkesztőből: törlés, módosítás, majd létrehozás egyetlen
- * tranzakcióban – egy hibás elemnél semmi sem változik. A létrehozottak azonosítói a kérés sorrendjében.
- * A közben máshol már törölt ültetések törlését kihagyja; megkezdett vagy rögzített ültetés nem törölhető.
- * Egy létrehozott azonosító egyezhet ugyanebben a kérésben törölttel (a `planting.id` nem AUTOINCREMENT).
- * Ez biztonságos: a törölt ültetés feladatállapota és saját feladatai törlődnek, a naplóbejegyzések
- * kapcsolata megszűnik; az átvitt évelő forrása mindig kisebb azonosítójú, ezért nem érintett.
+ * Tömeges mentés a munkalapról: törlés, módosítás, majd létrehozás egyetlen tranzakcióban – egy
+ * hibás elemnél semmi sem változik. A létrehozottak azonosítói a kérés sorrendjében. A közben máshol
+ * már törölt ültetések törlését kihagyja; megkezdett vagy rögzített ültetés nem törölhető. Az azonos
+ * sorozatkulcsú elemek (`series_key`) közös, új sorozatazonosítót kapnak; a módosított ültetés így
+ * léphet be egy új sorozatba.
  */
 export function savePlantingBatch(db: DB, input: PlantingBatchInput): { created: number[] } {
+  const seriesIds = new Map<string, string>();
+  const memberOf = (x: { series_key?: string | null; series_index?: number | null }): SeriesMember | undefined => {
+    if (!x.series_key) return undefined;
+    if (!seriesIds.has(x.series_key)) seriesIds.set(x.series_key, randomUUID());
+    return { series_id: seriesIds.get(x.series_key)!, series_index: x.series_index ?? 1 };
+  };
   return transaction(db, () => {
     for (const id of input.delete) {
       const row = db.prepare('SELECT * FROM planting WHERE id = ?').get(id) as Row | undefined;
       if (!row) continue; // máshol már törölték
       // ugyanaz a feltétel, amivel a szerkesztő rögzítettnek mutatja (az SQLite 0/1-et ad a logikai mezőre)
       if (startedOrRecorded({ ...(row as unknown as Planting), is_history: row.is_history === 1 })) {
-        throw bad('Megkezdett vagy rögzített ültetés a kiosztásból nem törölhető; a részletes lapon törölhető.');
+        throw bad('Megkezdett vagy rögzített ültetés a munkalapról nem törölhető; a Tény és napló lapon törölhető.');
       }
       removePlantings(db, id, false);
     }
-    for (const u of input.update) replacePlanting(db, u.id, u.data);
-    return { created: input.create.flatMap((c) => insertPlantings(db, { ...c, series: null })) };
+    for (const u of input.update) {
+      replacePlanting(db, u.id, u.data);
+      const member = memberOf(u);
+      if (member) update(db, 'planting', u.id, { ...member });
+    }
+    return {
+      created: input.create.flatMap(({ series_key, series_index, ...c }) =>
+        insertPlantings(db, { ...c, series: null }, memberOf({ series_key, series_index })),
+      ),
+    };
   });
 }

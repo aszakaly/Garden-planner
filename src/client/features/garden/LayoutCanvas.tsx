@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
-import { bedAxes } from '@shared/domain/geometry.ts';
+import { bedAxes, type Placement } from '@shared/domain/geometry.ts';
 import { LAYOUT_GRID_CM, moveStrip, resizeStrip, type Boundary, type Edge, type LayoutStrip } from '@shared/domain/layout.ts';
 import type { Bed } from '@shared/types.ts';
 import { useCoarsePointer, useWindowHeight } from '../../lib/useDevice.ts';
@@ -41,6 +41,20 @@ export interface CanvasBoundary extends Boundary {
   reason: string | null;
 }
 
+/** A napon szabad, teljes hosszú szakasz a tengely mentén: kijelölhető (javaslat oda). */
+export interface CanvasGap {
+  start: number;
+  end: number;
+  selected: boolean;
+}
+
+/** A javaslat előnézete a helyén (szaggatott kerettel). */
+export interface CanvasGhost {
+  placement: Placement;
+  color: string;
+  label: string;
+}
+
 interface Props {
   bed: Bed;
   strips: CanvasStrip[];
@@ -50,6 +64,11 @@ interface Props {
   linked: Set<number>;
   onSelect: (key: number | null) => void;
   onChange: (strips: LayoutStrip[]) => void;
+  gaps?: CanvasGap[];
+  ghost?: CanvasGhost | null;
+  onSelectGap?: (index: number) => void;
+  /** Mentés közben a kép nem szerkeszthető */
+  locked?: boolean;
 }
 
 const CURSOR: Record<ZoneId, string> = {
@@ -94,19 +113,21 @@ interface Drag {
 }
 
 /**
- * Az elem szélessége CSS-képpontban. A `clientWidth` és a ResizeObserver tartalomdoboza a
- * transzformációktól független, így a lap nyitó animációjának nagyítása nem számít bele
- * (a `getBoundingClientRect` a nagyított méretet adná).
+ * A kép rendelkezésre álló szélessége CSS-képpontban: a szülőelem tartalomdoboza (a kép 100%
+ * széles). A szülőt mérjük, mert a Firefox az `<svg>` elem `clientWidth`-jére 0-t ad. A
+ * `clientWidth` és a ResizeObserver tartalomdoboza a transzformációktól független, így egy
+ * nyitó animáció nagyítása nem számít bele (a `getBoundingClientRect` a nagyított méretet adná).
  */
 function useWidth(ref: RefObject<Element | null>): number | null {
   const [width, setWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
-    const el = ref.current;
+    const el = ref.current?.parentElement;
     if (!el) return;
     const set = (w: number) => {
       if (w > 0) setWidth(w);
     };
-    set(el.clientWidth);
+    const style = getComputedStyle(el);
+    set(el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
     const ro = new ResizeObserver(([entry]) => entry && set(entry.contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();
@@ -120,7 +141,7 @@ function useWidth(ref: RefObject<Element | null>): number | null {
  * egy CSS-képpont, így a feliratok és az érintési területek telefonon sem zsugorodnak el.
  * Billentyűzettel és felolvasóval a sávlista kezelhető, ezért a kép rejtett előlük.
  */
-export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSelect, onChange }: Props) {
+export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSelect, onChange, gaps = [], ghost, onSelectGap, locked }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<Drag | null>(null);
   /** Húzás közben a mutató alakja (az elemek saját mutatója helyett) */
@@ -150,7 +171,7 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
     // ne jusson el az ágyásig: az törölné a kijelölést (egy második ujjnál is)
     e.stopPropagation();
     dropStale(e);
-    if (drag.current || e.button !== 0) return;
+    if (drag.current || e.button !== 0 || locked) return;
     // a fogantyú a már kijelölt sávé: nincs mit újra kijelölni
     if (key !== selected) onSelect(key);
     if (strips.find((x) => x.key === key)?.fixed) return;
@@ -254,7 +275,13 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
       ? { x1: b.at * scale, x2: b.at * scale, y1: b.from * scale, y2: b.to * scale }
       : { x1: b.from * scale, x2: b.to * scale, y1: b.at * scale, y2: b.at * scale };
 
-  const sel = strips.find((x) => x.key === selected && !x.fixed);
+  const sel = locked ? undefined : strips.find((x) => x.key === selected && !x.fixed);
+  const fullCross = (start: number, end: number): Placement => ({
+    axis_start_cm: start,
+    axis_span_cm: end - start,
+    cross_start_cm: 0,
+    cross_span_cm: size.cross,
+  });
   const shown = strips.map((strip) => ({ strip, r: rectOf(strip.placement, across, scale), clipId: `${clipBase}-${strip.key}` }));
 
   return (
@@ -267,7 +294,7 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
       onPointerDown={(e) => {
         dropStale(e);
         // húzás közben egy második ujj ne törölje a kijelölést
-        if (!drag.current && e.button === 0) onSelect(null);
+        if (!drag.current && e.button === 0 && !locked) onSelect(null);
       }}
       onPointerMove={move}
       onPointerUp={up}
@@ -290,6 +317,42 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
         {gridLines(bed.width_cm).map((cm) => (
           <line key={`y${cm}`} className={s.grid} x1={0} y1={cm * scale} x2={w} y2={cm * scale} />
         ))}
+
+        {gaps.map((g, i) => {
+          const r = rectOf(fullCross(g.start, g.end), across, scale);
+          const cx = r.x + r.w / 2;
+          const cy = r.y + r.h / 2;
+          const plus = Math.min(r.w, r.h) >= 30;
+          const label = `Szabad · ${nf.format(g.end - g.start)} cm`;
+          const room = (r.w >= r.h ? r.w : r.h) >= label.length * 6.5 + 8;
+          return (
+            <g
+              key={`gap-${g.start}`}
+              data-gap={`${g.start}-${g.end}`}
+              className={`${s.gap} ${g.selected ? s.gapSelected : ''}`}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                dropStale(e);
+                if (drag.current || e.button !== 0 || locked) return;
+                onSelectGap?.(i);
+              }}
+            >
+              <rect x={r.x + 2} y={r.y + 2} width={Math.max(0, r.w - 4)} height={Math.max(0, r.h - 4)} rx={4} />
+              {plus && (
+                <g className={s.gapPlus}>
+                  <circle cx={cx} cy={room ? cy - 9 : cy} r={10} />
+                  <path d={`M${cx - 4.5} ${room ? cy - 9 : cy}h9M${cx} ${(room ? cy - 9 : cy) - 4.5}v9`} />
+                </g>
+              )}
+              {plus && room && (
+                <text x={cx} y={cy + 14} textAnchor="middle" dominantBaseline="central">
+                  {label}
+                </text>
+              )}
+              <title>{`${label} – kattints: mi kerülhet ide?`}</title>
+            </g>
+          );
+        })}
 
         {shown.map(({ strip, r, clipId }) => {
           const vertical = r.w < 70 && r.h > r.w;
@@ -325,6 +388,24 @@ export function LayoutCanvas({ bed, strips, boundaries, selected, linked, onSele
             </g>
           );
         })}
+
+        {ghost &&
+          (() => {
+            const r = rectOf(ghost.placement, across, scale);
+            const vertical = r.w < 70 && r.h > r.w;
+            const cx = r.x + r.w / 2;
+            const cy = r.y + r.h / 2;
+            return (
+              <g className={s.ghost} style={{ '--sc': ghost.color } as CSSProperties}>
+                <rect x={r.x + 3} y={r.y + 3} width={Math.max(0, r.w - 6)} height={Math.max(0, r.h - 6)} rx={4} />
+                {(vertical ? r.h : r.w) >= 40 && (
+                  <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" transform={vertical ? `rotate(-90 ${cx} ${cy})` : undefined}>
+                    {ghost.label}
+                  </text>
+                )}
+              </g>
+            );
+          })()}
 
         {sel && (
           <Handles

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ágyás-munkalap – wireframe-javaslatok</title>
+    <link rel="stylesheet" href="wf.css" />
+  </head>
+  <body>
+    <div class="index">
+      <h1>Ágyás-munkalap – wireframe-javaslatok</h1>
+      <p class="caption">2026-10-09 · branch: <code>agyas-tervezes</code> · példa: Emelt ágyás 1 (4 × 1,2 m, sorok keresztben), 2027-es terv; előzmény: 2025 burgonya, 2026 ősszel fokhagyma</p>
+
+      <h2>A kiindulás</h2>
+      <p>Egy ágyás megtervezése ma három helyen történik:</p>
+      <ul>
+        <li>az ágyás oldalán (idővonal, felülnézet, ültetések listája);</li>
+        <li>a <b>Kiosztás</b> lapon (sávok elhelyezése);</li>
+        <li>a <b>Mi kerülhet ide?</b> lapon, ahonnan a választás után egy harmadik lap, az ültetési lap nyílik.</li>
+      </ul>
+      <p>A Kiosztásban a növényt egy egyszerű listából kell választani, ezért a figyelmeztetés csak a sáv felvétele után jelenik meg. Ezen a képen például a paradicsomnál derül ki, hogy burgonya után kerülendő. Pedig a javaslat-lap éppen ezt mondta volna meg előre.</p>
+      <img src="0-ma-kiosztas.jpg" alt="A mostani Kiosztás lap: a paradicsom felvétele után jelenik meg a vetésforgó-figyelmeztetés" style="max-width: 800px" />
+      <p class="caption">Ma: a Kiosztás lap egy frissen felvett paradicsommal. A figyelmeztetés a felvétel után, a lap alján jelenik meg.</p>
+
+      <h2>Közös alapelvek (mindhárom változatban)</h2>
+      <ol>
+        <li><b>Egy képernyő:</b> az ágyás oldala maga a munkalap. Nincs külön Kiosztás- és javaslat-lap; külön lapot csak a „Tény és napló” nyit.</li>
+        <li><b>A panel a kijelöléshez igazodik:</b> kijelölés nélkül az ágyás áttekintése, szabad helyre kattintva a „Mi kerülhet ide?”, sávra kattintva az ültetés adatai.</li>
+        <li><b>A javaslat ott jelenik meg, ahová kattintasz:</b> a hely és a nap adja a kérdést. A rangsor a vetésforgót, a valódi szomszédokat, a vetőmagkészletet és a korábbi értékeléseket veszi figyelembe. A keresőben bármelyik növény választható, ugyanezekkel az okokkal.</li>
+        <li><b>Figyelmeztetés a helyén és magyarázattal:</b> jel a sávon, színes határvonal a szomszédok között, a panelen pedig az ok és a javítás lehetősége (csere, helyütközés feloldása).</li>
+        <li><b>Piszkozat:</b> módosításkor megjelenik egy mentés-sáv, amely a kerülendők számát is mutatja. A „Mentés” egyben ír, az „Elvetés” mindent visszaállít.</li>
+        <li><b>A tervezési adatok mind a panelen vannak:</b> növény, fajta, vetőmag, módszer, dátumok, hely, sorok, újravetés.</li>
+        <li><b>Telefonon</b> a panel alsó lappá válik. A tervezés elsősorban gépen történik.</li>
+      </ol>
+
+      <h2>A · Ágyáskép és panel</h2>
+      <p>A mostani Kiosztás ágyásképe kerül az oldal közepére, mellé a kijelöléstől függő panel. Az időt az elő-, fő- és utóvetemény választó (vagy egy nap) adja. Egy sáv előtti és utáni szabad időt az „Ezen a helyen 2027-ben” sor mutatja.</p>
+      <h3>A1 – szabad hely kijelölve</h3>
+      <img src="a1-szabad-hely.png" alt="A1" />
+      <h3>A2 – sáv kijelölve</h3>
+      <img src="a2-sav.png" alt="A2" />
+      <h3>A3 – nincs kijelölés (áttekintés)</h3>
+      <img src="a3-attekintes.png" alt="A3" />
+      <h3>A4 – telefonon</h3>
+      <img src="a4-telefon.png" alt="A4" />
+
+      <h2>B · Idővonal-vászon</h2>
+      <p>A fő felület az év: függőlegesen a hely, vízszintesen a hónapok. Az üres részek idő és hely szerint kijelölhetők, a vizsgált nap felülnézete kicsiben fölötte látszik.</p>
+      <img src="b-idovonal.png" alt="B" />
+
+      <h2>C · Szezonok egymás mellett</h2>
+      <p>Három álló ágyáskép (elő, fő, utó), soronként egy magasságban. Az átnyúló ültetés összefüggő sáv.</p>
+      <img src="c-szezonok.png" alt="C" />
+
+      <h2>Összehasonlítás</h2>
+      <table>
+        <tr><th></th><th>A · Ágyáskép és panel</th><th>B · Idővonal-vászon</th><th>C · Szezonok egymás mellett</th></tr>
+        <tr><td>Elő- és utóvetemény tervezése</td><td>jó: napváltás, és az „Ezen a helyen” sor</td><td>legjobb: minden egy felületen</td><td>nagyon jó: három oszlop</td></tr>
+        <tr><td>Sávok méretezése, sorrendje</td><td>legjobb: nagy kép és sávlista</td><td>gyengébb: csak a kis felülnézetben</td><td>közepes: keskeny oszlopok</td></tr>
+        <tr><td>Hossz menti megosztás</td><td>igen</td><td>csak a felülnézetben</td><td>igen</td></tr>
+        <tr><td>Napra pontos állapot</td><td>igen</td><td>igen (kurzor)</td><td>nem: csak három időpont, a nap külön</td></tr>
+        <tr><td>Telefon</td><td>jó: alsó lap</td><td>gyenge</td><td>lapozva, egyesével</td></tr>
+        <tr><td>Megvalósítás</td><td>a legkisebb: a Kiosztás szerkesztője és a javaslatmotor újrahasznosítható</td><td>a legnagyobb: új idővonal-szerkesztő, húzás időben</td><td>közepes: három vászon, átnyúló sávok</td></tr>
+        <tr><td>Megszokás</td><td>ismerős (a mostani Kiosztás)</td><td>új gondolkodásmód</td><td>könnyen érthető</td></tr>
+      </table>
+
+      <h2>Javaslatom</h2>
+      <div class="rec">
+        <p><b>Az A változat legyen az alap</b>, két elemmel a többiből:</p>
+        <ul>
+          <li>a B-ből az „Ezen a helyen 2027-ben” sor (mi volt előtte, mi jöhet utána), és az idővonal mint lenyitható napválasztó az oldal alján;</li>
+          <li>a C-ből a „Szabad helyek az évben” lista az áttekintésben, szezononként.</li>
+        </ul>
+        <p>Ez adja a legjobb sávszerkesztést, telefonon is működik, és a meglévő kódra épül. Az idővonalon való húzás (a B legerősebb eleme) később önálló bővítésként jöhet.</p>
+      </div>
+
+      <h2>A választás után egyeztetendő</h2>
+      <ul>
+        <li><b>Elhelyezés nélküli ültetések:</b> az ágyásképen nem látszanak. Javaslat: az áttekintésben külön sor „Elhelyezésre vár (1)”, a „Hely kijelölése” gombbal.</li>
+        <li><b>Az ágyás adatai:</b> a mostani adatrács a fejléc egy sorába és a Szerkesztés lapra kerül (méret, irány, napfény, talaj, öntözés).</li>
+        <li><b>Az „Ültetések 2027” lista:</b> a sávlista és az idővonal kiváltja. A lista kerüljön-e mégis az oldal aljára, összecsukva?</li>
+        <li><b>Az Éves terv oldal</b> „Új ültetés” és „Mi kerülhet ide?” gombja: maradjon ágyásválasztással, vagy vigyen a választott ágyás munkalapjára?</li>
+      </ul>
+    </div>
+  </body>
+</html>

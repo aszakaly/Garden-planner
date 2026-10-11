@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router';
-import { useIsMobile } from '../lib/useIsMobile.ts';
+import { useIsMobile } from '../lib/useDevice.ts';
 import { Sidebar } from './Sidebar.tsx';
 import s from './AppLayout.module.css';
 

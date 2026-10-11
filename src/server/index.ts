@@ -11,10 +11,16 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PORT = Number(process.env.KERT_PORT ?? 4321);
 const DB_PATH = process.env.KERT_DB ?? join(ROOT, 'data', 'garden.db');
 
-const db = openDatabase(DB_PATH);
-const seeded = seedIfEmpty(db);
 const backupConfig = { dir: join(dirname(DB_PATH), 'backups'), name: basename(DB_PATH, '.db') };
-const backup = backupDatabase(db, backupConfig.dir, backupConfig.name);
+// Az adatbázis-szerkezet módosítása (migráció) előtt mindig készül mentés, a 6 órás korláttól függetlenül
+let migrationBackup: string | null = null;
+const db = openDatabase(DB_PATH, {
+  beforeMigrate: (raw) => {
+    migrationBackup = backupDatabase(raw, backupConfig.dir, backupConfig.name, new Date(), true);
+  },
+});
+const seeded = seedIfEmpty(db);
+const backup = migrationBackup ?? backupDatabase(db, backupConfig.dir, backupConfig.name);
 
 const production = process.env.NODE_ENV === 'production';
 const app = buildApp({ db, backup: backupConfig, clientDir: production ? join(ROOT, 'dist', 'client') : undefined });
