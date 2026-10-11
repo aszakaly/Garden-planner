@@ -26,7 +26,7 @@ import type { PlantingCreateInput } from '@shared/schemas.ts';
 import type { Suggestion } from '@shared/domain/suggestions.ts';
 import type { BedListItem, GrowingWindow, PlantListItem, PlantingListItem, Variety, VarietyWithWindows } from '@shared/types.ts';
 import {
-  DateInput,
+  GuardedDateInput,
   FormButton,
   FormGroup,
   FormRow,
@@ -705,19 +705,19 @@ export function PlantingEditSheet({ open, onClose, planting, bedId, plantId, yea
               >
                 {usesSow(form.method) && (
                   <FormRow label={sowLabel}>
-                    <DateInput value={form.dates.sow} onChange={(v) => setDate('sow', v)} />
+                    <GuardedDateInput value={form.dates.sow} onChange={(v) => setDate('sow', v)} />
                   </FormRow>
                 )}
                 {usesTransplant(form.method) && (
                   <FormRow label="Kiültetés">
-                    <DateInput value={form.dates.transplant} onChange={(v) => setDate('transplant', v)} />
+                    <GuardedDateInput value={form.dates.transplant} onChange={(v) => setDate('transplant', v)} />
                   </FormRow>
                 )}
                 <FormRow label="Betakarítás kezdete">
-                  <DateInput value={form.dates.harvestStart} onChange={(v) => setDate('harvestStart', v)} />
+                  <GuardedDateInput value={form.dates.harvestStart} onChange={(v) => setDate('harvestStart', v)} />
                 </FormRow>
                 <FormRow label={plant.perennial ? 'Terület felszabadul (évelő)' : 'Terület felszabadul'}>
-                  <DateInput value={form.dates.end} onChange={(v) => setDate('end', v)} />
+                  <GuardedDateInput value={form.dates.end} onChange={(v) => setDate('end', v)} />
                 </FormRow>
                 {window && <FormButton onClick={resetDates}>Javasolt dátumok visszaállítása</FormButton>}
               </FormGroup>

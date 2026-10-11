@@ -442,6 +442,13 @@ describe('újravetés helye', () => {
     expect(starts(placeSuccession(h, [0, 14], { axis: 100, cross: 200 }, [busy]))).toEqual([40, 20]);
   });
 
+  it('a már elhelyezett tag a helyén marad, a többi ehhez igazodik', () => {
+    const h = head(0, 40, '2027-04-01', '2027-05-10');
+    const moved = { axis_start_cm: 60, axis_span_cm: 40, cross_start_cm: 0, cross_span_cm: 200 };
+    // a 2. tag kézzel a 60–100 cm-re került: a 3. a lekerült fej helyére, a 4. a 2. helyére
+    expect(starts(placeSuccession(h, [0, 21, 42, 63], { axis: 100, cross: 200 }, [], [null, moved]))).toEqual([0, 60, 0, 60]);
+  });
+
   it('ha sehol nincs hely, a fej helyére kerül (az ütközést a jelzés mutatja)', () => {
     const busy = { id: 9, ...head(40, 20, '2027-01-01', '2027-12-31') };
     expect(starts(placeSuccession(head(0, 40, '2027-04-01', '2027-06-01'), [0, 14], { axis: 60, cross: 200 }, [busy]))).toEqual([0, 0]);

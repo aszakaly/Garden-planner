@@ -15,7 +15,7 @@ import { addDaysISO, diffDays, isoFromMonthDay } from './isoDate.ts';
 import { bedStartField, effectiveBedId, effectiveDates, occupancyPeriod, planDates } from './plantings.ts';
 
 /**
- * A kiosztás-szerkesztő tiszta logikája. Minden érték cm, a `geometry.ts` koordinátáiban:
+ * Az ágyás-munkalap kiosztásának tiszta logikája. Minden érték cm, a `geometry.ts` koordinátáiban:
  * a tengely mentén követik egymást a sorok, a keresztirány egy sor hossza.
  */
 
@@ -541,13 +541,20 @@ export function insertPlacement(i: InsertInput): InsertResult | null {
 
 /**
  * Az újravetés tagjainak helye (az első tag a fej, a helye adott; a többi `offsets` nappal később):
+ * - a `kept` szerinti helyén, ha a tagnak már van helye (pl. kézzel áthúzták): az nem változik;
  * - oda, ahol egy korábbi tag addigra lekerül (a legkorábbi ilyen tag helyére);
  * - különben a fej mellé: a fejhez legközelebbi, a teljes időszakára szabad, ugyanolyan széles helyre
  *   (egyenlő távolságnál utána);
  * - ha sehol nincs hely, a fej helyére (az ütközést a jelzés mutatja).
  * A keresztirányú hely mindig a fejé.
  */
-export function placeSuccession(head: Occupant, offsets: number[], size: LayoutSize, others: Occupant[]): Occupant[] {
+export function placeSuccession(
+  head: Occupant,
+  offsets: number[],
+  size: LayoutSize,
+  others: Occupant[],
+  kept: (Placement | null | undefined)[] = [],
+): Occupant[] {
   const taken = [...others];
   const out: Occupant[] = [];
   const { placement: hp } = head;
@@ -556,7 +563,9 @@ export function placeSuccession(head: Occupant, offsets: number[], size: LayoutS
     const period = { start: addDaysISO(head.period.start, offset), end: addDaysISO(head.period.end, offset) };
     const free = (pl: Placement) => !taken.some((o) => periodsOverlap(o.period, period) && placementsOverlap(o.placement, pl));
     let placement = hp;
-    if (i > 0) {
+    const own = i > 0 ? kept[i] : null;
+    if (own) placement = own;
+    else if (i > 0) {
       const again = out.map((o) => o.placement).find(free);
       const near = freeAxisRanges(size.axis, taken, period, cross)
         .filter(([s, e]) => e - s + EPS >= hp.axis_span_cm)

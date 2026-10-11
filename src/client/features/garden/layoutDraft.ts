@@ -28,8 +28,8 @@ export interface RowBase {
 }
 
 /**
- * A kiosztás-szerkesztő piszkozata: az ágyásban álló ültetések (az újak negatív azonosítóval)
- * és a törlendők. Mentésig minden itt változik; a „Kész” a `toBatch` különbségét küldi.
+ * Az ágyás-munkalap piszkozata: az ágyásban álló ültetések (az újak negatív azonosítóval)
+ * és a törlendők. Mentésig minden itt változik; a „Mentés” a `toBatch` különbségét küldi.
  */
 export interface LayoutDraft {
   items: PlantingListItem[];
@@ -66,7 +66,7 @@ export function draftFrom(plantings: PlantingListItem[], bed: Pick<Bed, 'id'>): 
  * (`startedOrRecorded`, ugyanaz, amit a szerver a törlésnél ellenőriz): előzmény, nem tervezett
  * státusz, tény dátum, tényleges hely, vagy máshol valósult meg (tényleges ágyás, akár hely nélkül:
  * ekkor a terv szerinti, másik ágyásbeli koordinátáival látszik). A szerkesztő nem mozdítja és nem
- * törli; ez csak a részletes lapon lehet.
+ * törli; ez csak a Tény és napló lapon lehet.
  */
 export const isFixed = (p: PlantingListItem, year: number) => p.year !== year || startedOrRecorded(p);
 
@@ -356,11 +356,30 @@ export function successionOf(draft: LayoutDraft, headId: number): Succession | n
   return { count: members.length, interval: a && b ? diffDays(a.start, b.start) : 14 };
 }
 
+/** A fejből a tagokra átkerülő terv: fajta (a belőle jövő adatokkal), vetőmag, időszak, módszer. */
+function followHead(m: PlantingListItem, lead: PlantingListItem): PlantingListItem {
+  return {
+    ...m,
+    variety_id: lead.variety_id,
+    variety_name: lead.variety_name,
+    seed_stock_id: lead.seed_stock_id,
+    seed_vintage: lead.seed_vintage,
+    has_seed: lead.has_seed,
+    window_id: lead.window_id,
+    method: lead.method,
+    row_spacing_cm: lead.row_spacing_cm,
+    in_row_spacing_cm: lead.in_row_spacing_cm,
+    days_to_harvest: lead.days_to_harvest,
+  };
+}
+
 /**
- * Újravetés a piszkozatban: a fej mögé `count - 1` új tag kerül, `interval` naponként eltolt
- * tervezett dátumokkal, a `placeSuccession` szerinti helyre; a tagokat közös ideiglenes kulcs köti
- * össze (mentéskor egy sorozat lesz belőlük). A korábban így felvett tagok előbb kikerülnek; null
- * (vagy egy vetés) esetén csak ez történik, és a fej is kiválik a sorozatból. Mentett sorozat
+ * Újravetés a piszkozatban: a fej mögé `count - 1` tag kerül, `interval` naponként eltolt tervezett
+ * dátumokkal; a tagokat közös ideiglenes kulcs köti össze (mentéskor egy sorozat lesz belőlük).
+ * A már meglévő tagok megmaradnak (azonosító, hely, sorok, tőszám, megjegyzés): csak a fejből jövő
+ * terv (`followHead`) és az eltolt dátumok frissülnek rajtuk, így a kézzel áthúzott tag a helyén
+ * marad. A felesleges tagok kikerülnek, az újak a `placeSuccession` szerinti helyre kerülnek.
+ * null (vagy egy vetés) esetén minden tag kikerül, és a fej is kiválik a sorozatból. Mentett sorozat
  * tagjánál, hely vagy dátum nélküli fejnél nem változik semmi.
  */
 export function setSuccession(draft: LayoutDraft, headId: number, s: Succession | null, bed: Bed): LayoutDraft {
@@ -368,33 +387,50 @@ export function setSuccession(draft: LayoutDraft, headId: number, s: Succession 
   if (!head || (head.series_id && !isDraftSeries(head))) return draft;
   const period = occupancyPeriod(head);
   const placement = placementOf(head, bed);
-  if (s && s.count >= 2 && (!period || !placement)) return draft;
+  const on = !!s && s.count >= 2;
+  if (on && (!period || !placement)) return draft;
   let d = draft;
   if (isDraftSeries(head)) {
-    for (const m of draft.items) if (m.series_id === head.series_id && m.id !== headId) d = removeItem(d, m.id);
+    for (const m of draft.items) {
+      if (m.series_id === head.series_id && m.id !== headId && (!on || (m.series_index ?? 0) > s!.count)) d = removeItem(d, m.id);
+    }
   }
-  if (!s || s.count < 2 || !period || !placement) {
+  if (!on || !period || !placement) {
     return { ...d, items: d.items.map((x) => (x.id === headId ? { ...x, series_id: null, series_index: null } : x)) };
   }
   const key = isDraftSeries(head) ? head.series_id! : `${DRAFT_SERIES}${headId}`;
   const lead: PlantingListItem = { ...head, series_id: key, series_index: 1 };
   d = { ...d, items: d.items.map((x) => (x.id === headId ? lead : x)) };
-  const offsets = seriesOffsets(s.count, s.interval);
-  const others = placedInBed(d.items.filter((x) => x.id !== headId), bed);
-  const spots = placeSuccession({ placement, period }, offsets, bedAxes(bed), others);
+  const byIndex = new Map(d.items.filter((m) => m.series_id === key && m.id !== headId).map((m) => [m.series_index ?? 0, m]));
+  const offsets = seriesOffsets(s!.count, s!.interval);
+  const others = placedInBed(d.items.filter((x) => x.id !== headId && x.series_id !== key), bed);
+  const kept = offsets.map((_, i) => {
+    const m = byIndex.get(i + 1);
+    return i > 0 && m ? placementOf(m, bed) : null;
+  });
+  const spots = placeSuccession({ placement, period }, offsets, bedAxes(bed), others, kept);
   offsets.slice(1).forEach((offset, i) => {
-    const id = d.nextId;
+    const index = i + 2;
     const dates = shiftDates(planDates(lead), offset);
-    const member: PlantingListItem = {
-      ...copyPlanting(lead, id),
+    const plan = {
       plan_sow_date: dates.sow,
       plan_transplant_date: dates.transplant,
       plan_harvest_start: dates.harvestStart,
       plan_end_date: dates.end,
+    };
+    const old = byIndex.get(index);
+    if (old) {
+      d = { ...d, items: d.items.map((x) => (x.id === old.id ? { ...followHead(x, lead), ...plan } : x)) };
+      return;
+    }
+    const id = d.nextId;
+    const member: PlantingListItem = {
+      ...copyPlanting(lead, id),
+      ...plan,
       plant_count: lead.plant_count,
       notes: lead.notes,
       series_id: key,
-      series_index: i + 2,
+      series_index: index,
     };
     d = applyStrips(addItem(d, member), [{ key: id, placement: spots[i + 1]!.placement }], bed);
   });

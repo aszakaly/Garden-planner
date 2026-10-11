@@ -7,7 +7,7 @@ import { isFullLength, LAYOUT_GRID_CM } from '@shared/domain/layout.ts';
 import { occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
 import type { PlantingListItem, Variety } from '@shared/types.ts';
 import { Chip } from '../../../components/ui/Chip.tsx';
-import { DateInput, FormRow, NumberInput, Select, TextArea, TextInput, Toggle } from '../../../components/ui/Form.tsx';
+import { FormRow, GuardedDateInput, NumberInput, Select, TextArea, TextInput, Toggle } from '../../../components/ui/Form.tsx';
 import { Notice } from '../../../components/ui/Notice.tsx';
 import { SegmentedControl } from '../../../components/ui/SegmentedControl.tsx';
 import { api } from '../../../lib/api.ts';
@@ -164,6 +164,7 @@ export function StripPanel({ ws, id }: { ws: BedWorkspaceState; id: number }) {
   const head = members[0];
   const canSeries = editable && !fixed && (!p.series_id || (isDraftSeries(p) && p.series_index === 1));
   const estimate = placement ? estimatePlantCount(p.rows, placement.cross_span_cm, p.in_row_spacing_cm) : null;
+  const clashing = new Set(ws.rawClashes.flatMap((c) => [c.a, c.b]));
 
   return (
     <>
@@ -370,19 +371,19 @@ export function StripPanel({ ws, id }: { ws: BedWorkspaceState; id: number }) {
           <PanelGroup title="Dátumok">
             {usesSow(form.method) && !p.carried_from_id && (
               <FormRow label={sowLabel(form.method)}>
-                <DateInput value={form.dates.sow} onChange={(v) => save(withDate(form, 'sow', v, crop, frost))} />
+                <GuardedDateInput value={form.dates.sow} onChange={(v) => save(withDate(form, 'sow', v, crop, frost))} />
               </FormRow>
             )}
             {usesTransplant(form.method) && (
               <FormRow label="Kiültetés">
-                <DateInput value={form.dates.transplant} onChange={(v) => save(withDate(form, 'transplant', v, crop, frost))} />
+                <GuardedDateInput value={form.dates.transplant} onChange={(v) => save(withDate(form, 'transplant', v, crop, frost))} />
               </FormRow>
             )}
             <FormRow label="Betakarítás kezdete">
-              <DateInput value={form.dates.harvestStart} onChange={(v) => save(withDate(form, 'harvestStart', v, crop, frost))} />
+              <GuardedDateInput value={form.dates.harvestStart} onChange={(v) => save(withDate(form, 'harvestStart', v, crop, frost))} />
             </FormRow>
             <FormRow label={p.perennial ? 'Terület felszabadul (évelő)' : 'Terület felszabadul'}>
-              <DateInput value={form.dates.end} onChange={(v) => save(withDate(form, 'end', v, crop, frost))} />
+              <GuardedDateInput value={form.dates.end} onChange={(v) => save(withDate(form, 'end', v, crop, frost))} />
             </FormRow>
             {window && (
               <button type="button" className={s.more} onClick={() => save(withSuggestedDates(form, window, crop, frost))}>
@@ -523,7 +524,11 @@ export function StripPanel({ ws, id }: { ws: BedWorkspaceState; id: number }) {
                       {mp && (
                         <span className={s.sub}>
                           {nf.format(mp.axis_start_cm)}–{nf.format(mp.axis_start_cm + mp.axis_span_cm)} cm
-                          {placement && mp.axis_start_cm === placement.axis_start_cm ? ' · ugyanott' : ' · mellette'}
+                          {clashing.has(m.id)
+                            ? ' · helyütközés: nincs elég hely'
+                            : placement && mp.axis_start_cm === placement.axis_start_cm
+                              ? ' · ugyanott'
+                              : ' · mellette'}
                         </span>
                       )}
                     </span>

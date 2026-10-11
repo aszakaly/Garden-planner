@@ -470,6 +470,30 @@ describe('újravetés a piszkozatban', () => {
     expect(isDirty([salad], off)).toBe(false);
   });
 
+  it('a meglévő tagok azonosítója és helye megmarad (pl. kézzel áthúzva); csak az új tag kap helyet', () => {
+    let d = setSuccession(draft([salad]), 2, s3, bed);
+    d = applyStrips(d, [{ key: -2, placement: pl(40, 40) }], bed);
+    // a fej új vége: a tagok dátuma követi, a helyük nem
+    const head = { ...d.items[0]!, plan_end_date: '2027-06-10' };
+    d = setSuccession(editPlan(d, head, true), 2, s3, bed);
+    expect(d.items.map((p) => [p.id, p.axis_start_cm, p.plan_end_date])).toEqual([
+      [2, 0, '2027-06-10'],
+      [-1, 40, '2027-07-20'],
+      [-2, 40, '2027-08-29'],
+    ]);
+    // a fajta is követi a fejet
+    d = setSuccession(editPlan(d, { ...d.items[0]!, variety_id: 70, variety_name: 'Kagylósaláta' }, true), 2, s3, bed);
+    expect(d.items.map((p) => p.variety_name)).toEqual(['Kagylósaláta', 'Kagylósaláta', 'Kagylósaláta']);
+    // negyedik vetés: csak az kap új helyet, a többi marad
+    d = setSuccession(d, 2, { count: 4, interval: 40 }, bed);
+    expect(d.items.map((p) => [p.id, p.series_index, p.axis_start_cm])).toEqual([
+      [2, 1, 0],
+      [-1, 2, 40],
+      [-2, 3, 40],
+      [-3, 4, 0],
+    ]);
+  });
+
   it('mentett sorozat tagjánál és dátum nélküli fejnél nem változik semmi', () => {
     const member = { ...salad, series_id: 'abc', series_index: 2 };
     expect(setSuccession(draft([member]), 2, s3, bed).items).toEqual([member]);

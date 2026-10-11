@@ -159,7 +159,7 @@ export function useBedWorkspace(bed: Bed, year: number) {
 
   const [day, setDayState] = useState(() => initialDay(year));
   const [session, setSession] = useState<Session | null>(null);
-  // A piszkozat a mentett állapotból indul: nyitáskor, mentés és elvetés után, és a részletes lap után
+  // A piszkozat a mentett állapotból indul: nyitáskor, mentés és elvetés után, és a Tény és napló lap után
   const [synced, setSynced] = useState(false);
   const [selection, setSelection] = useState<Selection>(NONE);
   const [notice, setNotice] = useState<string | null>(null);
@@ -186,7 +186,7 @@ export function useBedWorkspace(bed: Bed, year: number) {
 
   useEffect(() => {
     if (!initial) return;
-    // Ha a mentett állapot közben kívülről változott (pl. a részletes lapon), és a piszkozatban
+    // Ha a mentett állapot közben kívülről változott (pl. a Tény és napló lapon), és a piszkozatban
     // nincs mentetlen módosítás, a friss állapot lesz az új kiindulás; különben a régi marad
     const stale = !!session && session.from !== initial && !dirty;
     if (!synced || stale) {
@@ -198,6 +198,14 @@ export function useBedWorkspace(bed: Bed, year: number) {
 
   const items = useMemo(() => draft?.items ?? [], [draft]);
   const byId = useMemo(() => new Map(items.map((p) => [p.id, p])), [items]);
+
+  // A kijelölt ültetés a friss mentett állapotban már nincs meg (pl. a Tény és napló lapon
+  // törölték): a panel az áttekintésre vált. Csak szinkron piszkozatnál, mert mentés után a
+  // kijelölés már az új azonosítóra mutat, mielőtt a piszkozat a mentett állapotra frissülne.
+  useEffect(() => {
+    if (!session || !synced || session.from !== initial) return;
+    if ('id' in selection && !byId.has(selection.id)) setSelection(NONE);
+  }, [session, synced, initial, selection, byId]);
   const strips = useMemo(() => (draft ? stripsAt(draft, bed, year, day) : []), [draft, bed, year, day]);
   const rows = useMemo(() => layoutRows(strips), [strips]);
   const reorderable = rowsReorderable(rows) && !strips.some((x) => x.fixed);
@@ -569,7 +577,7 @@ export function useBedWorkspace(bed: Bed, year: number) {
     const p = byId.get(key);
     if (!p) return;
     if (isFixed(p, year)) {
-      setNotice('Ez az ültetés már elkezdődött vagy más évhez tartozik: a részletes lapon módosítható vagy törölhető.');
+      setNotice('Ez az ültetés már elkezdődött vagy más évhez tartozik: a Tény és napló lapon törölhető.');
       return;
     }
     // a piszkozatban indított újravetés tagjai a fejjel együtt mennek
@@ -686,7 +694,7 @@ export function useBedWorkspace(bed: Bed, year: number) {
     if (!p) return;
     const period = occupancyPeriod(p);
     if (!period) {
-      setNotice('Ennek az ültetésnek nincs dátuma: előbb a Részletek lapon add meg, mikor kerül az ágyásba.');
+      setNotice('Ennek az ültetésnek nincs dátuma: előbb a panelen add meg, mikor kerül az ágyásba („Dátum megadása”).');
       return;
     }
     const span = p.axis_span_cm ?? spanForRows(p.rows ?? 1, p.row_spacing_cm);
@@ -752,7 +760,7 @@ export function useBedWorkspace(bed: Bed, year: number) {
     void queryClient.invalidateQueries({ queryKey: qk.plantings });
   };
 
-  /** Részletes lap: ha van mentetlen módosítás, előbb ment (az új sáv így kap azonosítót). */
+  /** Tény és napló lap: ha van mentetlen módosítás, előbb ment (az új sáv így kap azonosítót). */
   const openDetails = (id: number) => {
     if (save.isPending) return;
     if (!dirty) setDetailsId(id);

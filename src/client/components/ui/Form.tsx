@@ -1,4 +1,4 @@
-import type { ReactNode, SelectHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import { useState, type ReactNode, type SelectHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { MONTHS_SHORT_HU } from '@shared/labels.ts';
 import s from './Form.module.css';
 
@@ -103,6 +103,46 @@ export function DateInput({
       className={`${s.input} ${s.date}`}
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value || null)}
+    />
+  );
+}
+
+/** Elfogadható nap: üres (törlés), vagy az adatbázis által is elfogadott évben (1900–2200). */
+const plausibleDate = (v: string | null) => v == null || (Number(v.slice(0, 4)) >= 1900 && Number(v.slice(0, 4)) <= 2200);
+
+/**
+ * Dátumválasztó, amely csak elfogadható napot ad tovább (`valid`, alapból: 1900 és 2200 közötti
+ * év, vagy üres). A Chrome a billentyűzettel írt évet számjegyenként jelenti (0002-07-01,
+ * 0020-07-01 …): a félig begépelt érték csak a mezőben látszik, elhagyáskor a korábbi nap áll
+ * vissza. A piszkozat ahhoz a naphoz tartozik, amelyikből kiindult: ha a nap közben máshonnan
+ * változik, az új nap látszik.
+ */
+export function GuardedDateInput({
+  value,
+  onChange,
+  valid = plausibleDate,
+  onBlur,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
+  value: string | null | undefined;
+  onChange: (v: string | null) => void;
+  valid?: (v: string | null) => boolean;
+}) {
+  const [draft, setDraft] = useState<{ base: string | null | undefined; value: string } | null>(null);
+  return (
+    <DateInput
+      {...rest}
+      value={draft && draft.base === value ? draft.value : value}
+      onChange={(v) => {
+        if (valid(v)) {
+          setDraft(null);
+          onChange(v);
+        } else setDraft({ base: value, value: v ?? '' });
+      }}
+      onBlur={(e) => {
+        setDraft(null);
+        onBlur?.(e);
+      }}
     />
   );
 }
