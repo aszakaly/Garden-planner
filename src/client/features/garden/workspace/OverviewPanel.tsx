@@ -1,6 +1,7 @@
 import { Lightbulb } from 'lucide-react';
 import { LAYOUT_PHASES, LAYOUT_PHASE_LABEL } from '@shared/labels.ts';
 import { shortDate } from '@shared/domain/isoDate.ts';
+import { occupancyPeriod } from '@shared/domain/plantings.ts';
 import type { ClashFix } from '@shared/domain/layout.ts';
 import type { PlantingListItem } from '@shared/types.ts';
 import { Notice } from '../../../components/ui/Notice.tsx';
@@ -79,17 +80,21 @@ export function OverviewPanel({ ws }: { ws: BedWorkspaceState }) {
 
       {ws.unplaced.length > 0 && (
         <PanelGroup title={`Elhelyezésre vár (${ws.unplaced.length})`}>
-          {ws.unplaced.map((p) => (
-            <div key={p.id} className={s.row}>
-              <span className={s.rowText}>
-                {plantingTitle(p)}
-                <span className={s.sub}>nincs helye vagy dátuma, ezért az ágyásképen nem látszik</span>
-              </span>
-              <button type="button" className={s.link} onClick={() => ws.placeUnplaced(p.id)}>
-                Hely kijelölése
-              </button>
-            </div>
-          ))}
+          {ws.unplaced.map((p) => {
+            // dátum nélkül a hely sem jelölhető ki: előbb a panelen kell megadni, mikor kerül az ágyásba
+            const dated = occupancyPeriod(p) != null;
+            return (
+              <div key={p.id} className={s.row}>
+                <span className={s.rowText}>
+                  {plantingTitle(p)}
+                  <span className={s.sub}>{dated ? 'nincs helye az ágyásban' : 'nincs dátuma, ezért nem tudni, mikor áll itt'}</span>
+                </span>
+                <button type="button" className={s.link} onClick={() => (dated ? ws.placeUnplaced(p.id) : ws.selectStrip(p.id))}>
+                  {dated ? 'Hely kijelölése' : 'Dátum megadása'}
+                </button>
+              </div>
+            );
+          })}
         </PanelGroup>
       )}
 

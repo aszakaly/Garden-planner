@@ -1,8 +1,7 @@
 import { NotebookPen, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { MONTHS_HU, PLAN_YEAR_STATUS_LABEL } from '@shared/labels.ts';
-import type { Suggestion } from '@shared/domain/suggestions.ts';
 import { DEFAULT_SETTINGS } from '@shared/settings.ts';
 import type { PlantingListItem } from '@shared/types.ts';
 import { PageHeader, ToolbarButton } from '../../components/ui/PageHeader.tsx';
@@ -15,12 +14,12 @@ import { CarryOverCard } from './CarryOverCard.tsx';
 import { GardenTimeline } from './GardenTimeline.tsx';
 import { NextYearPanel } from './NextYearPanel.tsx';
 import { PlanYearSheet } from './PlanYearSheet.tsx';
-import { SuggestionSheet } from './SuggestionSheet.tsx';
 import { PlantingEditSheet } from './PlantingEditSheet.tsx';
 import { PlantingRow } from './PlantingRow.tsx';
 import { TimelineLegend } from './TimelineLegend.tsx';
 import { byStart, effectiveBedId, firstActionOf, needsSeed } from './plantingView.ts';
 import { useYearChecks } from './useChecks.ts';
+import { useOpenPlanting, workspaceLink } from '../garden/workspace/openPlanting.ts';
 import s from './PlanPage.module.css';
 
 type View = 'agyas' | 'idorend';
@@ -34,8 +33,10 @@ export function PlanPage() {
   const [editing, setEditing] = useState<PlantingListItem | 'new' | null>(null);
   const [editTab, setEditTab] = useState<'terv' | 'teny'>('terv');
   const [yearSheet, setYearSheet] = useState(false);
-  const [suggestBed, setSuggestBed] = useState<number | null>(null);
-  const [picked, setPicked] = useState<{ suggestion: Suggestion; bedId: number } | null>(null);
+  const navigate = useNavigate();
+  const back = { to: '/terv', label: 'Éves terv' };
+  // Az ágyásban álló ültetés a munkalapon nyílik, a hely nélküli az ültetési lapon
+  const open = useOpenPlanting(back, setEditing);
   const { data: planYear } = usePlanYear(year);
   const { data: candidates = [] } = useCarryCandidates(year);
 
@@ -121,7 +122,7 @@ export function PlanPage() {
           year={year}
           beds={beds}
           ctx={checks.ctx}
-          onSuggest={setSuggestBed}
+          onSuggest={(bedId) => navigate(workspaceLink(bedId, { suggest: true }), { state: { back } })}
           onNew={() => setEditing('new')}
         />
       )}
@@ -142,7 +143,7 @@ export function PlanPage() {
               plantings={plantings}
               clashIds={clashIds}
               frost={settings ?? DEFAULT_SETTINGS}
-              onSelect={setEditing}
+              onSelect={open}
             />
             <TimelineLegend plantings={plantings} />
           </section>
@@ -172,7 +173,7 @@ export function PlanPage() {
                   detail={items.length}
                 >
                   {items.map((p) => (
-                    <PlantingRow key={p.id} planting={p} year={year} bed={bed} issues={checks.byPlanting.get(p.id)} onOpen={() => setEditing(p)} />
+                    <PlantingRow key={p.id} planting={p} year={year} bed={bed} issues={checks.byPlanting.get(p.id)} onOpen={() => open(p)} />
                   ))}
                 </Section>
               ))}
@@ -197,7 +198,7 @@ export function PlanPage() {
                     bed={bedById.get(effectiveBedId(p) ?? 0)}
                     showBed
                     issues={checks.byPlanting.get(p.id)}
-                    onOpen={() => setEditing(p)}
+                    onOpen={() => open(p)}
                   />
                 ))}
               </Section>
@@ -210,24 +211,10 @@ export function PlanPage() {
         onClose={() => {
           setEditing(null);
           setEditTab('terv');
-          setPicked(null);
         }}
         planting={editing && editing !== 'new' ? editing : undefined}
-        bedId={picked?.bedId}
-        suggestion={editing === 'new' ? picked?.suggestion : undefined}
         initialTab={editTab}
         year={year}
-      />
-      <SuggestionSheet
-        open={suggestBed !== null}
-        onClose={() => setSuggestBed(null)}
-        year={year}
-        request={{ bedId: suggestBed }}
-        onPick={(sg, bedId) => {
-          setSuggestBed(null);
-          setPicked({ suggestion: sg, bedId });
-          setEditing('new');
-        }}
       />
       {planYear && <PlanYearSheet open={yearSheet} onClose={() => setYearSheet(false)} planYear={planYear} />}
     </div>

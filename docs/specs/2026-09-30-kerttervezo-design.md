@@ -300,7 +300,10 @@ Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változat
 - API-teszt: a sorozatos tömeges mentés.
 - E2E: a 12. lépés helyett a terv elfogadási esetei.
 
-**Később:** húzás az idővonalon (a „B” wireframe legerősebb eleme).
+**Később:**
+- Húzás az idővonalon (a „B” wireframe legerősebb eleme).
+- A terv és a tény teljes logikai folyamatának átnézése (mikor melyik számít, mit lehet szerkeszteni a munkalapon és mit a Tény és napló lapon).
+- A javaslatok puhítása: a helyigény (sortáv, alapszélesség) most túlságosan meghatározza a rangsort és a kizárást; a valós gyakorlat sűrűbb (2026-10-11).
 
 **Elvetve:**
 - Az idővonal-vászon („B”) és a szezon-oszlopok („C”) mint fő felület.

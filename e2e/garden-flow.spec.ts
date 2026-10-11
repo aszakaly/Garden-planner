@@ -111,7 +111,13 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
   await test.step('8. naplóbejegyzés az ültetéshez: termés, minőség, megjegyzés', async () => {
     await page.goto('/terv');
     await page.getByRole('button', { name: /^Paradicsom – Ökörszív/ }).first().click();
+    // Az ágyásban álló ültetés a munkalapon nyílik, kijelölve; a tény és a napló külön lapon
+    await expect(page).toHaveURL(/\/agyas\/\d+$/);
+    const panel = page.getByRole('complementary', { name: 'Részletek' });
+    await expect(panel.getByRole('heading', { name: /^Paradicsom – Ökörszív/ })).toBeVisible();
+    await panel.getByRole('button', { name: /^Tény és napló/ }).click();
     const plantingSheet = dialog(page, 'Paradicsom – Ökörszív');
+    await expect(plantingSheet.getByRole('radio', { name: 'Terv' })).toHaveCount(0);
     await expect(plantingSheet.getByText('Vetés (palántának)')).toBeVisible();
     await plantingSheet.getByRole('radio', { name: 'Napló' }).click();
     await plantingSheet.getByRole('button', { name: 'Új bejegyzés' }).click();
@@ -151,21 +157,24 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
     await expect(page.getByText('Ebben az évben (2028) még nincs tervezett ültetés')).toBeVisible();
     await page.getByRole('button', { name: 'Mi kerülhet ide?' }).click();
 
-    const sheet = dialog(page, 'Mi kerülhet ide?');
+    // Az ágyás munkalapja nyílik, javaslatlistával az egész ágyásra
+    const panel = page.getByRole('complementary', { name: 'Részletek' });
+    await expect(panel.getByRole('heading', { name: 'Mi kerülhet az ágyásba?' })).toBeVisible();
     // 2027-ben természöldség (paradicsom) állt itt → a forgóban gyökérzöldség következik
-    const first = sheet.getByRole('button').filter({ hasText: 'Most gyökérzöldség következik' }).first();
+    const first = panel.getByRole('button').filter({ hasText: 'Most gyökérzöldség következik' }).first();
     await expect(first).toBeVisible();
     // Ugyanabból a családból (burgonyafélék) egy év múlva: kerülendő
-    await sheet.getByRole('button', { name: /Kerülendők megjelenítése/ }).click();
-    await expect(sheet.getByRole('button', { name: /^Paprika/ })).toContainText('Családi szünet');
+    await panel.getByRole('button', { name: /Kerülendők megjelenítése/ }).click();
+    await expect(panel.getByRole('button', { name: /^Paprika/ })).toContainText('Családi szünet');
 
-    // A javaslatból kitöltött új ültetés nyílik
+    // A javaslat a munkalapra kerül, kijelölve; a Mentés egyben írja
     const plantName = (await first.locator('span').nth(2).textContent())!.split(' – ')[0]!.trim();
     await first.click();
-    const planting = dialog(page, 'Új ültetés');
-    await expect(field(planting, 'Növény').locator('option:checked')).toHaveText(plantName);
-    await expect(field(planting, 'Ágyás')).toHaveValue(/\d+/);
-    await confirm(planting);
+    await expect(panel.getByRole('heading', { name: new RegExp(`^${plantName}`) })).toBeVisible();
+    const saveBar = page.getByRole('region', { name: 'Mentetlen módosítások' });
+    await saveBar.getByRole('button', { name: 'Mentés' }).click();
+    await expect(saveBar).toHaveCount(0);
+    await page.goto('/terv');
     await expect(page.getByRole('button', { name: new RegExp(`^${plantName}`) }).first()).toBeVisible();
   });
 

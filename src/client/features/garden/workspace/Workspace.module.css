@@ -391,3 +391,81 @@
   flex: 1;
   text-align: left;
 }
+
+/* Mentési ütközés */
+.conflictText {
+  max-width: 420px;
+  color: #c4271d;
+  font-weight: 500;
+}
+
+/* Telefon: Elvetés és Mentés az eszköztárban (mint az iOS szerkesztő nézeteiben) */
+.headerDiscard,
+.headerSave {
+  padding: 6px 4px;
+  font-size: 17px;
+  color: var(--tint);
+}
+.headerSave {
+  font-weight: 600;
+}
+.headerDiscard:disabled,
+.headerSave:disabled {
+  color: var(--label-3);
+}
+
+/* Telefon: a kijelöléshez tartozó panel alsó lap (félmagasan, vagy felhúzva) */
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  height: 52dvh;
+  border-radius: 16px 16px 0 0;
+  background: var(--bg-grouped);
+  box-shadow: var(--shadow-sheet);
+  transition: height 0.25s var(--ease-out);
+}
+.sheetFull {
+  height: 88dvh;
+}
+.sheetHandle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  height: 22px;
+}
+.sheetHandle span {
+  width: 38px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--fill-1);
+}
+.sheetBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 12px calc(16px + env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
+}
+/* A lap mögött is végig lehessen görgetni a munkalapot; az üzenet a lap fölött jelenik meg */
+.workspace[data-sheet='half'] {
+  padding-bottom: 52dvh;
+}
+.workspace[data-sheet='full'] {
+  padding-bottom: 88dvh;
+}
+.workspace[data-sheet] .bottom {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(52dvh + 8px);
+  margin: 0;
+  z-index: 31;
+}
+.workspace[data-sheet='full'] .bottom {
+  bottom: calc(88dvh + 8px);
+}

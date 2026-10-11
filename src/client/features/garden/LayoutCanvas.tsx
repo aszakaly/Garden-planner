@@ -113,19 +113,21 @@ interface Drag {
 }
 
 /**
- * Az elem szélessége CSS-képpontban. A `clientWidth` és a ResizeObserver tartalomdoboza a
- * transzformációktól független, így a lap nyitó animációjának nagyítása nem számít bele
- * (a `getBoundingClientRect` a nagyított méretet adná).
+ * A kép rendelkezésre álló szélessége CSS-képpontban: a szülőelem tartalomdoboza (a kép 100%
+ * széles). A szülőt mérjük, mert a Firefox az `<svg>` elem `clientWidth`-jére 0-t ad. A
+ * `clientWidth` és a ResizeObserver tartalomdoboza a transzformációktól független, így egy
+ * nyitó animáció nagyítása nem számít bele (a `getBoundingClientRect` a nagyított méretet adná).
  */
 function useWidth(ref: RefObject<Element | null>): number | null {
   const [width, setWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
-    const el = ref.current;
+    const el = ref.current?.parentElement;
     if (!el) return;
     const set = (w: number) => {
       if (w > 0) setWidth(w);
     };
-    set(el.clientWidth);
+    const style = getComputedStyle(el);
+    set(el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
     const ro = new ResizeObserver(([entry]) => entry && set(entry.contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();

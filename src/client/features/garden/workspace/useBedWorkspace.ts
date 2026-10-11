@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { LAYOUT_PHASES, type LayoutPhase } from '@shared/labels.ts';
 import { relationOf } from '@shared/domain/companions.ts';
@@ -37,7 +38,7 @@ import type { Suggestion, SuggestionTarget } from '@shared/domain/suggestions.ts
 import { DEFAULT_SETTINGS } from '@shared/settings.ts';
 import type { PlantingBatchInput } from '@shared/schemas.ts';
 import type { Bed, PlantingListItem } from '@shared/types.ts';
-import { api } from '../../../lib/api.ts';
+import { api, ApiError } from '../../../lib/api.ts';
 import { cropColor } from '../../../lib/cropColors.ts';
 import { errorMessage } from '../../../lib/errors.ts';
 import { todayISO } from '../../../lib/format.ts';
@@ -165,6 +166,9 @@ export function useBedWorkspace(bed: Bed, year: number) {
   const [detailsId, setDetailsId] = useState<number | null>(null);
   // A tervezési adatok változása a kapcsolt sávokra is átkerül (sávonként, alapból be)
   const [linkOn, setLinkOn] = useState(true);
+  // A mentés nem lehetséges, mert egy módosított ültetést közben máshol (pl. telefonon) töröltek
+  const [conflict, setConflict] = useState(false);
+  const queryClient = useQueryClient();
 
   const initial = useMemo(() => (plantings ? draftFrom(plantings, bed) : null), [plantings, bed]);
   const draft = session?.draft ?? null;
@@ -717,22 +721,35 @@ export function useBedWorkspace(bed: Bed, year: number) {
     save.mutate(batch, {
       onSuccess: (res) => {
         const idOf = (id: number) => (id < 0 ? (res.created[creates.indexOf(id)] ?? id) : id);
-        setSelection((cur) => (cur.kind === 'strip' ? { kind: 'strip', id: idOf(cur.id) } : cur));
+        setSelection((cur) => ('id' in cur ? { ...cur, id: idOf(cur.id) } : cur));
         setNotice(null);
+        setConflict(false);
         setSynced(false);
         then?.(idOf);
       },
-      onError: (e) => setNotice(errorMessage(e)),
+      onError: (e) => {
+        // a módosított ültetés már nincs meg: a mentés ismételve sem sikerülne
+        if (e instanceof ApiError && e.status === 404) setConflict(true);
+        else setNotice(errorMessage(e));
+      },
     });
   };
 
   /** Minden módosítás elvetése: a mentett állapot. */
   const discard = () => {
     if (save.isPending) return;
-    setSelection((cur) => (cur.kind === 'strip' && (cur.id < 0 || !initial?.items.some((p) => p.id === cur.id)) ? NONE : cur));
+    setSelection((cur) => ('id' in cur && (cur.id < 0 || !initial?.items.some((p) => p.id === cur.id)) ? NONE : cur));
     setNotice(null);
+    setConflict(false);
     setSynced(false);
     if (initial) setSession({ from: initial, draft: initial });
+  };
+
+  /** Mentési ütközés után: a módosítások elvetése és a mentett állapot újratöltése. */
+  const discardAndRefresh = () => {
+    discard();
+    setSelection(NONE);
+    void queryClient.invalidateQueries({ queryKey: qk.plantings });
   };
 
   /** Részletes lap: ha van mentetlen módosítás, előbb ment (az új sáv így kap azonosítót). */
@@ -825,6 +842,8 @@ export function useBedWorkspace(bed: Bed, year: number) {
     saving: save.isPending,
     commit,
     discard,
+    conflict,
+    discardAndRefresh,
     detailsId,
     openDetails,
     closeDetails,

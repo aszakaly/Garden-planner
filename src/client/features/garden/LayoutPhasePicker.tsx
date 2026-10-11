@@ -9,6 +9,9 @@ import s from './BedLayout.module.css';
 
 export type PhasePreview = { placement: Placement; color: string }[];
 
+/** Telefonon a szegmentált vezérlő rövid feliratai */
+const SHORT: Record<LayoutPhase, string> = { elo: 'Elő', fo: 'Fő', uto: 'Utó' };
+
 interface Props {
   bed: Bed;
   year: number;
@@ -38,7 +41,10 @@ export function LayoutPhasePicker({ bed, year, days, day, previews, onChange }: 
             className={`${s.phase} ${on ? s.phaseOn : ''}`}
             onClick={() => onChange(days[phase])}
           >
-            <span className={s.phaseName}>{LAYOUT_PHASE_LABEL[phase]}</span>
+            <span className={s.phaseName}>
+              <span className={s.phaseLong}>{LAYOUT_PHASE_LABEL[phase]}</span>
+              <span className={s.phaseShort}>{SHORT[phase]}</span>
+            </span>
             <span className={s.phaseDay}>{shortDate(days[phase])}</span>
             <svg className={s.mini} viewBox={`0 0 ${bed.length_cm} ${bed.width_cm}`} preserveAspectRatio="none" aria-hidden>
               <rect className={s.miniBed} width={bed.length_cm} height={bed.width_cm} />

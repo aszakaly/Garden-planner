@@ -17,6 +17,7 @@ import { PlantingEditSheet } from '../plan/PlantingEditSheet.tsx';
 import { shortDate } from '@shared/domain/isoDate.ts';
 import { plantingTitle, startOf } from '../plan/plantingView.ts';
 import { isWarning, useYearChecks } from '../plan/useChecks.ts';
+import { useOpenPlanting } from '../garden/workspace/openPlanting.ts';
 import s from './WarningsPage.module.css';
 
 type Filter = 'fontos' | 'mind';
@@ -29,6 +30,8 @@ export function WarningsPage() {
   const checks = useYearChecks(year);
   const [filter, setFilter] = useStoredState<Filter>('kerttervezo.warningFilter', 'fontos');
   const [editing, setEditing] = useState<PlantingListItem | null>(null);
+  // Az ágyásban álló ültetés a munkalapon nyílik, kijelölve; a hely nélküli az ültetési lapon
+  const open = useOpenPlanting({ to: '/figyelmeztetesek', label: 'Figyelmeztetések' }, setEditing);
 
   const byId = useMemo(() => new Map((checks.ctx?.all ?? []).map((p) => [p.id, p])), [checks.ctx]);
   const visible = uniqueIssues(checks.issues).filter((i) => i.level !== 'ok' && (filter === 'mind' || isWarning(i)));
@@ -87,7 +90,7 @@ export function WarningsPage() {
             const Icon = ICON[i.level];
             return (
               <div key={i.key} className={s.row}>
-                <button type="button" className={s.inner} onClick={() => p && setEditing(p)}>
+                <button type="button" className={s.inner} onClick={() => p && open(p)}>
                   <Icon size={18} strokeWidth={2.3} className={`${s.icon} ${s[i.level]}`} />
                   <span className={s.body}>
                     <span className={s.title}>
