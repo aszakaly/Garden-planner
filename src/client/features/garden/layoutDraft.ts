@@ -281,15 +281,41 @@ export function replaceItem(draft: LayoutDraft, p: PlantingListItem): LayoutDraf
   };
 }
 
+/** A csere után is a régi ültetésé: ezeket a terv mentése (PUT) nem írja, a megjegyzés pedig a felhasználó szövege. */
+const KEPT_ON_REPLACE = [
+  'status',
+  'carried_from_id',
+  'notes',
+  'actual_sow_date',
+  'actual_transplant_date',
+  'actual_harvest_start',
+  'actual_end_date',
+  'actual_bed_id',
+  'actual_axis_start_cm',
+  'actual_axis_span_cm',
+  'actual_cross_start_cm',
+  'actual_cross_span_cm',
+  'eval_success',
+  'eval_yield',
+  'eval_recommend',
+  'eval_notes',
+] as const;
+
 /**
- * Csere más ültetésre ugyanott (pl. másik növény): az új sávé lesz a régi helye (a hívó helyezi el).
- * Az új (negatív azonosítójú) sáv azonosítója marad; a mentett ültetés törlendő lesz, és a csere új
- * sávként kerül be, hogy a régi feladatállapota és naplókapcsolata ne szálljon át egy másik növényre.
+ * Csere más ültetésre ugyanott (pl. másik növény): az új terv a régi ültetés helyére kerül, az
+ * azonosítója marad, így a mentés módosítás lesz, és a naplókapcsolat, a feladatok állapota is
+ * megmarad. A helyet a hívó adja meg. A mentett sorozat tagja a sorozatban marad (a mentés sem
+ * változtat rajta); a piszkozatban indított sorozatból a csere kiválik (a fej terve nem illene rá).
  */
-export function replaceWith(draft: LayoutDraft, oldId: number, fresh: PlantingListItem): { draft: LayoutDraft; id: number } {
-  if (oldId < 0) return { draft: replaceItem(draft, { ...fresh, id: oldId }), id: oldId };
-  const id = draft.nextId;
-  return { draft: addItem(removeItem(draft, oldId), { ...fresh, id }), id };
+export function replaceWith(draft: LayoutDraft, oldId: number, fresh: PlantingListItem): LayoutDraft {
+  const old = draft.items.find((x) => x.id === oldId);
+  if (!old) return draft;
+  const next: PlantingListItem = { ...fresh, id: oldId };
+  for (const k of KEPT_ON_REPLACE) Object.assign(next, { [k]: old[k] });
+  if (old.series_id && !isDraftSeries(old)) {
+    Object.assign(next, { series_id: old.series_id, series_index: old.series_index, series_size: old.series_size });
+  }
+  return pruneSeries(replaceItem(draft, next));
 }
 
 /**
@@ -354,6 +380,56 @@ export function successionOf(draft: LayoutDraft, headId: number): Succession | n
   const a = occupancyPeriod(members[0]!);
   const b = occupancyPeriod(members[1]!);
   return { count: members.length, interval: a && b ? diffDays(a.start, b.start) : 14 };
+}
+
+/**
+ * A piszkozatban indított sorozatok rendbetétele egy tag kiesése (törlés, csere) után: a tagok
+ * sorszáma 1-től hézag nélkül követi egymást; az egyetlen megmaradt tag (a fej) kiválik, hogy ne
+ * mentődjön egytagú sorozatként.
+ */
+export function pruneSeries(draft: LayoutDraft): LayoutDraft {
+  const groups = Map.groupBy(
+    draft.items.filter((x) => isDraftSeries(x)),
+    (x) => x.series_id!,
+  );
+  const fixes = new Map<number, Pick<PlantingListItem, 'series_id' | 'series_index'>>();
+  for (const members of groups.values()) {
+    const sorted = [...members].sort((a, b) => (a.series_index ?? 0) - (b.series_index ?? 0));
+    sorted.forEach((m, i) => {
+      if (sorted.length < 2) fixes.set(m.id, { series_id: null, series_index: null });
+      else if (m.series_index !== i + 1) fixes.set(m.id, { series_id: m.series_id, series_index: i + 1 });
+    });
+  }
+  if (!fixes.size) return draft;
+  return { ...draft, items: draft.items.map((x) => (fixes.has(x.id) ? { ...x, ...fixes.get(x.id) } : x)) };
+}
+
+/**
+ * A fej tervének változása a piszkozatban indított sorozat tagjain: mindegyik a saját eltolásával
+ * (a régi fejhez mért kezdetével) követi a fej új dátumait, és átveszi a fejből jövő tervet
+ * (`followHead`). A tagok helye, száma és sorszáma nem változik, így a kézzel áthúzott vagy a
+ * kihagyott vetés is marad.
+ */
+export function followSuccession(draft: LayoutDraft, before: PlantingListItem, after: PlantingListItem): LayoutDraft {
+  if (!isDraftSeries(after) || after.series_index !== 1) return draft;
+  const start = occupancyPeriod(before)?.start;
+  if (!start) return draft;
+  return {
+    ...draft,
+    items: draft.items.map((m) => {
+      if (m.series_id !== after.series_id || m.id === after.id) return m;
+      const own = occupancyPeriod(m)?.start;
+      if (!own) return m;
+      const d = shiftDates(planDates(after), diffDays(start, own));
+      return {
+        ...followHead(m, after),
+        plan_sow_date: d.sow,
+        plan_transplant_date: d.transplant,
+        plan_harvest_start: d.harvestStart,
+        plan_end_date: d.end,
+      };
+    }),
+  };
 }
 
 /** A fejből a tagokra átkerülő terv: fajta (a belőle jövő adatokkal), vetőmag, időszak, módszer. */

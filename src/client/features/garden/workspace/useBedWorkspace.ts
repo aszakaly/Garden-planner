@@ -56,10 +56,12 @@ import {
   copyPlanting,
   draftFrom,
   editPlan,
+  followSuccession,
   isDraftSeries,
   isFixed,
   plantingFor,
   plantingFromSuggestion,
+  pruneSeries,
   removeItem,
   replaceWith,
   seriesMembers,
@@ -443,11 +445,11 @@ export function useBedWorkspace(bed: Bed, year: number) {
    * A piszkozat módosítása egy művelettel; ha nem lehetséges (null), az üzenet jelenik meg, egyébként
    * a korábbi üzenet eltűnik. Mentés közben nincs módosítás (a munkalap zárolva van).
    */
-  const update = (fn: (d: LayoutDraft) => LayoutDraft | null, failMessage?: string): boolean => {
+  const update = (fn: (d: LayoutDraft) => LayoutDraft | null, failMessage?: string | (() => string)): boolean => {
     if (!session || save.isPending) return false;
     const next = fn(session.draft);
     if (!next) {
-      if (failMessage) setNotice(failMessage);
+      if (failMessage) setNotice(typeof failMessage === 'function' ? failMessage() : failMessage);
       return false;
     }
     setNotice(null);
@@ -580,8 +582,8 @@ export function useBedWorkspace(bed: Bed, year: number) {
       setNotice('Ez az ültetés már elkezdődött vagy más évhez tartozik: a Tény és napló lapon törölhető.');
       return;
     }
-    // a piszkozatban indított újravetés tagjai a fejjel együtt mennek
-    if (update((d) => removeItem(headless(d, key), key))) setSelection(NONE);
+    // a piszkozatban indított újravetés tagjai a fejjel együtt mennek; egy tag kiesése után a sorozat rendbe jön
+    if (update((d) => pruneSeries(removeItem(headless(d, key), key)))) setSelection(NONE);
   };
 
   /** A piszkozatban indított újravetés fejénél előbb a tagok kikerülnek (a sáv cseréje vagy törlése előtt). */
@@ -591,33 +593,40 @@ export function useBedWorkspace(bed: Bed, year: number) {
   };
 
   /**
-   * Csere ugyanott: a hely és a szélesség marad, a többi (dátumok, sorszám) az új ültetésé. A mentett
-   * ültetés helyett új kerül be (`replaceWith`); a csere kijelölődik.
+   * Csere ugyanott: a hely és a szélesség marad (ha van), a többi (dátumok, sorszám) az új ültetésé. Az
+   * azonosító is marad (`replaceWith`), így a mentett ültetés naplókapcsolata és feladatai sem vesznek
+   * el; a csere kijelölődik.
    */
-  const replaceBy = (key: number, make: (id: number) => PlantingListItem | null, failMessage: string) => {
-    let made: { id: number; item: PlantingListItem } | null = null;
-    const ok = update((d) => {
-      const old = d.items.find((x) => x.id === key);
-      const where = old ? placementOf(old, bed) : null;
-      if (!old || !where || isFixed(old, year)) return null;
-      const base = headless(d, key);
-      const item = make(key < 0 ? key : base.nextId);
-      if (!item) return null;
-      const r = replaceWith(base, key, item);
-      made = { id: r.id, item };
-      return applyStrips(r.draft, [{ key: r.id, placement: where }], bed);
-    }, failMessage);
+  const replaceBy = (key: number, make: (id: number) => PlantingListItem | null) => {
+    let made: PlantingListItem | null = null;
+    let fail = PLANTS_LOADING;
+    const ok = update(
+      (d) => {
+        const old = d.items.find((x) => x.id === key);
+        const where = old ? placementOf(old, bed) : null;
+        if (!old || isFixed(old, year)) {
+          fail = 'Megkezdett vagy rögzített ültetés nem cserélhető: a Tény és napló lapon módosítható.';
+          return null;
+        }
+        const item = make(key);
+        if (!item) return null;
+        made = item;
+        const replaced = replaceWith(headless(d, key), key, item);
+        // hely nélküli (elhelyezésre váró) ültetésnél csak a növény és a terv cserélődik
+        return where ? applyStrips(replaced, [{ key, placement: where }], bed) : replaced;
+      },
+      () => fail,
+    );
     if (ok && made) {
-      const { id, item } = made;
-      showOnDay(item);
+      showOnDay(made);
       setNotice(null);
-      setSelection({ kind: 'strip', id });
+      setSelection({ kind: 'strip', id: key });
     }
   };
   /** Másik növény ugyanott, a vetési naptár szerint (a nap ablakából). */
-  const changePlant = (key: number, plantId: number) => replaceBy(key, (id) => newFor(plantId, id), PLANTS_LOADING);
+  const changePlant = (key: number, plantId: number) => replaceBy(key, (id) => newFor(plantId, id));
   /** „Mi kerülhetne ide helyette?” választása. */
-  const replaceWithSuggestion = (key: number, sg: Suggestion) => replaceBy(key, (id) => fromSuggestion(sg, id), PLANTS_LOADING);
+  const replaceWithSuggestion = (key: number, sg: Suggestion) => replaceBy(key, (id) => fromSuggestion(sg, id));
 
   /**
    * A tervezési adatok módosítása a panelről (fajta, vetőmag, időszak, módszer, dátumok, tőszám,
@@ -626,9 +635,9 @@ export function useBedWorkspace(bed: Bed, year: number) {
    */
   const editPlanting = (next: PlantingListItem) =>
     update((d) => {
-      const series = successionOf(d, next.id);
+      const before = d.items.find((x) => x.id === next.id);
       const edited = editPlan(d, next, linkOn);
-      return series ? setSuccession(edited, next.id, series, bed) : edited;
+      return before ? followSuccession(edited, before, next) : edited;
     });
 
   /** A sorok száma (a szélesség marad); ez lesz a sáv saját sűrűsége a további méretezéshez. */

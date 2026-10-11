@@ -7,7 +7,7 @@ import { isFullLength, LAYOUT_GRID_CM } from '@shared/domain/layout.ts';
 import { occupancyPeriod, placementOf } from '@shared/domain/plantings.ts';
 import type { PlantingListItem, Variety } from '@shared/types.ts';
 import { Chip } from '../../../components/ui/Chip.tsx';
-import { FormRow, GuardedDateInput, NumberInput, Select, TextArea, TextInput, Toggle } from '../../../components/ui/Form.tsx';
+import { BoundedNumberInput, FormRow, GuardedDateInput, NumberInput, Select, TextArea, TextInput, Toggle } from '../../../components/ui/Form.tsx';
 import { Notice } from '../../../components/ui/Notice.tsx';
 import { SegmentedControl } from '../../../components/ui/SegmentedControl.tsx';
 import { api } from '../../../lib/api.ts';
@@ -203,7 +203,8 @@ export function StripPanel({ ws, id }: { ws: BedWorkspaceState; id: number }) {
           )}
         </PanelGroup>
       )}
-      {!fixed && (
+      {/* csere csak helyre és időre szólhat: hely vagy dátum nélkül előbb azt kell megadni */}
+      {!fixed && placement && period && (
         <div className={s.buttons}>
           <button type="button" onClick={() => ws.setSelection({ kind: 'replace', id })}>
             <Replace size={15} /> Mi kerülhetne ide helyette?
@@ -498,20 +499,15 @@ export function StripPanel({ ws, id }: { ws: BedWorkspaceState; id: number }) {
           {succession && (
             <>
               <FormRow label="Vetések száma">
-                <NumberInput
-                  value={succession.count}
-                  min={2}
-                  max={20}
-                  onChange={(v) => v != null && v >= 2 && v <= 20 && ws.setSeries(id, { ...succession, count: v })}
-                />
+                <BoundedNumberInput value={succession.count} min={2} max={20} onChange={(v) => ws.setSeries(id, { ...succession, count: v })} />
               </FormRow>
               <FormRow label="Időköz">
-                <NumberInput
+                <BoundedNumberInput
                   value={succession.interval}
                   min={1}
                   max={180}
                   unit="nap"
-                  onChange={(v) => v != null && v >= 1 && v <= 180 && ws.setSeries(id, { ...succession, interval: v })}
+                  onChange={(v) => ws.setSeries(id, { ...succession, interval: v })}
                 />
               </FormRow>
               {members.slice(1).map((m) => {

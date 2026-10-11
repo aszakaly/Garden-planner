@@ -60,6 +60,52 @@ export function NumberInput({ value, onChange, unit, ...rest }: NumberInputProps
   );
 }
 
+/**
+ * Egész szám korlátok között (`min`–`max`), ahol csak az érvényes érték jut tovább. Gépelés közben
+ * a még érvénytelen szöveg (pl. a 12 első számjegye, vagy az üres mező) a mezőben marad, elhagyáskor
+ * a legutóbbi érvényes érték áll vissza.
+ */
+export function BoundedNumberInput({
+  value,
+  min,
+  max,
+  unit,
+  onChange,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'min' | 'max'> & {
+  value: number;
+  min: number;
+  max: number;
+  unit?: string;
+  onChange: (value: number) => void;
+}) {
+  const [text, setText] = useState<string | null>(null);
+  return (
+    <span className={s.numberWrap}>
+      <input
+        type="number"
+        inputMode="numeric"
+        {...rest}
+        min={min}
+        max={max}
+        className={s.input}
+        value={text ?? String(value)}
+        onChange={(e) => {
+          const t = e.target.value;
+          const v = Number(t);
+          setText(t);
+          if (t !== '' && Number.isInteger(v) && v >= min && v <= max) onChange(v);
+        }}
+        onBlur={(e) => {
+          setText(null);
+          rest.onBlur?.(e);
+        }}
+      />
+      {unit && <span className={s.unit}>{unit}</span>}
+    </span>
+  );
+}
+
 export function Select({ children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select {...props} className={s.select}>
