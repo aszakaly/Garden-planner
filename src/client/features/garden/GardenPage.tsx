@@ -181,23 +181,23 @@ function GardenEditSheet({ open, onClose, garden }: { open: boolean; onClose: ()
     >
       <FormGroup>
         <FormRow label="Név">
-          <TextInput value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <TextInput value={form.name} onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, name: v })); }} />
         </FormRow>
         <FormRow label="Helyszín">
-          <TextInput value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+          <TextInput value={form.location} onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, location: v })); }} />
         </FormRow>
       </FormGroup>
       <FormGroup title="Méret" footer="Az alaprajzhoz: a kert hossza vízszintesen, a mélysége függőlegesen jelenik meg.">
         <FormRow label="Hossz">
-          <NumberInput value={form.length_cm} onChange={(v) => setForm({ ...form, length_cm: v })} unit="cm" min={100} placeholder="—" />
+          <NumberInput value={form.length_cm} onChange={(v) => setForm((f) => ({ ...f, length_cm: v }))} unit="cm" min={100} placeholder="—" />
         </FormRow>
         <FormRow label="Mélység">
-          <NumberInput value={form.width_cm} onChange={(v) => setForm({ ...form, width_cm: v })} unit="cm" min={100} placeholder="—" />
+          <NumberInput value={form.width_cm} onChange={(v) => setForm((f) => ({ ...f, width_cm: v }))} unit="cm" min={100} placeholder="—" />
         </FormRow>
       </FormGroup>
       <FormGroup title="Megjegyzés">
         <FormRow label="Megjegyzés" stacked hideLabel>
-          <TextArea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          <TextArea rows={3} value={form.notes} onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, notes: v })); }} />
         </FormRow>
       </FormGroup>
     </Sheet>

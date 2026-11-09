@@ -309,4 +309,34 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
       })
       .toEqual({ fennel: false, series: true, indexes: [1, 2, 3] });
   });
+
+  await test.step('14. kert alaprajza: méret, ágyás a rajzra húzva, forgatás, mentés', async () => {
+    await page.goto('/kert');
+    await page.getByRole('button', { name: /Kertem/ }).click();
+    const sheet = dialog(page, 'Kert adatai');
+    await field(sheet, 'Hossz').fill('1150');
+    await field(sheet, 'Mélység').fill('550');
+    await confirm(sheet);
+
+    const plan = page.locator('svg[viewBox^="-40"]');
+    await expect(plan).toBeVisible();
+    const chip = page.getByLabel('Elhelyezésre vár').getByRole('button', { name: /^E2E ágyás\b/ }).first();
+    const from = (await chip.boundingBox())!;
+    const to = (await plan.boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width * 0.3, to.y + to.height * 0.4, { steps: 8 });
+    await expect(plan.getByText(/^\d+ cm$/).first()).toBeVisible();
+    await page.mouse.up();
+    await page.keyboard.press('r');
+
+    const saveBar = page.getByRole('region', { name: 'Mentetlen módosítások' });
+    await expect(saveBar).toContainText('1 ágyás helye módosult');
+    await saveBar.getByRole('button', { name: 'Mentés' }).click();
+    await expect(saveBar).toBeHidden();
+    const beds: { name: string; pos_x_cm: number | null; rotation_deg: number }[] = await (await page.request.get('/api/beds')).json();
+    const placed = beds.find((b) => b.name === 'E2E ágyás')!;
+    expect(placed.pos_x_cm).not.toBeNull();
+    expect(placed.rotation_deg).toBe(90);
+  });
 });
