@@ -16,6 +16,7 @@ import { errorMessage } from '../../lib/errors.ts';
 import { qk, useApiMutation, useBeds, useGardens } from '../../lib/queries.ts';
 import { useYear } from '../../lib/year.tsx';
 import { BedEditSheet } from './BedEditSheet.tsx';
+import { GardenPlan } from './GardenPlan.tsx';
 import s from './GardenPage.module.css';
 
 const nf = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 1 });
@@ -81,6 +82,13 @@ export function GardenPage() {
             <Plus size={16} strokeWidth={2.4} /> Első ágyás felvétele
           </button>
         </div>
+      )}
+
+      {garden && beds.length > 0 && (
+        <section className={s.planSection}>
+          <h2 className={s.planTitle}>Alaprajz</h2>
+          <GardenPlan garden={garden} beds={beds} onEditGarden={() => setEditingGarden(true)} />
+        </section>
       )}
 
       {active.length > 0 && (
