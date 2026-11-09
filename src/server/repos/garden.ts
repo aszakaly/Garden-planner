@@ -115,12 +115,26 @@ export function createBeds(db: DB, input: BedInput, count: number): Bed[] {
   });
 }
 
-/** A helyét és az elforgatását nem érinti (azt az alaprajz menti); az új méretnek el kell férnie. */
+/**
+ * A helyét és az elforgatását nem érinti (azt az alaprajz menti); az új méretnek el kell férnie.
+ * Kivétel: az archívból visszaállított ágyás lekerül a rajzról, ha a régi helyén már nem fér el.
+ */
 export function updateBed(db: DB, id: number, input: BedInput): Bed {
   const full = { sun: null, soil: null, irrigation: null, notes: null, active_from_year: null, active_to_year: null, ...input };
   return transaction(db, () => {
-    if (!update(db, 'bed', id, full)) throw notFound('Az ágyás');
-    const bed = getBed(db, id);
+    const before = getBed(db, id);
+    update(db, 'bed', id, full);
+    let bed = getBed(db, id);
+    if (bed.pos_x_cm == null) return bed;
+    // Archívból visszaállítva a régi helyén közben másik ágyás állhat: ilyenkor lekerül a rajzról
+    const year = new Date().getFullYear();
+    if (isArchived(before, year) && !isArchived(bed, year)) {
+      const g = getGarden(db, bed.garden_id);
+      if (g.length_cm == null || g.width_cm == null || planErrors(planBeds(db, bed.garden_id), g as GardenSize).length) {
+        db.prepare('UPDATE bed SET pos_x_cm = NULL, pos_y_cm = NULL WHERE id = ?').run(id);
+        bed = getBed(db, id);
+      }
+    }
     if (bed.pos_x_cm != null) assertPlanValid(db, bed.garden_id, 'Az ágyás nem menthető a kertbeli helyén');
     return bed;
   });

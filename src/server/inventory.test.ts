@@ -231,4 +231,12 @@ describe('kert alaprajza', () => {
     await a.inject({ method: 'PUT', url: `/api/beds/${beds[1]}`, payload: { name: 'Á2', length_cm: 200, width_cm: 80, active_to_year: 2000 } });
     expect((await layout({ beds: [{ id: beds[2], pos_x_cm: 120, pos_y_cm: 0, rotation_deg: 90 }] })).statusCode).toBe(200);
   });
+
+  it('a visszaállított archív ágyás lekerül a rajzról, ha a helyén közben másik áll', async () => {
+    const res = await a.inject({ method: 'PUT', url: `/api/beds/${beds[1]}`, payload: { name: 'Á2', length_cm: 200, width_cm: 80 } });
+    expect(res.statusCode).toBe(200);
+    expect((res.json() as Bed).pos_x_cm).toBeNull();
+    const other: Bed = (await a.inject({ url: `/api/beds/${beds[2]}` })).json();
+    expect([other.pos_x_cm, other.pos_y_cm]).toEqual([120, 0]);
+  });
 });
