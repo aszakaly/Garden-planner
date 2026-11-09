@@ -18,7 +18,7 @@
 **A tervben javasolt (jóváhagyásra):**
 - **Kert mérete:** új `garden.length_cm` és `garden.width_cm` (migráció, üresen). Amíg nincs megadva, az alaprajz helyén egy „Kert mérete” űrlap jelenik meg. Kisebbre csak akkor állítható, ha minden elhelyezett ágyás belefér.
 - **Koordináták:** a kert bal felső sarka az origó; `x` a kert hossza mentén, `y` a mélysége mentén. A `pos_x_cm` / `pos_y_cm` az ágyás (forgatás utáni) befoglaló téglalapjának bal felső sarka.
-- **Forgatás:** csak 0° vagy 90°. Az R billentyű vagy a „Forgatás” gomb forgat; ha forgatva nem férne el, nem forgat, és ezt kiírja. A szerkesztő lap pozíció- és forgatásmezői megszűnnek: egyetlen helye az alaprajz.
+- **Forgatás:** csak 0° (az ágyás hossza vízszintes, a kert hossza mentén) vagy 90°. A korábbi más szögeket a migráció a közelebbire kerekíti. Az R billentyű vagy a „Forgatás” gomb forgat; ha forgatva nem férne el, nem forgat, és ezt kiírja. A szerkesztő lap pozíció- és forgatásmezői megszűnnek: egyetlen helye az alaprajz.
 - **Rács:** 10 cm-es illesztés (a 30–40 cm-es utak így pontosan beállíthatók), 10 cm-enként halvány, méterenként erősebb vonal és méterfelirat.
 - **Húzás közben:** a négy irányban a távolság a legközelebbi szomszédig vagy a kert széléig („35 cm”). Ütköző helyen az ágyás piros, elengedéskor visszaugrik az utolsó szabad helyre.
 - **Elhelyezetlen ágyások:** oldalsávban, onnan húzhatók egyenként a rajzra.
@@ -33,7 +33,7 @@
 
 A `kerttervezo-uitest` példányon.
 
-**E1 – A mostani veteményes.** A kert 1150 × 550 cm. Felvesz 11 db 200 × 80 cm-es ágyást. Az elhelyezetlenek sávjából 8 ágyást egymás mellé húz, 0°-kal, a hosszuk a kert mélysége mentén; köztük 30–40 cm-es utak, amit húzás közben a távolságfelirat mutat. A maradék 3-at elforgatja (R), és a 8 ágyás végénél, rájuk merőlegesen helyezi el. Ment, újratölt: minden ugyanott van.
+**E1 – A mostani veteményes.** A kert 1150 × 550 cm. Felvesz 11 db 200 × 80 cm-es ágyást. Az elhelyezetlenek sávjából 8 ágyást elforgat (R) úgy, hogy a hosszuk a kert mélysége mentén fusson, és egymás mellé húzza őket; köztük 30–40 cm-es utak, amit húzás közben a távolságfelirat mutat. A maradék 3-at forgatás nélkül (vízszintesen), a 8 ágyás végénél, rájuk merőlegesen helyezi el. Ment, újratölt: minden ugyanott van.
 
 **E2 – Ütközés és kert széle.** Egy ágyást a szomszédjára húz: piros lesz, elengedéskor visszaugrik. A kert szélénél forgatna, de nem fér el: nem forgat, üzenetet ír. A kertet 1000 cm hosszúra állítaná, de kilógna egy ágyás: a mentés hibát ad, megnevezi az ágyást.
 

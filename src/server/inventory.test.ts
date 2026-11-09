@@ -137,7 +137,7 @@ describe('ágyások', () => {
     expect(single.statusCode).toBe(400);
   });
 
-  it('a tömegesen létrehozott ágyások nem kapják meg a helyet: két ágyás nem állhat ugyanott', async () => {
+  it('a tömegesen létrehozott ágyások elhelyezetlenek, a küldött helyet figyelmen kívül hagyja', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/beds/batch',
@@ -161,5 +161,74 @@ describe('ágyások', () => {
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toMatch(/legfeljebb 100 karakter/);
     expect(((await app.inject({ url: '/api/beds' })).json() as BedListItem[]).length).toBe(before);
+  });
+});
+
+describe('kert alaprajza', () => {
+  let g: DB;
+  let a: FastifyInstance;
+  let beds: number[];
+  const layout = (payload: object) => a.inject({ method: 'PUT', url: '/api/gardens/1/layout', payload });
+  const gardenPut = (payload: object) => a.inject({ method: 'PUT', url: '/api/gardens/1', payload });
+
+  beforeAll(async () => {
+    g = openDatabase(':memory:');
+    seedIfEmpty(g);
+    a = buildApp({ db: g });
+    const res = await a.inject({ method: 'POST', url: '/api/beds/batch', payload: { bed: { name: 'Á1', length_cm: 200, width_cm: 80 }, count: 3 } });
+    beds = (res.json() as Bed[]).map((b) => b.id);
+  });
+
+  it('méret nélküli kertben nem helyezhető el ágyás', async () => {
+    const res = await layout({ beds: [{ id: beds[0], pos_x_cm: 0, pos_y_cm: 0, rotation_deg: 90 }] });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toContain('előbb add meg a kert méretét');
+  });
+
+  it('elmenti a helyeket és az elforgatást, a szerkesztő lap mentése nem írja felül', async () => {
+    expect((await gardenPut({ name: 'Kertem', length_cm: 1150, width_cm: 550 })).statusCode).toBe(200);
+    const res = await layout({
+      beds: [
+        { id: beds[0], pos_x_cm: 0, pos_y_cm: 0, rotation_deg: 90 },
+        { id: beds[1], pos_x_cm: 120, pos_y_cm: 0, rotation_deg: 90 },
+      ],
+    });
+    expect(res.statusCode).toBe(200);
+    await a.inject({ method: 'PUT', url: `/api/beds/${beds[0]}`, payload: { name: 'Á1', length_cm: 200, width_cm: 80 } });
+    const bed: Bed = (await a.inject({ url: `/api/beds/${beds[0]}` })).json();
+    expect([bed.pos_x_cm, bed.pos_y_cm, bed.rotation_deg]).toEqual([0, 0, 90]);
+  });
+
+  it('átfedésnél és kilógásnál semmit nem ment', async () => {
+    const res = await layout({
+      beds: [
+        { id: beds[2], pos_x_cm: 300, pos_y_cm: 0, rotation_deg: 0 },
+        { id: beds[1], pos_x_cm: 40, pos_y_cm: 0, rotation_deg: 90 },
+      ],
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toContain('átfedi egymást');
+    const b2: Bed = (await a.inject({ url: `/api/beds/${beds[2]}` })).json();
+    expect(b2.pos_x_cm).toBeNull();
+    expect((await layout({ beds: [{ id: beds[2], pos_x_cm: 1000, pos_y_cm: 0, rotation_deg: 0 }] })).statusCode).toBe(400);
+    expect((await layout({ beds: [{ id: beds[2], pos_x_cm: 0, pos_y_cm: 0, rotation_deg: 45 }] })).statusCode).toBe(400);
+  });
+
+  it('a kert nem állítható kisebbre, ha egy ágyás kilógna, és nem törli a méretet a régi mentés', async () => {
+    const res = await gardenPut({ name: 'Kertem', length_cm: 150, width_cm: 550 });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toContain('kilóg a kertből');
+    expect((await gardenPut({ name: 'Kertem' })).statusCode).toBe(400);
+  });
+
+  it('az ágyás nem nagyobbítható úgy, hogy a szomszédjába érjen', async () => {
+    const res = await a.inject({ method: 'PUT', url: `/api/beds/${beds[0]}`, payload: { name: 'Á1', length_cm: 200, width_cm: 150 } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toContain('átfedi egymást');
+  });
+
+  it('az archív ágyás nem foglal helyet', async () => {
+    await a.inject({ method: 'PUT', url: `/api/beds/${beds[1]}`, payload: { name: 'Á2', length_cm: 200, width_cm: 80, active_to_year: 2000 } });
+    expect((await layout({ beds: [{ id: beds[2], pos_x_cm: 120, pos_y_cm: 0, rotation_deg: 90 }] })).statusCode).toBe(200);
   });
 });

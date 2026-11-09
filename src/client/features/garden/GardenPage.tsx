@@ -3,7 +3,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router';
 import { BED_TYPE_LABEL, SUN_LABEL } from '@shared/labels.ts';
 import type { BedListItem, Garden } from '@shared/types.ts';
-import { FormGroup, FormRow, TextArea, TextInput } from '../../components/ui/Form.tsx';
+import { FormGroup, FormRow, NumberInput, TextArea, TextInput } from '../../components/ui/Form.tsx';
 import { IconCircle } from '../../components/ui/IconCircle.tsx';
 import { LinkRow } from '../../components/ui/LinkRow.tsx';
 import { PageHeader, ToolbarButton } from '../../components/ui/PageHeader.tsx';
@@ -151,9 +151,14 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 function GardenEditSheet({ open, onClose, garden }: { open: boolean; onClose: () => void; garden: Garden }) {
-  const [form, setForm] = useState({ name: '', location: '', notes: '' });
+  const [form, setForm] = useState({
+    name: '', location: '', notes: '', length_cm: null as number | null, width_cm: null as number | null,
+  });
   useEffect(() => {
-    if (open) setForm({ name: garden.name, location: garden.location ?? '', notes: garden.notes ?? '' });
+    if (open) {
+      setForm({ name: garden.name, location: garden.location ?? '', notes: garden.notes ?? '',
+        length_cm: garden.length_cm, width_cm: garden.width_cm });
+    }
   }, [open, garden.id]);
   const save = useApiMutation(() => api.put(`/gardens/${garden.id}`, form), [qk.gardens]);
   return (
@@ -172,6 +177,14 @@ function GardenEditSheet({ open, onClose, garden }: { open: boolean; onClose: ()
         </FormRow>
         <FormRow label="Helyszín">
           <TextInput value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+        </FormRow>
+      </FormGroup>
+      <FormGroup title="Méret" footer="Az alaprajzhoz: a kert hossza vízszintesen, a mélysége függőlegesen jelenik meg.">
+        <FormRow label="Hossz">
+          <NumberInput value={form.length_cm} onChange={(v) => setForm({ ...form, length_cm: v })} unit="cm" min={100} placeholder="—" />
+        </FormRow>
+        <FormRow label="Mélység">
+          <NumberInput value={form.width_cm} onChange={(v) => setForm({ ...form, width_cm: v })} unit="cm" min={100} placeholder="—" />
         </FormRow>
       </FormGroup>
       <FormGroup title="Megjegyzés">
