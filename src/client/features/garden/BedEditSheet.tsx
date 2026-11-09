@@ -32,9 +32,6 @@ const EMPTY: Form = {
   length_cm: null,
   width_cm: null,
   row_direction: 'keresztben',
-  pos_x_cm: null,
-  pos_y_cm: null,
-  rotation_deg: 0,
   bed_type: 'foldagyas',
   sun: 'napos',
   soil: null,
@@ -57,7 +54,6 @@ function fromTemplate(t: Bed, takenNames: string[]): Form {
     length_cm: t.length_cm,
     width_cm: t.width_cm,
     row_direction: t.row_direction,
-    rotation_deg: t.rotation_deg,
     bed_type: t.bed_type,
     sun: t.sun,
     soil: t.soil,
@@ -253,29 +249,6 @@ export function BedEditSheet({ open, onClose, bed, template }: Props) {
         </FormRow>
         <FormRow label="Utolsó év">
           <NumberInput value={form.active_to_year} onChange={(v) => set('active_to_year', v)} min={1950} max={2200} placeholder="használatban" />
-        </FormRow>
-      </FormGroup>
-
-      <FormGroup
-        title="Elhelyezkedés a kertben"
-        footer={
-          batch
-            ? 'Több ágyás egyszerre nem kerülhet ugyanarra a helyre: a helyüket utána, ágyásonként add meg.'
-            : 'A későbbi grafikus kerttérképhez – most nem kötelező. A kert bal felső sarkától mérve.'
-        }
-      >
-        {!batch && (
-          <>
-            <FormRow label="Vízszintesen (X)">
-              <NumberInput value={form.pos_x_cm} onChange={(v) => set('pos_x_cm', v)} unit="cm" placeholder="—" />
-            </FormRow>
-            <FormRow label="Függőlegesen (Y)">
-              <NumberInput value={form.pos_y_cm} onChange={(v) => set('pos_y_cm', v)} unit="cm" placeholder="—" />
-            </FormRow>
-          </>
-        )}
-        <FormRow label="Elforgatás">
-          <NumberInput value={form.rotation_deg} onChange={(v) => set('rotation_deg', v ?? 0)} unit="°" min={0} max={359} />
         </FormRow>
       </FormGroup>
 

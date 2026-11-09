@@ -309,3 +309,16 @@ Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változat
 - Az idővonal-vászon („B”) és a szezon-oszlopok („C”) mint fő felület.
 - A figyelmeztetés tudomásulvétele.
 - Az azonnali mentés.
+
+### Kert alaprajza (2026-11-09)
+**Cél:** az ágyások elhelyezése a kertben, méretarányos, rácsos alaprajzon, húzással. A terv: [docs/plans/2026-11-09-kert-alaprajz.md](../plans/2026-11-09-kert-alaprajz.md).
+
+**Követelmények:**
+- A kert egyetlen téglalap (hossz × mélység); az L/U alak később, kizárt területként jöhet.
+- Egyetlen, évfüggetlen alaprajz van (2026-11-09-i döntés): az ágyások ritkán költöznek, az évek az ültetési tervezésben jelennek meg. A jövőbeli kezdetű ágyás már látszik és helyet foglal.
+- Az alaprajzon csak a hely és az elforgatás (0° vagy 90°) változik; a méret és a tervezés az ágyás oldalán marad.
+- Átfedés és kilógás nincs; ezt a kliens húzás közben, a szerver mentéskor is ellenőrzi.
+- 10 cm-es rácsillesztés; húzás közben a szabad távolság a négy irányban.
+- Piszkozat Mentés / Elvetés sávval, elhagyás előtti kérdéssel. Telefonon csak nézet.
+- Az archív (a használata az idei év előtt véget ért) ágyás nem látszik, és nem foglal helyet.
+

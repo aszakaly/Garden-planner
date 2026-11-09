@@ -1,0 +1,257 @@
+.plan {
+  margin: 0 var(--page-pad);
+}
+
+.empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0 var(--page-pad);
+  padding: 14px 16px;
+  border-radius: var(--radius-m);
+  background: var(--bg-grouped);
+  font-size: 14px;
+  color: var(--label-2);
+}
+.empty p {
+  flex: 1;
+  margin: 0;
+}
+.primary {
+  padding: 7px 14px;
+  border-radius: 9px;
+  background: var(--tint-fill);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.selName {
+  font-weight: 600;
+  margin-right: 4px;
+}
+.hint {
+  color: var(--label-2);
+}
+.spacer {
+  flex: 1;
+}
+.tool,
+.icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--fill-3);
+  color: var(--label);
+  font-size: 13px;
+  font-weight: 500;
+}
+.icon {
+  padding: 6px;
+}
+.tool:disabled {
+  opacity: 0.4;
+}
+
+.unplaced {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.unplacedTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label-2);
+  margin-right: 4px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--separator);
+  font-size: 13px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.chip[data-active] {
+  opacity: 0.4;
+}
+.chipSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--c);
+}
+.chipSize {
+  color: var(--label-2);
+  font-size: 12px;
+}
+
+.box {
+  overflow: auto;
+  max-height: 70vh;
+  border-radius: var(--radius-m);
+  background: var(--bg-grouped);
+}
+.svg {
+  display: block;
+  user-select: none;
+  touch-action: pan-x pan-y pinch-zoom;
+}
+.svg[data-dragging] {
+  cursor: grabbing;
+}
+
+.ground {
+  fill: #f6f3ea;
+}
+.border {
+  fill: none;
+  stroke: var(--label-3);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.minor,
+.major {
+  vector-effect: non-scaling-stroke;
+}
+.minor {
+  stroke: rgb(0 0 0 / 6%);
+  stroke-width: 1;
+}
+.major {
+  stroke: rgb(0 0 0 / 16%);
+  stroke-width: 1;
+}
+.axis {
+  fill: var(--label-2);
+}
+
+.bed {
+  cursor: grab;
+}
+.bed[data-mobile] {
+  cursor: pointer;
+}
+.bedRect {
+  fill: color-mix(in srgb, var(--c) 28%, white);
+  stroke: color-mix(in srgb, var(--c) 70%, black);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.bed[data-selected] .bedRect {
+  stroke: var(--tint);
+  stroke-width: 3;
+}
+.bed[data-invalid] .bedRect {
+  fill: color-mix(in srgb, var(--c-red) 25%, white);
+  stroke: var(--c-red);
+  stroke-width: 3;
+}
+.row {
+  stroke: color-mix(in srgb, var(--c) 55%, black);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+.bedName {
+  fill: var(--label);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.gap line {
+  stroke: var(--tint);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.gap text {
+  fill: var(--tint);
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: white;
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Mentés-sáv és üzenet: a lap alján tapadnak (mint a munkalapon) */
+.bottom {
+  position: sticky;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.saveBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 7px 7px 16px;
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: var(--shadow-sheet);
+  font-size: 14px;
+}
+.saveCount {
+  font-weight: 600;
+}
+.discard,
+.save {
+  padding: 7px 14px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.discard {
+  background: var(--fill-3);
+  color: var(--label);
+}
+.save {
+  background: var(--tint-fill);
+  color: white;
+}
+.save:disabled,
+.discard:disabled {
+  opacity: 0.6;
+}
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 560px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c-red) 10%, white);
+  box-shadow: var(--shadow-panel);
+  color: #c4271d;
+  font-size: 13px;
+}
+.notice span {
+  flex: 1;
+}
+.notice button {
+  color: inherit;
+}

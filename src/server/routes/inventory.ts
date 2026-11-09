@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { DB } from '../db/index.ts';
 import * as seeds from '../repos/seeds.ts';
 import * as garden from '../repos/garden.ts';
-import { bedBatchInput, bedInput, gardenInput, seedStockInput } from '../../shared/schemas.ts';
+import { bedBatchInput, bedInput, gardenInput, gardenLayoutInput, seedStockInput } from '../../shared/schemas.ts';
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 const bedQuery = z.object({
@@ -32,6 +32,7 @@ export const inventoryRoutes =
     // Kert
     app.get('/gardens', async () => garden.listGardens(db));
     app.put('/gardens/:id', async (req) => garden.updateGarden(db, id(req), gardenInput.parse(req.body)));
+    app.put('/gardens/:id/layout', async (req) => garden.saveGardenLayout(db, id(req), gardenLayoutInput.parse(req.body)));
 
     // Ágyások
     app.get('/beds', async (req) => {

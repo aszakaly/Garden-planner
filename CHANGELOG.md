@@ -2,6 +2,16 @@
 
 A felületen látható változások, a legújabb elöl. A részletes fejlesztési előzmény a git logban van, a tervezési döntések a [design dokumentumban](docs/specs/2026-09-30-kerttervezo-design.md).
 
+## 2026-11-09 – Kert alaprajza
+
+- **Alaprajz a Kert oldalon:** a kert méretarányos, rácsos rajza, rajta az ágyások a nevükkel és a sorok irányával. A kert hossza és mélysége a Kert adatai lapon adható meg.
+- **Húzással elhelyezhető ágyások:** az „Elhelyezésre vár” sávból és a rajzon belül is; az ágyás 10 cm-es lépésekben illeszkedik. Húzás közben látszik a távolság a szomszédig és a kert széléig.
+- **Forgatás** 0° és 90° között az R billentyűvel (húzás közben is) vagy a „Forgatás” gombbal; „Levétel a rajzról” az elhelyezetlenek közé teszi vissza.
+- **Átfedés nincs:** a másikra vagy a kerten kívülre húzott ágyás piros, elengedéskor visszaugrik, és üzenet jelzi, mibe ütközik. A kert nem állítható kisebbre, és az ágyás nem nagyobbítható úgy, hogy ütközzön.
+- **Piszkozat:** a módosítás a „Mentés”-sel (vagy Cmd+Enter) íródik; mentetlen módosításnál az oldal elhagyása előtt rákérdez.
+- Dupla kattintásra (telefonon koppintásra) az ágyás munkalapja nyílik. Telefonon az alaprajz csak nézet.
+- Az ágyás helye és elforgatása kikerült a szerkesztő lapról: egyetlen helye az alaprajz. Az archív ágyások nem látszanak, és nem foglalnak helyet.
+
 ## 2026-10-11 – Ágyás-munkalap
 
 - **Az ágyás oldala a tervezés munkalapja:** ágyáskép és sávlista, mellette egy panel, amely a kijelöléshez igazodik. Kijelölés nélkül az ágyás áttekintése (vetésforgó, figyelmeztetések, elhelyezésre váró ültetések, szabad helyek, kihasználtság), szabad helyre kattintva javaslatok, sávra kattintva az ültetés minden tervezési adata. A Kiosztás lap és az ágyásból nyíló „Mi kerülhet ide?” lap megszűnt.

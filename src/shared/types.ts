@@ -40,6 +40,8 @@ export interface Garden {
   name: string;
   location: string | null;
   notes: string | null;
+  length_cm: number | null;
+  width_cm: number | null;
 }
 
 export interface Bed {

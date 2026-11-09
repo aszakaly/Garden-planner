@@ -74,7 +74,7 @@ describe('005 – ültetés-azonosító AUTOINCREMENT-tel', () => {
       INSERT INTO custom_task (id, title, due_date, planting_id) VALUES (1, 'Gyomlálás', '2027-05-02', 5);
     `);
 
-    expect(migrate(db)).toEqual(['005_planting_autoincrement.sql']);
+    expect(migrate(db)).toEqual(['005_planting_autoincrement.sql', '006_garden_size.sql']);
     expect(db.prepare('SELECT id, axis_start_cm, carried_from_id FROM planting ORDER BY id').all()).toEqual([
       { id: 1, axis_start_cm: 30, carried_from_id: null },
       { id: 5, axis_start_cm: 0, carried_from_id: 1 },

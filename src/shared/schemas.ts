@@ -152,6 +152,8 @@ export const gardenInput = z.object({
   name: text(100).min(1, 'Név megadása kötelező'),
   location: optText(200),
   notes: optText(2000),
+  length_cm: z.number().int().min(100, 'Legalább 100 cm').max(100_000).nullish(),
+  width_cm: z.number().int().min(100, 'Legalább 100 cm').max(100_000).nullish(),
 });
 export type GardenInput = z.infer<typeof gardenInput>;
 
@@ -166,9 +168,6 @@ export const bedInput = z
     length_cm: z.number({ error: 'A hossz megadása kötelező' }).int().min(10, 'Legalább 10 cm').max(100_000),
     width_cm: z.number({ error: 'A szélesség megadása kötelező' }).int().min(10, 'Legalább 10 cm').max(100_000),
     row_direction: z.enum(ROW_DIRECTIONS).default('keresztben'),
-    pos_x_cm: z.number().int().nullish(),
-    pos_y_cm: z.number().int().nullish(),
-    rotation_deg: z.number().int().min(0).max(359).default(0),
     bed_type: z.enum(BED_TYPES).default('foldagyas'),
     sun: z.enum(SUN_VALUES).nullish(),
     soil: optText(500),
@@ -190,6 +189,21 @@ export const bedBatchInput = z.object({
   count: z.number().int().min(2, 'Legalább 2 darab').max(50, 'Egyszerre legfeljebb 50 ágyás'),
 });
 export type BedBatchInput = z.infer<typeof bedBatchInput>;
+
+/** Az alaprajz mentése: az ágyások helye és elforgatása; `null` hely = elhelyezetlen. */
+export const gardenLayoutInput = z.object({
+  beds: z
+    .array(
+      z.object({
+        id: z.number().int().positive(),
+        pos_x_cm: z.number().int().min(0).max(100_000).nullable(),
+        pos_y_cm: z.number().int().min(0).max(100_000).nullable(),
+        rotation_deg: z.union([z.literal(0), z.literal(90)]),
+      }),
+    )
+    .max(1000),
+});
+export type GardenLayoutInput = z.infer<typeof gardenLayoutInput>;
 
 export const isoDate = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, 'ÉÉÉÉ-HH-NN formátum kell');
 const cm = z.number().min(0).max(100_000);
