@@ -214,11 +214,13 @@ describe('kert alaprajza', () => {
     expect((await layout({ beds: [{ id: beds[2], pos_x_cm: 0, pos_y_cm: 0, rotation_deg: 45 }] })).statusCode).toBe(400);
   });
 
-  it('a kert nem állítható kisebbre, ha egy ágyás kilógna, és nem törli a méretet a régi mentés', async () => {
+  it('a kert nem állítható kisebbre, ha egy ágyás kilógna, és a mérete nem törölhető, amíg ágyás áll rajta', async () => {
     const res = await gardenPut({ name: 'Kertem', length_cm: 150, width_cm: 550 });
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toContain('kilóg a kertből');
-    expect((await gardenPut({ name: 'Kertem' })).statusCode).toBe(400);
+    const cleared = await gardenPut({ name: 'Kertem' });
+    expect(cleared.statusCode).toBe(400);
+    expect(cleared.json().error).toContain('Előbb vedd le őket a rajzról');
   });
 
   it('az ágyás nem nagyobbítható úgy, hogy a szomszédjába érjen', async () => {
@@ -238,5 +240,19 @@ describe('kert alaprajza', () => {
     expect((res.json() as Bed).pos_x_cm).toBeNull();
     const other: Bed = (await a.inject({ url: `/api/beds/${beds[2]}` })).json();
     expect([other.pos_x_cm, other.pos_y_cm]).toEqual([120, 0]);
+  });
+
+  it('méret nélküli kertben a régi, egymást átfedő helyek nem akadályozzák a mentést; a méret megadásakor törlődnek', async () => {
+    const d = openDatabase(':memory:');
+    seedIfEmpty(d);
+    const app2 = buildApp({ db: d });
+    const created: Bed[] = (await app2.inject({ method: 'POST', url: '/api/beds/batch', payload: { bed: { name: 'R1', length_cm: 200, width_cm: 80 }, count: 2 } })).json();
+    const gid = created[0]!.garden_id;
+    d.prepare('UPDATE bed SET pos_x_cm = 0, pos_y_cm = 0').run();
+    const edit = await app2.inject({ method: 'PUT', url: `/api/beds/${created[0]!.id}`, payload: { name: 'R1', length_cm: 200, width_cm: 80, notes: 'x' } });
+    expect(edit.statusCode).toBe(200);
+    expect((await app2.inject({ method: 'PUT', url: `/api/gardens/${gid}`, payload: { name: 'Kertem', length_cm: 1150, width_cm: 550 } })).statusCode).toBe(200);
+    const after: Bed[] = (await app2.inject({ url: '/api/beds' })).json();
+    expect(after.map((b) => b.pos_x_cm)).toEqual([null, null]);
   });
 });

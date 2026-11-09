@@ -42,7 +42,14 @@ interface Drag {
   rect: Rect | null;
   error: string | null;
   gaps: Gaps | null;
+  /** A pointer lenyomásának helye (képernyő-px); amíg nem mozdul el érdemben, ez csak kijelölés. */
+  startX: number;
+  startY: number;
+  moved: boolean;
 }
+
+/** Ennyi képernyőpixel elmozdulás után számít húzásnak a lenyomás. */
+const DRAG_THRESHOLD = 4;
 
 interface Props {
   garden: Garden;
@@ -146,7 +153,11 @@ export function GardenPlan({ garden, beds, onEditGarden }: Props) {
     const vbH = size.width_cm + 2 * MARGIN;
     const x = ((clientX - r.left) / r.width) * vbW - MARGIN;
     const y = ((clientY - r.top) / r.height) * vbH - MARGIN;
-    const inside = clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+    // Csak a görgethető doboz látható része számít: a kilógó (nem látható) rajzrészre nem lehet ejteni
+    const b = boxRef.current?.getBoundingClientRect() ?? r;
+    const inside =
+      clientX >= Math.max(r.left, b.left) && clientX <= Math.min(r.right, b.right) &&
+      clientY >= Math.max(r.top, b.top) && clientY <= Math.min(r.bottom, b.bottom);
     return { x, y, inside };
   };
 
@@ -171,7 +182,13 @@ export function GardenPlan({ garden, beds, onEditGarden }: Props) {
     setSelected(bed.id);
     setNotice(null);
     lastPointer.current = { x: e.clientX, y: e.clientY };
-    setDrag(evaluate({ id: bed.id, grabX: grab.x, grabY: grab.y, rotation_deg: bed.rotation_deg, rect: null, error: null, gaps: null }, e.clientX, e.clientY));
+    const placedNow = bedRect(bed) != null;
+    const d: Drag = {
+      id: bed.id, grabX: grab.x, grabY: grab.y, rotation_deg: bed.rotation_deg, rect: null, error: null, gaps: null,
+      startX: e.clientX, startY: e.clientY, moved: false,
+    };
+    // A rajzon álló ágyás a helyén marad, amíg el nem mozdul (kattintás = kijelölés)
+    setDrag(placedNow ? d : evaluate(d, e.clientX, e.clientY));
   };
 
   // Húzás: a pointer az egész ablakban követett, így az elhelyezetlenek sávjából is húzható
@@ -179,12 +196,21 @@ export function GardenPlan({ garden, beds, onEditGarden }: Props) {
     if (!drag) return;
     const onMove = (e: PointerEvent) => {
       lastPointer.current = { x: e.clientX, y: e.clientY };
-      setDrag((d) => (d ? evaluate(d, e.clientX, e.clientY) : d));
+      setDrag((d) => {
+        if (!d) return d;
+        const moved = d.moved || Math.hypot(e.clientX - d.startX, e.clientY - d.startY) >= DRAG_THRESHOLD;
+        const placedNow = bedRect(planBeds.find((b) => b.id === d.id)!) != null;
+        return moved || !placedNow ? evaluate({ ...d, moved }, e.clientX, e.clientY) : d;
+      });
     };
+    // Megszakadt húzás (pointercancel, ablakváltás): semmi nem változik
+    const onCancel = () => setDrag(null);
     const onUp = () => {
       const d = latestDrag.current;
       setDrag(null);
       if (!d) return;
+      const placedBefore = bedRect(planBeds.find((b) => b.id === d.id)!) != null;
+      if (placedBefore && !d.moved) return;
       const bed = planBeds.find((b) => b.id === d.id)!;
       if (d.rect && !d.error) setPos(d.id, { pos_x_cm: d.rect.x, pos_y_cm: d.rect.y, rotation_deg: d.rotation_deg });
       else if (d.error) {
@@ -198,16 +224,20 @@ export function GardenPlan({ garden, beds, onEditGarden }: Props) {
       e.preventDefault();
       setDrag((d) => {
         if (!d) return d;
-        const turned = { ...d, rotation_deg: d.rotation_deg === 90 ? 0 : 90, grabX: d.grabY, grabY: d.grabX };
+        const turned = { ...d, moved: true, rotation_deg: d.rotation_deg === 90 ? 0 : 90, grabX: d.grabY, grabY: d.grabX };
         return evaluate(turned, lastPointer.current.x, lastPointer.current.y);
       });
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    window.addEventListener('blur', onCancel);
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      window.removeEventListener('blur', onCancel);
       window.removeEventListener('keydown', onKey);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -237,7 +267,8 @@ export function GardenPlan({ garden, beds, onEditGarden }: Props) {
     if (isMobile) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
-      if (t.closest('input, textarea, select, [role="dialog"]')) return;
+      // Nyitott lapnál (bárhol is a fókusz) a billentyűk a lapé
+      if (t.closest('input, textarea, select') || document.querySelector('[role="dialog"]')) return;
       const l = latest.current;
       if (l.drag) return;
       if ((e.key === 'r' || e.key === 'R') && !e.metaKey && !e.ctrlKey) l.rotateSelected();

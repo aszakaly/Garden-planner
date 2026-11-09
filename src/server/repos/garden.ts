@@ -28,7 +28,16 @@ function getGarden(db: DB, id: number): Garden {
 export function updateGarden(db: DB, id: number, input: GardenInput): Garden {
   const full = { location: null, notes: null, length_cm: null, width_cm: null, ...input };
   return transaction(db, () => {
-    getGarden(db, id);
+    const before = getGarden(db, id);
+    const hadSize = before.length_cm != null && before.width_cm != null;
+    const hasSize = full.length_cm != null && full.width_cm != null;
+    if (!hadSize && hasSize) {
+      // Méret nélkül a helyeknek nem volt kerete (régi kézi adat, régi mentés): az alaprajz üresen indul
+      db.prepare('UPDATE bed SET pos_x_cm = NULL, pos_y_cm = NULL WHERE garden_id = ?').run(id);
+    }
+    if (hadSize && !hasSize && planBeds(db, id).some((b) => b.pos_x_cm != null)) {
+      throw new HttpError(400, 'A kert mérete nem törölhető, amíg ágyás áll az alaprajzon. Előbb vedd le őket a rajzról.');
+    }
     update(db, 'garden', id, full);
     assertPlanValid(db, id, 'A kert mérete nem menthető');
     return getGarden(db, id);
@@ -41,22 +50,26 @@ function planBeds(db: DB, gardenId: number): Bed[] {
   return (db.prepare('SELECT * FROM bed WHERE garden_id = ?').all(gardenId) as unknown as Bed[]).filter((b) => !isArchived(b, year));
 }
 
-/** Hibát dob, ha a kertben kilógó vagy egymást átfedő ágyás van. Méret nélküli kertnél nincs mit ellenőrizni. */
+const gardenSize = (g: Garden): GardenSize | null =>
+  g.length_cm != null && g.width_cm != null ? { length_cm: g.length_cm, width_cm: g.width_cm } : null;
+
+/**
+ * Hibát dob, ha a kertben kilógó vagy egymást átfedő ágyás van. Méret nélküli kertnél nincs alaprajz,
+ * a tárolt helyeknek nincs jelentése, így nincs mit ellenőrizni.
+ */
 function assertPlanValid(db: DB, gardenId: number, prefix: string): void {
-  const g = getGarden(db, gardenId);
-  const beds = planBeds(db, gardenId);
-  if (g.length_cm == null || g.width_cm == null) {
-    if (beds.some((b) => b.pos_x_cm != null)) throw new HttpError(400, `${prefix}: előbb add meg a kert méretét.`);
-    return;
-  }
-  const errors = planErrors(beds, g as GardenSize);
+  const size = gardenSize(getGarden(db, gardenId));
+  if (!size) return;
+  const errors = planErrors(planBeds(db, gardenId), size);
   if (errors.length) throw new HttpError(400, `${prefix}: ${errors.join(' ')}`);
 }
 
 /** Az alaprajz mentése egy tranzakcióban: a felsorolt ágyások helye és elforgatása. */
 export function saveGardenLayout(db: DB, gardenId: number, input: GardenLayoutInput): Bed[] {
   return transaction(db, () => {
-    getGarden(db, gardenId);
+    if (!gardenSize(getGarden(db, gardenId)) && input.beds.some((b) => b.pos_x_cm != null)) {
+      throw new HttpError(400, 'Az alaprajz nem menthető: előbb add meg a kert méretét.');
+    }
     const stmt = db.prepare('UPDATE bed SET pos_x_cm = ?, pos_y_cm = ?, rotation_deg = ? WHERE id = ? AND garden_id = ?');
     for (const b of input.beds) {
       if ((b.pos_x_cm == null) !== (b.pos_y_cm == null)) throw new HttpError(400, 'Az ágyás helyéhez mindkét koordináta kell.');
@@ -129,8 +142,8 @@ export function updateBed(db: DB, id: number, input: BedInput): Bed {
     // Archívból visszaállítva a régi helyén közben másik ágyás állhat: ilyenkor lekerül a rajzról
     const year = new Date().getFullYear();
     if (isArchived(before, year) && !isArchived(bed, year)) {
-      const g = getGarden(db, bed.garden_id);
-      if (g.length_cm == null || g.width_cm == null || planErrors(planBeds(db, bed.garden_id), g as GardenSize).length) {
+      const size = gardenSize(getGarden(db, bed.garden_id));
+      if (size && planErrors(planBeds(db, bed.garden_id), size).length) {
         db.prepare('UPDATE bed SET pos_x_cm = NULL, pos_y_cm = NULL WHERE id = ?').run(id);
         bed = getBed(db, id);
       }
