@@ -4,6 +4,7 @@ import {
   CalendarClock,
   CalendarDays,
   ChevronDown,
+  CircleQuestionMark,
   Fence,
   Leaf,
   ListTodo,
@@ -126,6 +127,7 @@ export function Sidebar() {
         <SidebarRow to="/vetomag" icon={Bean} color="var(--c-purple)" label="Vetőmagkészlet" />
         <SidebarRow to="/kert" icon={Fence} color="var(--c-teal)" label="Kert és ágyások" />
         <SidebarRow to="/beallitasok" icon={Settings} color="var(--c-gray)" label="Beállítások" />
+        <SidebarRow to="/sugo" icon={CircleQuestionMark} color="var(--c-blue)" label="Súgó" />
       </div>
 
       <Link to="/kert?uj=1" className={s.add}>

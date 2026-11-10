@@ -1,0 +1,185 @@
+/* Olvasásra hangolt oldal: rövid sorok, nagyobb sorköz, sok levegő a lépések között. */
+.page {
+  max-width: 720px;
+  padding-bottom: 64px;
+}
+
+.lead {
+  margin: 10px var(--page-pad) 0;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--label);
+}
+
+.video {
+  margin: 20px var(--page-pad) 0;
+}
+.video video {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-m);
+  background: #000;
+  box-shadow: var(--shadow-panel);
+}
+.video p {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--label-2);
+}
+
+/* Tartalomjegyzék: Emlékeztetők-szerű csoportos lista */
+.toc {
+  margin: 24px var(--page-pad) 0;
+  border-radius: var(--radius-m);
+  background: var(--bg-grouped);
+  overflow: hidden;
+}
+.toc a {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 16px;
+  color: var(--label);
+  text-decoration: none;
+  font-size: 16px;
+}
+.toc a + a {
+  border-top: var(--hairline) solid var(--separator);
+}
+.toc span {
+  font-size: 13px;
+  color: var(--label-2);
+}
+
+.chapter {
+  margin-top: 48px;
+  scroll-margin-top: 64px;
+}
+.chapterTitle {
+  margin: 0 var(--page-pad);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.intro {
+  margin: 8px var(--page-pad) 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--label-2);
+}
+
+.step {
+  margin-top: 28px;
+}
+.stepTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 var(--page-pad);
+  font-size: 18px;
+  font-weight: 600;
+}
+.stepNo {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--tint-fill);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.stepBody {
+  margin: 8px var(--page-pad) 0;
+  font-size: 16px;
+  line-height: 1.55;
+}
+.stepBody > p + p {
+  margin-top: 10px;
+}
+.stepBody ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.stepBody li + li {
+  margin-top: 4px;
+}
+
+.note {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--tint-fill) 12%, transparent);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.shot {
+  margin: 16px 0 0;
+}
+.shotButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  box-shadow: var(--shadow-panel);
+  cursor: zoom-in;
+}
+.shotButton img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.phone .shotButton {
+  max-width: 300px;
+  margin: 0 auto;
+  border-radius: 22px;
+}
+.shot figcaption {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--label-2);
+  text-align: center;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.92);
+  cursor: zoom-out;
+}
+.lightboxScroll {
+  max-width: 100%;
+  max-height: calc(100% - 40px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-s);
+}
+.lightbox img {
+  display: block;
+  max-width: none;
+  height: auto;
+}
+.lightboxHint {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+}
+
+.footer {
+  margin: 48px var(--page-pad) 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--label-2);
+}
