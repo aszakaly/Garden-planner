@@ -12,21 +12,36 @@ export const SEASON_DAY = new Date('2027-05-10T08:30:00');
 
 let server: ChildProcess | null = null;
 
+const healthy = async () => {
+  try {
+    return (await fetch(`${BASE}/api/health`)).ok;
+  } catch {
+    return false;
+  }
+};
+
 /** Saját szerver a :4361-en üres data/sugo/garden.db-vel, betöltött mintakerttel. */
 export async function startServer(season: boolean) {
   await stopServer();
+  // Ha a porton már fut valami (pl. egy félbeszakadt futás szervere), az új nem indulna el,
+  // és a mintakert a régi adatbázisba kerülne másodszor is
+  if (await healthy()) throw new Error(`A ${PORT}-es porton már fut egy szerver; állítsd le, és futtasd újra.`);
   rmSync('data/sugo', { recursive: true, force: true });
-  server = spawn('npx', ['tsx', 'src/server/index.ts'], {
+  let log = '';
+  const proc = spawn('npx', ['tsx', 'src/server/index.ts'], {
     env: { ...process.env, KERT_PORT: String(PORT), KERT_DB: 'data/sugo/garden.db', NODE_ENV: 'production' },
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
-  for (let i = 0; i < 60; i++) {
-    try {
-      if ((await fetch(`${BASE}/api/health`)).ok) break;
-    } catch {
-      /* még indul */
-    }
+  proc.stdout!.on('data', (d) => (log += d));
+  proc.stderr!.on('data', (d) => (log += d));
+  server = proc;
+  for (let i = 0; i < 60 && !(await healthy()); i++) {
+    if (proc.exitCode !== null) break;
     await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!(await healthy())) {
+    await stopServer();
+    throw new Error(`A mintakert-szerver nem indult el.\n${log.trim()}`);
   }
   await loadSampleGarden(BASE, { season });
 }
@@ -35,6 +50,7 @@ export async function stopServer() {
   if (!server) return;
   const s = server;
   server = null;
+  if (s.exitCode !== null) return;
   await new Promise<void>((resolve) => {
     s.once('exit', () => resolve());
     s.kill();

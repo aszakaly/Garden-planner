@@ -285,8 +285,8 @@ export function HelpPage() {
       </Chapter>
 
       <p className={s.footer}>
-        Ha elakadtál, vagy valami nem úgy működik, ahogy itt áll, szólj annak, aki a Kerttervezőt a gépen futtatja. Az
-        adatokról rendszeresen automatikus mentés készül.
+        Ha elakadtál, vagy valami nem úgy működik, ahogy itt áll, szólj annak, aki a Kerttervezőt a gépen futtatja. A Kerttervező
+        minden indításkor (legfeljebb hatóránként) automatikusan menti az adatokat.
       </p>
       <p className={s.footer}>
         A videó zenéje: „Morning” – Kevin MacLeod (incompetech.com), Creative Commons: Nevezd meg! 4.0 (CC BY 4.0) licenc.

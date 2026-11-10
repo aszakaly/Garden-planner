@@ -286,6 +286,7 @@ async function record(browser: Browser, name: string, day: Date, phone: boolean,
   const end = Date.now() / 1000;
   await cdp.send('Page.stopScreencast');
   await ctx.close();
+  if (!frames.length) throw new Error(`${name}: a képernyőfolyam egyetlen képkockát sem adott.`);
 
   // Képkockák és időtartamuk az ffmpeg concat bemenetéhez
   const dir = `${WORK}/${name}`;
@@ -497,20 +498,23 @@ const PARTS = [
   { name: '3-bevasarlas', season: false, day: PLANNING_DAY, scenes: shoppingScene },
 ];
 
+if (only && only !== 'osszefuzes' && !PARTS.some((p) => p.name.startsWith(only))) {
+  throw new Error(`Ismeretlen rész: --csak=${only} (lehet: 1, 2, 3 vagy osszefuzes)`);
+}
 if (only !== 'osszefuzes' && !process.argv.includes('--no-build')) execSync('npm run build', { stdio: 'inherit' });
 if (!only) rmSync(WORK, { recursive: true, force: true });
 mkdirSync(WORK, { recursive: true });
-const browser = await chromium.launch({ channel: process.env.PW_CHANNEL ?? 'chrome' });
+const browser = only === 'osszefuzes' ? null : await chromium.launch({ channel: process.env.PW_CHANNEL ?? 'chrome' });
 try {
-  console.log('Felvétel');
+  if (browser) console.log('Felvétel');
   for (const p of PARTS) {
     if (only && !p.name.startsWith(only)) continue;
     rmSync(`${WORK}/${p.name}`, { recursive: true, force: true });
     await startServer(p.season);
-    await record(browser, p.name, p.day, p.season, p.scenes);
+    await record(browser!, p.name, p.day, p.season, p.scenes);
   }
 } finally {
-  await browser.close();
+  await browser?.close();
   await stopServer();
 }
 if (!only || only === 'osszefuzes') assemble(PARTS.map((p) => p.name));
