@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "sugo": "tsx scripts/sugo/felvetel.ts"
+    "sugo": "tsx scripts/sugo/felvetel.ts",
+    "sugo:video": "tsx scripts/sugo/video.ts"
   },
   "dependencies": {
     "@fastify/static": "^10.1.5",

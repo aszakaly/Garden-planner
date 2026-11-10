@@ -8,46 +8,12 @@
  * így a valódi adatokhoz nem nyúl. A böngésző órája rögzített: a tervezés 2027. február 15-én,
  * a kerti rész 2027. május 10-én játszódik. A képek a src/client/public/sugo/ mappába kerülnek.
  */
-import { spawn, execSync, type ChildProcess } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { loadSampleGarden } from './mintakert.ts';
+import { BASE, PLANNING_DAY, SEASON_DAY, dialog, field, startServer, stopServer } from './kozos.ts';
 
-const PORT = 4361;
-const BASE = `http://localhost:${PORT}`;
 const OUT = 'src/client/public/sugo';
-const PLANNING_DAY = new Date('2027-02-15T09:00:00');
-const SEASON_DAY = new Date('2027-05-10T08:30:00');
-
-let server: ChildProcess | null = null;
-
-async function startServer(season: boolean) {
-  await stopServer();
-  rmSync('data/sugo', { recursive: true, force: true });
-  server = spawn('npx', ['tsx', 'src/server/index.ts'], {
-    env: { ...process.env, KERT_PORT: String(PORT), KERT_DB: 'data/sugo/garden.db', NODE_ENV: 'production' },
-    stdio: 'ignore',
-  });
-  for (let i = 0; i < 60; i++) {
-    try {
-      if ((await fetch(`${BASE}/api/health`)).ok) break;
-    } catch {
-      /* még indul */
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  await loadSampleGarden(BASE, { season });
-}
-
-async function stopServer() {
-  if (!server) return;
-  const s = server;
-  server = null;
-  await new Promise<void>((resolve) => {
-    s.once('exit', () => resolve());
-    s.kill();
-  });
-}
 
 /** Asztali (1280×800) vagy telefonos (390×844) böngészőkörnyezet, rögzített órával. */
 async function context(browser: Browser, kind: 'desktop' | 'phone', day: Date): Promise<BrowserContext> {
@@ -126,7 +92,6 @@ async function unmark(el: Locator) {
   });
 }
 
-const dialog = (page: Page, name: string) => page.getByRole('dialog', { name, exact: true });
 
 // --- Fázisok -------------------------------------------------------------------
 
@@ -246,13 +211,6 @@ const infoOf = (page: Page, title: string) =>
     .locator('xpath=ancestor::div[contains(@class, "_row_")][1]')
     .getByRole('button', { name: 'Részletek' });
 
-/** Űrlapmező a sor felirata alapján (mint az e2e tesztben). */
-const field = (scope: Locator, label: string) =>
-  scope
-    .locator('label')
-    .filter({ has: scope.page().getByText(label, { exact: true }) })
-    .locator('input, select, textarea')
-    .first();
 
 /** A JPEG képpontmérete a fájl fejlécéből (SOF szakasz). */
 function jpegSize(path: string): [number, number] {

@@ -17,6 +17,7 @@
 .video video {
   display: block;
   width: 100%;
+  height: auto;
   border-radius: var(--radius-m);
   background: #000;
   box-shadow: var(--shadow-panel);

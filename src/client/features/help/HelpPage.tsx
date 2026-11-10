@@ -1,5 +1,5 @@
 import { PageHeader } from '../../components/ui/PageHeader.tsx';
-import { Chapter, Note, Shot, Step } from './HelpParts.tsx';
+import { Chapter, Note, Shot, Step, helpAsset } from './HelpParts.tsx';
 import s from './HelpPage.module.css';
 
 const CHAPTERS = [
@@ -21,6 +21,21 @@ export function HelpPage() {
         A Kerttervezőben megtervezed, mi kerüljön az ágyásokba, és az alkalmazás ebből elkészíti a szezon teendőit: mikor
         vess, mikor ültess ki, mikor mit vegyél meg. Négy rövid fejezet, abban a sorrendben, ahogy az év halad.
       </p>
+
+      <figure className={s.video}>
+        <video
+          controls
+          playsInline
+          preload="none"
+          poster={helpAsset('bemutato.jpg')}
+          width={1920}
+          height={1080}
+          aria-label="Bemutatóvideó"
+        >
+          <source src={helpAsset('bemutato.mp4')} type="video/mp4" />
+        </video>
+        <p>Bemutatóvideó, két és fél perc, feliratokkal és halk zenével. Telefonon fordítsd el, és nézd teljes képernyőn.</p>
+      </figure>
 
       <nav className={s.toc} aria-label="Fejezetek">
         {CHAPTERS.map((c) => (
@@ -272,6 +287,9 @@ export function HelpPage() {
       <p className={s.footer}>
         Ha elakadtál, vagy valami nem úgy működik, ahogy itt áll, szólj annak, aki a Kerttervezőt a gépen futtatja. Az
         adatokról rendszeresen automatikus mentés készül.
+      </p>
+      <p className={s.footer}>
+        A videó zenéje: „Morning” – Kevin MacLeod (incompetech.com), Creative Commons: Nevezd meg! 4.0 (CC BY 4.0) licenc.
       </p>
     </div>
   );
