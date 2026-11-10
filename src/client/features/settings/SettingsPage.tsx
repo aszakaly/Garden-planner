@@ -142,6 +142,17 @@ export function SettingsPage() {
             </a>
             . A fajták között nagy az eltérés: a vetőmag tasakján lévő értéket érdemes a fajtánál megadni.
           </Source>
+          <Source title="A Súgó videójának zenéje">
+            „Morning” – Kevin MacLeod (
+            <a href="https://incompetech.com" target="_blank" rel="noreferrer">
+              incompetech.com
+            </a>
+            ), licenc:{' '}
+            <a href="https://creativecommons.org/licenses/by/4.0/deed.hu" target="_blank" rel="noreferrer">
+              CC BY 4.0
+            </a>
+            .
+          </Source>
         </div>
       </FormGroup>
 

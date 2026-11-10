@@ -4,6 +4,8 @@ data/*.db
 data/*.db-*
 data/backups/
 data/e2e/
+data/sugo/
+data/sugo-video/
 .DS_Store
 *.log
 test-results/

@@ -339,4 +339,16 @@ test('teljes tervezési folyamat: tervtől a naplóig és a következő évig', 
     expect(placed.pos_x_cm).not.toBeNull();
     expect(placed.rotation_deg).toBe(90);
   });
+
+  await test.step('15. Súgó: kézikönyv a képekkel és a bemutatóvideó', async () => {
+    await page.getByRole('navigation', { name: 'Listák' }).getByRole('link', { name: 'Súgó' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Súgó' })).toBeVisible();
+    await page.getByRole('navigation', { name: 'Fejezetek' }).getByRole('link', { name: /Bevásárlólista/ }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'Bevásárlólista' })).toBeInViewport();
+    const firstShot = page.locator('main figure img').first();
+    await expect(firstShot).toHaveJSProperty('complete', true);
+    expect(await firstShot.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    const video = await page.request.get('/sugo/bemutato.mp4', { headers: { Range: 'bytes=0-99' } });
+    expect(video.status()).toBe(206);
+  });
 });

@@ -14,6 +14,7 @@ import { ThisWeekPage } from './features/tasks/ThisWeekPage.tsx';
 import { ScheduledPage } from './features/tasks/ScheduledPage.tsx';
 import { CalendarPage } from './features/calendar/CalendarPage.tsx';
 import { JournalPage } from './features/journal/JournalPage.tsx';
+import { HelpPage } from './features/help/HelpPage.tsx';
 
 function Home() {
   // Asztalon a „Ez a hét” nyílik; telefonon az elrendezés a listákat mutatja.
@@ -39,6 +40,7 @@ const router = createBrowserRouter([
       { path: 'vetomag', element: <SeedsPage /> },
       { path: 'kert', element: <GardenPage /> },
       { path: 'beallitasok', element: <SettingsPage /> },
+      { path: 'sugo', element: <HelpPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

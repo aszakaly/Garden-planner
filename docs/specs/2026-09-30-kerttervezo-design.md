@@ -322,3 +322,18 @@ Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változat
 - Piszkozat Mentés / Elvetés sávval, elhagyás előtti kérdéssel. Telefonon csak nézet.
 - Az archív (a használata az idei év előtt véget ért) ágyás nem látszik, és nem foglal helyet.
 
+
+### Súgó: kézikönyv és bemutatóvideó (2026-11-09)
+**Cél:** a feleségem (és egy-egy érdeklődő ismerős) nulláról, segítség nélkül el tudja kezdeni használni az alkalmazást.
+
+**Követelmények:**
+- Az alkalmazás része, nem külön fájl: új „Súgó” menüpont az „Adatok” csoportban; telefonra optimalizált webes oldal. Nyomtatás nem cél.
+- Helyzetek köré épül, nem menüpontok köré:
+  1. *Februári tervezés* (asztali nézet): ágyások, mi kerüljön hova, javaslatok és figyelmeztetések értelmezése.
+  2. *Szezonban, telefonról:* főleg a feladatok (mi a teendő, pipálás, áthelyezés, saját feladat), a terv megnézése, tény rögzítése.
+  3. *Bevásárlólista:* külön funkció nincs; a „Beszerzés” feladatokból és a Vetőmagkészletből áll össze. Új funkció most nem készül.
+- Rövid kezdés: mi ez, hogyan kerül a telefon főképernyőjére.
+- Lépésenként, képernyőképekkel; a képek száma lépésenként kötetlen. A szakszavak (vetésforgó, elő- és utóvetemény) egy mondatban, ott, ahol előjönnek.
+- Tömör és célirányos, de nem rohanós: rövid bekezdések, tér a feldolgozásra, túlmagyarázás nélkül.
+- Videó: legfeljebb 3 perc, a Súgó oldal tetejéről indul. Képernyőfelvétel magyar feliratokkal és szabad licencű, halk aláfestő zenével, narráció nélkül (a gépi hang kizárt). A tempót a feliratok olvasási ideje szabja meg.
+- A képek és a felvétel mintakertből készülnek, a `kerttervezo-uitest` példányon; valódi adat nem kerül bele. A zene licence és forrása a README-ben és a Beállítások → Források oldalon.
