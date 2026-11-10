@@ -229,7 +229,7 @@ function jpegSize(path: string): [number, number] {
 function writeSizes() {
   const sizes = Object.fromEntries(
     readdirSync(OUT)
-      .filter((f) => f.endsWith('.jpg'))
+      .filter((f) => f.endsWith('.jpg') && f !== 'bemutato.jpg')
       .sort()
       .map((f) => [f, jpegSize(`${OUT}/${f}`)]),
   );
@@ -242,7 +242,7 @@ const only = process.argv.find((a) => a.startsWith('--csak='))?.slice('--csak='.
 if (!process.argv.includes('--no-build')) execSync('npm run build', { stdio: 'inherit' });
 mkdirSync(OUT, { recursive: true });
 // A régi képek törlése, hogy ne maradjon a mappában már nem használt kép
-if (!only) for (const f of readdirSync(OUT)) if (f.endsWith('.jpg')) rmSync(`${OUT}/${f}`);
+if (!only) for (const f of readdirSync(OUT)) if (f.endsWith('.jpg') && f !== 'bemutato.jpg') rmSync(`${OUT}/${f}`);
 const browser = await chromium.launch({ channel: process.env.PW_CHANNEL ?? 'chrome' });
 try {
   if (!only || only === 'tervezes') {

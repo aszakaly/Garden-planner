@@ -2,6 +2,12 @@
 
 A felületen látható változások, a legújabb elöl. A részletes fejlesztési előzmény a git logban van, a tervezési döntések a [design dokumentumban](docs/specs/2026-09-30-kerttervezo-design.md).
 
+## 2026-11-10 – Súgó
+
+- **Súgó menüpont** az Adatok csoport végén: felhasználói kézikönyv négy fejezetben (Kezdés, Tervezés februárban, A kertben telefonról, Bevásárlólista), lépésenként, képernyőképekkel. A tartalomjegyzékből a fejezetre ugrik; a képek koppintásra eredeti méretben, görgethetően nyílnak.
+- **Bemutatóvideó** a Súgó tetején: két és fél perc, feliratokkal és halk zenével, narráció nélkül.
+- A Beállítások → Források alatt a videó zenéjének forrása.
+
 ## 2026-11-09 – Kert alaprajza
 
 - **Alaprajz a Kert oldalon:** a kert méretarányos, rácsos rajza, rajta az ágyások a nevükkel és a sorok irányával. A kert hossza és mélysége a Kert adatai lapon adható meg.

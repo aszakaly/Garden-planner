@@ -15,6 +15,7 @@ Kert- és veteményes-tervező és kertészeti napló saját használatra. Magya
 - **Tény és napló:** tényleges dátumok és hely, szezonvégi értékelés, kereshető napló, fajtaszintű tudásbázis.
 - **Következő év:** tervév állapottal és jegyzettel, az évelők átvitele, és „Mi kerülhet ide?” javaslatok ágyásonként – a vetésforgó, a szomszédok, a vetőmagkészlet és a korábbi értékelések alapján.
 - **Mentés:** automatikus és kézi mentés, JSON export és visszatöltés.
+- **Súgó:** felhasználói kézikönyv az alkalmazásban (Adatok → Súgó), képernyőképekkel és egy 2,5 perces bemutatóvideóval.
 
 ## Indítás
 
@@ -72,6 +73,8 @@ npm run dev:sandbox  # homokozó külön adatbázissal (data/sandbox.db): felül
 npm test             # egység- és API-tesztek (Vitest)
 npm run test:e2e     # végponttól végpontig tartó teszt (Playwright, saját átmeneti adatbázissal)
 npm run typecheck
+npm run sugo         # a Súgó képernyőképei a mintakertből (saját szerver :4361, data/sugo/)
+npm run sugo:video   # a Súgó bemutatóvideója (ffmpeg kell: brew install ffmpeg)
 ```
 
 A homokozóban nyugodtan lehet kísérletezni: a saját adatbázisát használja, a valódi `data/garden.db`-hez nem nyúl.
@@ -90,9 +93,11 @@ A társítási adatok (`seed/companions.json`) a [Wind River Greens Plant Variet
 
 A vetési, kiültetési és betakarítási időszakok általános magyar vetési naptárakból valók (kertvar.hu, agroinform.hu, kertlap.hu). A tő- és sortáv és a tenyészidő általános kertészeti alapérték, amelyet – ahol volt adat – összevetettünk a Rédei Kertimag tasakadataival (oazis.hu), az [origo.hu házikerti helyigény-táblázatával](https://www.origo.hu/attached/20130219helyigeny-zoldseg-fuszer.pdf) és a [kertforum.hu tenyészidő-táblázatával](https://www.kertforum.hu/tenyeszido-cop1/). Tájékoztató jellegűek: a fajták között nagy az eltérés, a vetőmag tasakján lévő értéket érdemes a fajtánál megadni.
 
+A Súgó bemutatóvideójának zenéje (`scripts/sugo/zene/morning.mp3`): „Morning” – Kevin MacLeod ([incompetech.com](https://incompetech.com)), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) licenc alatt.
+
 ## Licenc
 
-A kód [MIT licenc](LICENSE) alatt használható. A `seed/companions.json` társítási adatai a forrásuk CC BY 4.0 licence alá tartoznak (lásd fent).
+A kód [MIT licenc](LICENSE) alatt használható. A `seed/companions.json` társítási adatai és a bemutatóvideó zenéje a forrásuk CC BY 4.0 licence alá tartoznak (lásd fent).
 
 ## Felelősségkizárás
 

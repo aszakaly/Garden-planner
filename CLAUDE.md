@@ -22,6 +22,8 @@ npx vitest run src/shared/domain/beds.test.ts   # egy tesztfájl
 npx vitest run -t "sorszám"                     # tesztnév szerint
 npm run test:e2e      # Playwright: buildel, saját szerver :4351-en, üres data/e2e/garden.db
 npm run typecheck     # tsc --noEmit (külön linter nincs)
+npm run sugo          # a Súgó képernyőképei a mintakertből (:4361, data/sugo/)
+npm run sugo:video    # a Súgó bemutatóvideója (ffmpeg kell)
 ```
 
 **Adatbiztonság:**
@@ -89,6 +91,7 @@ Egyetlen TypeScript projekt három réteggel; a `@shared/*` alias a `src/shared`
 
 - **Seed-adatok:** a `seed/*.json`. A `seed/companions.json` társítási adatai a `scripts/build-companions.ts` kimenetei (`npx tsx scripts/build-companions.ts`), a Wind River Greens Plant Variety Database alapján, CC BY 4.0 licenccel; a forrásmegjelölés a README-ben és a Beállítások → Források oldalon van.
 - **E2E teszt:** az `e2e/garden-flow.spec.ts` egyetlen hosszú teszt a design dokumentum 14. pontjának folyamatára, a végén az ágyás-munkalap elfogadási eseteivel. A böngésző órája 2027-03-15-re van rögzítve, `hu-HU` lokalizációval, Budapest időzónával.
+- **Súgó** (`features/help/`): a kézikönyv szövege a `HelpPage.tsx`-ben, a képek és a videó a `public/sugo/`-ban. Mindkettőt a `scripts/sugo/` szkriptjei készítik a mintakertből (`mintakert.ts`), rögzített órával (2027-02-15, 2027-05-10); ha a bemutatott felület változik, futtasd újra őket. A képek mérete a `shotSizes.json`-ba kerül.
 - **Indító:** a `Kerttervező.command` dupla kattintással indítja az éles módot, és felismeri, ha már fut egy fejlesztői szerver.
 
 ## Munkamódszer
