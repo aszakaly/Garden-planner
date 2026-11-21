@@ -113,3 +113,10 @@
     font-size: 17px;
   }
 }
+
+.version {
+  margin: 24px var(--page-pad) 0;
+  color: var(--label-2);
+  font-size: 13px;
+  text-align: center;
+}

@@ -1,0 +1,90 @@
+# Docker image építése a ZimaOS-szerverhez.
+# - Ág pusholásakor:      ghcr.io/aszakaly/garden-planner:ag-<ágnév>   (próba a teszt példányon)
+# - Kiadáskor (vX.Y.Z):   ghcr.io/aszakaly/garden-planner:X.Y.Z        (teszt, majd éles)
+# Az image csak akkor kerül fel, ha a típusellenőrzés, az egységtesztek és a füstpróba is sikeres.
+
+name: Image
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/aszakaly/garden-planner
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Függőségek
+        run: npm ci
+
+      - name: Típusellenőrzés
+        run: npm run typecheck
+
+      - name: Egységtesztek
+        run: npm test
+
+      - name: Címke és verzió
+        id: meta
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            tag="${GITHUB_REF_NAME#v}"
+            version="$tag"
+          else
+            slug="$(echo "$GITHUB_REF_NAME" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9._-' '-' | sed 's/-*$//')"
+            tag="ag-$slug"
+            version="$tag-${GITHUB_SHA::7}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Címke: $tag, verzió: $version"
+
+      - name: Image építése
+        run: >
+          docker build --platform linux/amd64
+          --build-arg KERT_VERZIO=${{ steps.meta.outputs.version }}
+          -t "$IMAGE:${{ steps.meta.outputs.tag }}" .
+
+      - name: Füstpróba (üres adatbázissal indul, a felület és az API válaszol)
+        run: |
+          docker run -d --name proba -p 4321:4321 -e KERT_KORNYEZET=teszt "$IMAGE:${{ steps.meta.outputs.tag }}"
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4321/api/health && break
+            sleep 1
+          done
+          echo
+          curl -sf http://localhost:4321/api/health | grep -q '"version":"${{ steps.meta.outputs.version }}"'
+          curl -sf http://localhost:4321/api/health | grep -q '"environment":"teszt"'
+          curl -sf http://localhost:4321/ | grep -q 'id="root"'
+          curl -sf http://localhost:4321/api/plants | grep -q 'name_hu'
+          # Leállítás: a SIGTERM-re a szerver rendben bezár (kilépési kód 0)
+          docker stop proba
+          test "$(docker inspect -f '{{.State.ExitCode}}' proba)" = 0
+
+      - name: Napló hiba esetén
+        if: failure()
+        run: docker logs proba || true
+
+      - name: Bejelentkezés a GHCR-be
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Feltöltés
+        run: docker push "$IMAGE:${{ steps.meta.outputs.tag }}"

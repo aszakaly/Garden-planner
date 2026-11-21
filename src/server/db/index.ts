@@ -28,9 +28,16 @@ export function migrate(db: DB, dir = MIGRATIONS_DIR, beforeMigrate?: (db: DB) =
   const applied = new Set(
     db.prepare('SELECT version FROM schema_migrations').all().map((r) => String(r.version)),
   );
-  const pending = readdirSync(dir)
-    .filter((f) => f.endsWith('.sql') && !applied.has(f))
-    .sort();
+  const known = readdirSync(dir).filter((f) => f.endsWith('.sql'));
+  // Régebbi kód újabb szerkezetű adatbázison: inkább nem indul el, mint hogy hibásan írjon bele
+  const unknown = [...applied].filter((v) => !known.includes(v)).sort();
+  if (unknown.length) {
+    throw new Error(
+      `Az adatbázis újabb verzióval készült (ismeretlen migráció: ${unknown.join(', ')}). ` +
+        'Indítsd az újabb verziót, vagy töltsd vissza a migráció előtti mentést.',
+    );
+  }
+  const pending = known.filter((f) => !applied.has(f)).sort();
   if (!pending.length) return pending;
   // új (üres) adatbázisnál nincs mit menteni
   if (applied.size) beforeMigrate?.(db);

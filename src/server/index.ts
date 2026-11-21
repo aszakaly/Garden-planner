@@ -23,7 +23,8 @@ const seeded = seedIfEmpty(db);
 const backup = migrationBackup ?? backupDatabase(db, backupConfig.dir, backupConfig.name);
 
 const production = process.env.NODE_ENV === 'production';
-const app = buildApp({ db, backup: backupConfig, clientDir: production ? join(ROOT, 'dist', 'client') : undefined });
+const info = { version: process.env.KERT_VERZIO || 'fejlesztői', environment: process.env.KERT_KORNYEZET || undefined };
+const app = buildApp({ db, backup: backupConfig, info, clientDir: production ? join(ROOT, 'dist', 'client') : undefined });
 
 try {
   await app.listen({ port: PORT, host: '0.0.0.0' });
@@ -47,6 +48,7 @@ if (production) {
   console.log(`   Fejlesztői mód: a felület a [client] sorban kiírt Vite-címen érhető el (pl. :5173),`);
   console.log(`                   az API itt fut: http://localhost:${PORT}/api`);
 }
+console.log(`   Verzió:         ${info.version}${info.environment ? ` (${info.environment})` : ''}`);
 console.log(`   Adatbázis:      ${DB_PATH}`);
 console.log(`   Mentés:         ${backup ?? 'a legutóbbi mentés 6 óránál frissebb, most nem készült új'}`);
 if (seeded) console.log('   Kezdő törzsadatok betöltve (növények, családok, társítások).');

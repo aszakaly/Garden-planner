@@ -18,6 +18,13 @@ describe('API alapok', () => {
     );
   });
 
+  it('a /api/health a verziót és a példány nevét is visszaadja', async () => {
+    const dev = await buildApp({ db }).inject({ method: 'GET', url: '/api/health' });
+    expect(dev.json()).toEqual({ ok: true, version: 'fejlesztői' });
+    const test = await buildApp({ db, info: { version: '1.2.0', environment: 'teszt' } }).inject({ method: 'GET', url: '/api/health' });
+    expect(test.json()).toEqual({ ok: true, version: '1.2.0', environment: 'teszt' });
+  });
+
   it('beállítások: alapértékek és módosítás', async () => {
     const app = buildApp({ db });
     const initial = await app.inject({ method: 'GET', url: '/api/settings' });
