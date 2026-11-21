@@ -12,3 +12,4 @@ test-results/
 playwright-report/
 .vite/
 scripts/.cache/
+scripts/zima/.zima

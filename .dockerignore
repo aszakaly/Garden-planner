@@ -1,0 +1,16 @@
+.git
+.github
+.claude
+node_modules
+dist
+data
+docs
+e2e
+tests
+test-results
+playwright-report
+scripts
+*.docx
+*.command
+*.log
+.DS_Store

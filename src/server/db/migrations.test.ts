@@ -112,3 +112,14 @@ describe('mentés a migráció előtt', () => {
     expect(calls).toEqual(['1']);
   });
 });
+
+describe('séma-védelem', () => {
+  it('régebbi kód nem indul el újabb szerkezetű adatbázison, és nem ír bele', () => {
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run('999_jovobeli.sql', '2027-01-01T00:00:00Z');
+    const before = db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get();
+    expect(() => migrate(db)).toThrow(/újabb verzióval készült.*999_jovobeli\.sql/);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get()).toEqual(before);
+  });
+});

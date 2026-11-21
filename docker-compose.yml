@@ -1,0 +1,30 @@
+# Kerttervező a ZimaOS-szerveren: egy éles és egy teszt példány ugyanabból az image-ből.
+# Helye a szerveren: /DATA/AppData/kerttervezo/docker-compose.yml
+# A futó verziók a mellette lévő .env fájlban vannak, például:
+#   ELES_VERZIO=1.0.0
+#   TESZT_VERZIO=1.1.0
+# Az adatok az eles/ és a teszt/ mappában vannak (adatbázis és backups/), az image cseréje nem érinti őket.
+
+name: kerttervezo
+
+services:
+  eles:
+    image: ghcr.io/aszakaly/garden-planner:${ELES_VERZIO:?Add meg az ELES_VERZIO-t a .env fájlban}
+    restart: unless-stopped
+    ports:
+      - '4321:4321'
+    environment:
+      TZ: Europe/Budapest
+    volumes:
+      - ./eles:/data
+
+  teszt:
+    image: ghcr.io/aszakaly/garden-planner:${TESZT_VERZIO:?Add meg a TESZT_VERZIO-t a .env fájlban}
+    restart: unless-stopped
+    ports:
+      - '4322:4321'
+    environment:
+      TZ: Europe/Budapest
+      KERT_KORNYEZET: teszt
+    volumes:
+      - ./teszt:/data

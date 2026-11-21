@@ -21,7 +21,12 @@
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "sugo": "tsx scripts/sugo/felvetel.ts",
-    "sugo:video": "tsx scripts/sugo/video.ts"
+    "sugo:video": "tsx scripts/sugo/video.ts",
+    "kiadas:teszt": "sh scripts/zima/kiadas.sh teszt",
+    "kiadas:eles": "sh scripts/zima/kiadas.sh eles",
+    "zima:allapot": "sh scripts/zima/allapot.sh",
+    "zima:mentesek": "sh scripts/zima/mentesek.sh",
+    "zima:visszatoltes": "sh scripts/zima/visszatoltes.sh"
   },
   "dependencies": {
     "@fastify/static": "^10.1.5",
@@ -31,6 +36,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "^8.4.0",
+    "tsx": "^4.23.15",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -40,7 +46,6 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.5",
-    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
     "vitest": "^5.0.3"

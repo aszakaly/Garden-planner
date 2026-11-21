@@ -24,6 +24,9 @@ npm run test:e2e      # Playwright: buildel, saját szerver :4351-en, üres data
 npm run typecheck     # tsc --noEmit (külön linter nincs)
 npm run sugo          # a Súgó képernyőképei a mintakertből (:4361, data/sugo/)
 npm run sugo:video    # a Súgó bemutatóvideója (ffmpeg kell)
+npm run zima:allapot              # a ZimaOS-szerver két példányának verziója és állapota
+npm run kiadas:teszt -- 1.2.0     # kiadás a tesztre (ág próba-image-e: ag-<ágnév>)
+npm run kiadas:eles -- 1.2.0      # kiadás élesre (csak a teszten már futott verzió)
 ```
 
 **Adatbiztonság:**
@@ -92,6 +95,7 @@ Egyetlen TypeScript projekt három réteggel; a `@shared/*` alias a `src/shared`
 - **Seed-adatok:** a `seed/*.json`. A `seed/companions.json` társítási adatai a `scripts/build-companions.ts` kimenetei (`npx tsx scripts/build-companions.ts`), a Wind River Greens Plant Variety Database alapján, CC BY 4.0 licenccel; a forrásmegjelölés a README-ben és a Beállítások → Források oldalon van.
 - **E2E teszt:** az `e2e/garden-flow.spec.ts` egyetlen hosszú teszt a design dokumentum 14. pontjának folyamatára, a végén az ágyás-munkalap elfogadási eseteivel. A böngésző órája 2027-03-15-re van rögzítve, `hu-HU` lokalizációval, Budapest időzónával.
 - **Súgó** (`features/help/`): a kézikönyv szövege a `HelpPage.tsx`-ben, a képek és a videó a `public/sugo/`-ban. Mindkettőt a `scripts/sugo/` szkriptjei készítik a mintakertből (`mintakert.ts`), rögzített órával (2027-02-15, 2027-05-10); ha a bemutatott felület változik, futtasd újra őket. A képek mérete a `shotSizes.json`-ba kerül.
+- **ZimaOS:** a `Dockerfile` és a `docker-compose.yml` az otthoni szerverre; az éles és a teszt példány adatai a `/DATA/AppData/kerttervezo/eles|teszt` alatt. Az image-et a `.github/workflows/image.yml` építi (típusellenőrzés, egységtesztek, füstpróba), a `scripts/zima/` parancsai SSH-n rakják ki; a szerver címe a git alá nem kerülő `scripts/zima/.zima`-ban. A szerveren futó éles adatbázisba se írj tesztadatot; próbához a teszt példány (`:4322`) használható. Új migráció csak bővítő legyen: a régebbi kód újabb sémán nem indul el (`migrate` a `db/index.ts`-ben).
 - **Indító:** a `Kerttervező.command` dupla kattintással indítja az éles módot, és felismeri, ha már fut egy fejlesztői szerver.
 
 ## Munkamódszer

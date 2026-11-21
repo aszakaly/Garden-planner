@@ -65,6 +65,37 @@ Egy automatikus (`.db`) mentés visszaállítása kézzel:
 
 4. Indítsd újra.
 
+## Futtatás a ZimaOS-szerveren
+
+Az otthoni ZimaOS-szerveren két példány fut ugyanabból a Docker image-ből, saját adatbázissal:
+
+| | Cím | Adatok a szerveren |
+|---|---|---|
+| **Éles** | `http://<szerver-ip>:4321` | `/DATA/AppData/kerttervezo/eles` |
+| **Teszt** | `http://<szerver-ip>:4322` | `/DATA/AppData/kerttervezo/teszt` |
+
+A teszten narancs „TESZT” csík jelzi a példányt; a Beállítások alján látszik a futó verzió. A ZimaOS kezdőlapján nem jelennek meg (azt csak a ZimaOS saját alkalmazáskezelője tölti fel): telefonon a Safariban **Megosztás → Főképernyőhöz adás**, mindkét címre külön.
+
+**Első beállítás:** a szerver előkészítése (állandó cím, SSH, kulcs, Docker-jog) a [docs/zimaos-beallitas.md](docs/zimaos-beallitas.md) szerint. A szerver címét a Mac a `scripts/zima/.zima` fájlból olvassa (a git nem követi), pl. `ZIMA_HOST=felhasznalo@192.168.1.50`.
+
+**Új verzió kiadása:**
+
+1. A pull request összevonása után a GitHubon: **Releases → Draft a new release**, új címke `vX.Y.Z` a `main`-en. A GitHub Actions megépíti és kipróbálja a `ghcr.io/aszakaly/garden-planner:X.Y.Z` image-et (Actions fül, kb. 2 perc).
+2. Teszt: `npm run kiadas:teszt -- X.Y.Z`, és kipróbálás telefonon.
+3. Éles: `npm run kiadas:eles -- X.Y.Z`. Csak olyan verzió mehet ki, amely a teszten már futott.
+
+Kiadáskor mentés készül a futó példányról, az új verzió pedig induláskor, a migrációk előtt is ment. Az adatbázis a szerver lemezén van, az image cseréje nem érinti. Egy ág minden pusholásából próba-image is készül (`ag-<ágnév>`), amely a merge előtt kirakható a tesztre.
+
+```bash
+npm run zima:allapot                       # melyik példány melyik verziót futtatja
+npm run zima:mentesek -- eles              # a legutóbbi mentések
+npm run zima:visszatoltes -- eles <fájl>   # egy mentés visszatöltése (a példány leállítva marad)
+```
+
+**Visszaállás az előző verzióra:** `npm run kiadas:eles -- <előző verzió>`. Ha az újabb verzió már átalakította az adatbázist (migráció), a régebbi nem indul el, és ezt jelzi; ilyenkor előbb a migráció előtti mentést kell visszatölteni (`zima:mentesek`, majd `zima:visszatoltes`), utána jöhet a kiadás. A visszatöltés előtti adatbázis `garden-visszatoltes-elott-<idő>.db` néven megmarad az adatmappában.
+
+> A mentések ugyanazon a lemezen vannak, mint az adatbázis. Lemezhiba ellen érdemes a `/DATA/AppData/kerttervezo` mappát a ZimaOS mentésével máshová is menteni, vagy időnként JSON-exportot készíteni.
+
 ## Fejlesztés
 
 ```bash

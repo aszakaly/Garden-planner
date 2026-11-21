@@ -7,7 +7,7 @@ import { FormGroup, FormRow, MonthDayInput, TextInput } from '../../components/u
 import { PageHeader } from '../../components/ui/PageHeader.tsx';
 import { api } from '../../lib/api.ts';
 import { errorMessage } from '../../lib/errors.ts';
-import { qk, useApiMutation, useCropGroups, useFamilies, useSettings } from '../../lib/queries.ts';
+import { qk, useApiMutation, useCropGroups, useFamilies, useHealth, useSettings } from '../../lib/queries.ts';
 import { DataGroup } from './DataGroup.tsx';
 import { CropGroupEditSheet, FamilyEditSheet } from './MasterEditSheets.tsx';
 import s from './SettingsPage.module.css';
@@ -18,6 +18,7 @@ export function SettingsPage() {
   const { data: settings } = useSettings();
   const { data: families = [] } = useFamilies();
   const { data: groups = [] } = useCropGroups();
+  const { data: health } = useHealth();
   const [editing, setEditing] = useState<Editing>(null);
   const [region, setRegion] = useState('');
   const save = useApiMutation((patch: Partial<Settings>) => api.put<Settings>('/settings', patch), [qk.settings]);
@@ -155,6 +156,13 @@ export function SettingsPage() {
           </Source>
         </div>
       </FormGroup>
+
+      {health && (
+        <p className={s.version}>
+          Verzió: {health.version}
+          {health.environment ? ` · ${health.environment}` : ''}
+        </p>
+      )}
 
       <FamilyEditSheet
         open={editing?.kind === 'family'}

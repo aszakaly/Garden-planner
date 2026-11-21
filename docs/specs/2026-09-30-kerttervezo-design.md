@@ -337,3 +337,16 @@ Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változat
 - Tömör és célirányos, de nem rohanós: rövid bekezdések, tér a feldolgozásra, túlmagyarázás nélkül.
 - Videó: legfeljebb 3 perc, a Súgó oldal tetejéről indul. Képernyőfelvétel magyar feliratokkal és szabad licencű, halk aláfestő zenével, narráció nélkül (a gépi hang kizárt). A tempót a feliratok olvasási ideje szabja meg.
 - A képek és a felvétel mintakertből készülnek, a `kerttervezo-uitest` példányon; valódi adat nem kerül bele. A zene licence és forrása a README-ben és a Beállítások → Források oldalon.
+
+### Futtatás ZimaOS-en: éles és teszt példány (2026-11-21)
+**Cél:** az alkalmazás egy otthoni mini szerveren fut (Fujitsu Esprimo QT556/2, i5-7500T, 16 GB, ZimaOS), folyamatosan, a Mac bekapcsolása nélkül. Mindig van egy éles és egy teszt példány, és új verzió kirakásakor az adatbázis tartalma nem íródik felül és nem törlődik.
+
+**Követelmények:**
+- Csomagolás Docker image-ként (linux/amd64). Az image csak a kódot és a lefordított felületet tartalmazza, adatot soha.
+- Két példány ugyanabból az image-ből, saját adatmappával és porttal az otthoni hálón: éles `:4321`, teszt `:4322`. HTTPS és saját név egyelőre nem kell.
+- A teszt adatai a homokozó logikáját követik: saját, megmaradó adatbázis, amelyet a kiadás nem cserél le az éles másolatára. Adatot a példányok között a meglévő JSON export/import mozgat.
+- Az image-et a GitHub építi, és a GitHub konténertárából (GHCR) jut el a szerverre. A verziók visszakereshetők.
+- Új verzió előbb a tesztre kerül; az éles ugyanazt a kipróbált verziót kapja. Az előző verzióra vissza lehet állni.
+- Az adatbázis frissítése a meglévő módon történik: indításkor mentés, utána a migrációk. Régebbi kód újabb szerkezetű adatbázison nem indul el.
+- A felületen látszik, melyik verzió fut, és a teszt példány összetéveszthetetlenül jelölt.
+- A Macen a fejlesztés és az indító változatlan marad.

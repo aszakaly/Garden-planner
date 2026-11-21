@@ -19,9 +19,11 @@ export interface AppOptions {
   /** A mentések helye (kézi mentéshez és visszatöltés előtti mentéshez) */
   backup?: BackupConfig;
   logger?: boolean;
+  /** A futó verzió és a példány neve (pl. „teszt”); a /api/health adja vissza */
+  info?: { version: string; environment?: string };
 }
 
-export function buildApp({ db, clientDir, backup, logger = false }: AppOptions): FastifyInstance {
+export function buildApp({ db, clientDir, backup, logger = false, info = { version: 'fejlesztői' } }: AppOptions): FastifyInstance {
   const app = Fastify({ logger });
 
   app.setErrorHandler((err, _req, reply) => {
@@ -38,7 +40,7 @@ export function buildApp({ db, clientDir, backup, logger = false }: AppOptions):
 
   app.register(
     async (api) => {
-      api.get('/health', async () => ({ ok: true }));
+      api.get('/health', async () => ({ ok: true, ...info }));
       await api.register(settingsRoutes(db));
       await api.register(masterRoutes(db));
       await api.register(inventoryRoutes(db));

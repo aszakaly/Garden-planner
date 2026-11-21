@@ -26,6 +26,7 @@ const byName = <T extends { name_hu: string }>(items: T[]) => [...items].sort((a
 
 export const qk = {
   settings: ['settings'] as const,
+  health: ['health'] as const,
   plants: ['plants'] as const,
   plant: (id: number) => ['plants', id] as const,
   families: ['families'] as const,
@@ -67,6 +68,12 @@ export interface JournalFilter {
   to?: string;
 }
 
+/** A futó szerver verziója és példánya (élesen nincs környezetnév, a teszten „teszt”); kiadás után az ablak fókuszakor frissül */
+export const useHealth = () =>
+  useQuery({
+    queryKey: qk.health,
+    queryFn: () => api.get<{ ok: boolean; version: string; environment?: string }>('/health'),
+  });
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: () => api.get<Settings>('/settings') });
 export const usePlants = () =>
   useQuery({ queryKey: qk.plants, queryFn: () => api.get<PlantListItem[]>('/plants'), select: byName });
