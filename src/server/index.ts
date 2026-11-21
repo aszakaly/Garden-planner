@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { networkInterfaces, hostname } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,7 +44,8 @@ const host = `${hostname().replace(/\.local$/, '')}.local`;
 console.log(`\n🌱 Kerttervező fut`);
 if (production) {
   console.log(`   Ezen a gépen:   http://localhost:${PORT}`);
-  console.log(`   Otthoni hálón:  http://${host}:${PORT}${lan ? `  (${lan})` : ''}`);
+  // Konténerben a belső hálózati cím félrevezető: ott a szerver gépének címe számít
+  if (!existsSync('/.dockerenv')) console.log(`   Otthoni hálón:  http://${host}:${PORT}${lan ? `  (${lan})` : ''}`);
 } else {
   console.log(`   Fejlesztői mód: a felület a [client] sorban kiírt Vite-címen érhető el (pl. :5173),`);
   console.log(`                   az API itt fut: http://localhost:${PORT}/api`);

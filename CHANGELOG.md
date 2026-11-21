@@ -2,6 +2,13 @@
 
 A felületen látható változások, a legújabb elöl. A részletes fejlesztési előzmény a git logban van, a tervezési döntések a [design dokumentumban](docs/specs/2026-09-30-kerttervezo-design.md).
 
+## 2026-11-21 – Futtatás ZimaOS-en
+
+- **Az alkalmazás az otthoni ZimaOS-szerveren fut**, egy éles (`:4321`) és egy teszt (`:4322`) példányban, saját adatbázissal. Új verzió előbb a tesztre, majd ugyanaz élesre kerül; az adatbázis tartalma közben megmarad.
+- **A teszt példányon narancs „TESZT” csík** van a képernyő tetején, és a böngészőfül címe „Kerttervező – teszt”.
+- **A Beállítások alján látszik a futó verzió.**
+- Régebbi verzió nem indul el olyan adatbázison, amelyet egy újabb verzió már átalakított; magyar üzenet jelzi, mi a teendő.
+
 ## 2026-11-10 – Súgó
 
 - **Súgó menüpont** az Adatok csoport végén: felhasználói kézikönyv négy fejezetben (Kezdés, Tervezés februárban, A kertben telefonról, Bevásárlólista), lépésenként, képernyőképekkel. A tartalomjegyzékből a fejezetre ugrik; a képek koppintásra eredeti méretben, görgethetően nyílnak.

@@ -1,4 +1,8 @@
-# A szerveren fut (a kiadas.sh és az allapot.sh küldi át SSH-n); argumentumok: eles|teszt <verzió>, vagy allapot.
+# A szerveren fut (a scripts/zima/*.sh küldi át SSH-n). Argumentumok:
+#   eles|teszt <verzió>             kiadás
+#   allapot                         a két példány verziója és állapota
+#   mentesek eles|teszt             a legutóbbi mentések
+#   visszatoltes eles|teszt <fájl>  egy mentés visszatöltése (a példány leállítva marad)
 set -eu
 DIR=/DATA/AppData/kerttervezo
 IMAGE=ghcr.io/aszakaly/garden-planner
@@ -31,6 +35,40 @@ if [ "$1" = allapot ]; then
   exit 0
 fi
 
+if [ "$1" = mentesek ] || [ "$1" = visszatoltes ]; then
+  case "${2:-}" in eles | teszt) ;; *) echo "Add meg a példányt: eles vagy teszt" >&2; exit 1 ;; esac
+fi
+
+if [ "$1" = mentesek ]; then
+  echo "A(z) $2 legutóbbi mentései (a legújabb elöl):"
+  ls -1t "$DIR/$2/backups" | head -15
+  exit 0
+fi
+
+if [ "$1" = visszatoltes ]; then
+  PELDANY="$2"
+  FAJL="${3:-}"
+  KONTENER="kerttervezo-$PELDANY-1"
+  if ! echo "$FAJL" | grep -Eqx 'garden-[0-9]{8}-[0-9]{6}\.db' || [ ! -f "$DIR/$PELDANY/backups/$FAJL" ]; then
+    echo "Nincs ilyen mentés: $FAJL. A listához: npm run zima:mentesek -- $PELDANY" >&2
+    exit 1
+  fi
+  KEP=$(docker inspect -f '{{.Config.Image}}' "$KONTENER")
+  docker stop "$KONTENER" >/dev/null
+  ido=$(date +%Y%m%d-%H%M%S)
+  # A jelenlegi adatbázis nem vész el: garden-visszatoltes-elott-<idő>.db néven marad az adatmappában
+  docker run --rm --user root -v "$DIR/$PELDANY:/data" --entrypoint sh "$KEP" -c "
+    set -e
+    cd /data
+    for k in '' -wal -shm; do if [ -f garden.db\$k ]; then mv garden.db\$k garden-visszatoltes-elott-$ido.db\$k; fi; done
+    cp backups/$FAJL garden.db
+    chown node:node garden.db"
+  echo "✓ Visszatöltve: $FAJL. A korábbi adatbázis: $PELDANY/garden-visszatoltes-elott-$ido.db"
+  echo "  A(z) $PELDANY most le van állítva. Indítsd el azzal a verzióval, amelyikkel a mentés készült:"
+  echo "  npm run kiadas:$PELDANY -- <verzió>"
+  exit 0
+fi
+
 PELDANY="$1"
 VERZIO="$2"
 KONTENER="kerttervezo-$PELDANY-1"
@@ -38,15 +76,23 @@ VALTOZO=$([ "$PELDANY" = eles ] && echo ELES_VERZIO || echo TESZT_VERZIO)
 
 # Élesre csak a teszten már kipróbált verzió mehet
 if [ "$PELDANY" = eles ] && ! grep -qx "$VERZIO" teszt-elozmeny; then
-  echo "A(z) $VERZIO még nem futott a teszten. Előbb: npm run kiadas:teszt -- $VERZIO" >&2
+  echo "A(z) $VERZIO még nem futott a teszten, ezért élesre nem rakható ki. Előbb: npm run kiadas:teszt -- $VERZIO" >&2
   exit 1
 fi
 
 echo "→ Letöltés: $IMAGE:$VERZIO"
-docker pull -q "$IMAGE:$VERZIO" >/dev/null
+if ! docker pull -q "$IMAGE:$VERZIO" >/dev/null 2>&1; then
+  echo "✗ Nincs ilyen verzió: $VERZIO. Verzió a GitHubon egy vX.Y.Z kiadásból (Release) lesz, próba-image egy ág pusholásából (ag-<ágnév>). A futó példány nem változott." >&2
+  exit 1
+fi
 
-# Kézi mentés a futó példányról a csere előtt (az indításkori migráció előtt amúgy is készül)
-if docker inspect "$KONTENER" >/dev/null 2>&1 && [ "$(docker inspect -f '{{.State.Running}}' "$KONTENER")" = true ]; then
+# Kézi mentés a futó példányról a csere előtt (az indításkori migráció előtt amúgy is készül).
+# Ha ugyanaz az image fut, nincs csere, és felesleges mentés sem kell (az utolsó 30 marad meg).
+fut_image=$(docker inspect -f '{{.Image}}' "$KONTENER" 2>/dev/null || echo)
+uj_image=$(docker image inspect -f '{{.Id}}' "$IMAGE:$VERZIO")
+if [ "$fut_image" = "$uj_image" ] && [ "$(docker inspect -f '{{.State.Running}}' "$KONTENER")" = true ]; then
+  echo "→ Ez a verzió fut már, nincs mit cserélni."
+elif [ -n "$fut_image" ] && [ "$(docker inspect -f '{{.State.Running}}' "$KONTENER")" = true ]; then
   mentes=$(docker exec "$KONTENER" node -e "fetch('http://localhost:4321/api/backups', { method: 'POST' }).then((r) => r.json()).then((j) => console.log(j.file ?? j.error))" || true)
   echo "→ Mentés a csere előtt: ${mentes:-nem sikerült}"
 fi

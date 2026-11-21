@@ -24,7 +24,9 @@
     "sugo:video": "tsx scripts/sugo/video.ts",
     "kiadas:teszt": "sh scripts/zima/kiadas.sh teszt",
     "kiadas:eles": "sh scripts/zima/kiadas.sh eles",
-    "zima:allapot": "sh scripts/zima/allapot.sh"
+    "zima:allapot": "sh scripts/zima/allapot.sh",
+    "zima:mentesek": "sh scripts/zima/mentesek.sh",
+    "zima:visszatoltes": "sh scripts/zima/visszatoltes.sh"
   },
   "dependencies": {
     "@fastify/static": "^10.1.5",
