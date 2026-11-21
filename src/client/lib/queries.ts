@@ -68,12 +68,11 @@ export interface JournalFilter {
   to?: string;
 }
 
-/** A futó szerver verziója és példánya (élesen nincs környezetnév, a teszten „teszt”) */
+/** A futó szerver verziója és példánya (élesen nincs környezetnév, a teszten „teszt”); kiadás után az ablak fókuszakor frissül */
 export const useHealth = () =>
   useQuery({
     queryKey: qk.health,
     queryFn: () => api.get<{ ok: boolean; version: string; environment?: string }>('/health'),
-    staleTime: Infinity,
   });
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: () => api.get<Settings>('/settings') });
 export const usePlants = () =>

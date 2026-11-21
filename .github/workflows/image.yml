@@ -11,6 +11,12 @@ on:
     tags: ['v*.*.*']
   workflow_dispatch:
 
+# Ugyanarra az ágra vagy címkére csak a legutóbbi pusholás buildje fusson végig,
+# különben egy lassabb régi build felülírhatná az újabb próba-image-et
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
