@@ -11,7 +11,7 @@ if [ -z "$VERZIO" ]; then
   exit 1
 fi
 VERZIO="${VERZIO#v}"
-scp -q docker-compose.yml "$ZIMA_HOST:/DATA/AppData/kerttervezo/docker-compose.yml"
+scp -q "zimaos/kerttervezo-$PELDANY.yml" "$ZIMA_HOST:/DATA/AppData/kerttervezo/zimaos-$PELDANY.sablon.yml"
 ssh "$ZIMA_HOST" sh -s -- "$PELDANY" "$VERZIO" < scripts/zima/szerver.sh
 PORT=$([ "$PELDANY" = eles ] && echo 4321 || echo 4322)
 echo "  Cím: http://${ZIMA_HOST#*@}:$PORT"

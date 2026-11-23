@@ -1,0 +1,51 @@
+# A Kerttervező teszt példánya ZimaOS-alkalmazásként (a kezdőlapon is látszik).
+# A kiadó parancs (npm run kiadas:teszt) a __VERZIO__ helyére írja a verziót, és a
+# casaos-cli-vel telepíti vagy frissíti. Az adatok a szerver lemezén maradnak.
+name: kerttervezo-teszt
+services:
+  kerttervezo-teszt:
+    image: ghcr.io/aszakaly/garden-planner:__VERZIO__
+    container_name: kerttervezo-teszt
+    restart: unless-stopped
+    ports:
+      - target: 4321
+        published: '4322'
+        protocol: tcp
+    environment:
+      TZ: Europe/Budapest
+      KERT_KORNYEZET: teszt
+    volumes:
+      - type: bind
+        source: /DATA/AppData/kerttervezo/teszt
+        target: /data
+    x-casaos:
+      ports:
+        - container: '4321'
+          description:
+            en_us: Webes felület
+      volumes:
+        - container: /data
+          description:
+            en_us: Adatbázis és mentések
+      envs:
+        - container: KERT_KORNYEZET
+          description:
+            en_us: A példány neve (a felületen TESZT jelölés)
+x-casaos:
+  architectures:
+    - amd64
+  main: kerttervezo-teszt
+  category: Utilities
+  author: aszakaly
+  developer: aszakaly
+  icon: https://raw.githubusercontent.com/aszakaly/Garden-planner/c9adfecd7424efcd84b2910798a6beed1add8f5e/src/client/public/icon-192.png
+  tagline:
+    en_us: Kert- és veteményes-tervező – teszt példány
+  description:
+    en_us: Kert- és veteményes-tervező és kertészeti napló. Ez a teszt példány; az új verziók előbb ide kerülnek.
+  title:
+    en_us: Kerttervező – teszt
+    custom: Kerttervező – teszt
+  index: /
+  port_map: '4322'
+  scheme: http

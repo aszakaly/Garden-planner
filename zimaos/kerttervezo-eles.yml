@@ -1,0 +1,46 @@
+# A Kerttervező éles példánya ZimaOS-alkalmazásként (a kezdőlapon is látszik).
+# A kiadó parancs (npm run kiadas:eles) a __VERZIO__ helyére írja a verziót, és a
+# casaos-cli-vel telepíti vagy frissíti. Az adatok a szerver lemezén maradnak.
+name: kerttervezo-eles
+services:
+  kerttervezo-eles:
+    image: ghcr.io/aszakaly/garden-planner:__VERZIO__
+    container_name: kerttervezo-eles
+    restart: unless-stopped
+    ports:
+      - target: 4321
+        published: '4321'
+        protocol: tcp
+    environment:
+      TZ: Europe/Budapest
+    volumes:
+      - type: bind
+        source: /DATA/AppData/kerttervezo/eles
+        target: /data
+    x-casaos:
+      ports:
+        - container: '4321'
+          description:
+            en_us: Webes felület
+      volumes:
+        - container: /data
+          description:
+            en_us: Adatbázis és mentések
+x-casaos:
+  architectures:
+    - amd64
+  main: kerttervezo-eles
+  category: Utilities
+  author: aszakaly
+  developer: aszakaly
+  icon: https://raw.githubusercontent.com/aszakaly/Garden-planner/c9adfecd7424efcd84b2910798a6beed1add8f5e/src/client/public/icon-192.png
+  tagline:
+    en_us: Kert- és veteményes-tervező
+  description:
+    en_us: Kert- és veteményes-tervező és kertészeti napló. Ez az éles példány; csak a teszten már kipróbált verzió kerül ide.
+  title:
+    en_us: Kerttervező
+    custom: Kerttervező
+  index: /
+  port_map: '4321'
+  scheme: http

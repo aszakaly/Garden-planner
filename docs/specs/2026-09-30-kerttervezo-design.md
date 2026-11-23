@@ -350,3 +350,4 @@ Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változat
 - Az adatbázis frissítése a meglévő módon történik: indításkor mentés, utána a migrációk. Régebbi kód újabb szerkezetű adatbázison nem indul el.
 - A felületen látszik, melyik verzió fut, és a teszt példány összetéveszthetetlenül jelölt.
 - A Macen a fejlesztés és az indító változatlan marad.
+- *(2026-11-23)* A két példány ZimaOS-alkalmazás: a kezdőlapon látszik, onnan leállítható, és megjelenik a statisztikákban. A verziót továbbra is a kiadó parancs cseréli, a védelmekkel együtt.
