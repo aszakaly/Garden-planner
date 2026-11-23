@@ -1,4 +1,6 @@
-# A szerveren fut (a scripts/zima/*.sh küldi át SSH-n). Argumentumok:
+# A szerveren fut (a scripts/zima/*.sh küldi át SSH-n). A két példány ZimaOS-alkalmazás
+# (kerttervezo-eles, kerttervezo-teszt): a casaos-cli telepíti és frissíti őket, így a
+# ZimaOS kezdőlapján is látszanak. Argumentumok:
 #   eles|teszt <verzió>             kiadás
 #   allapot                         a két példány verziója és állapota
 #   mentesek eles|teszt             a legutóbbi mentések
@@ -10,7 +12,7 @@ IMAGE=ghcr.io/aszakaly/garden-planner
 export DOCKER_CONFIG="$DIR/.docker"
 mkdir -p "$DOCKER_CONFIG" "$DIR/eles" "$DIR/teszt"
 cd "$DIR"
-touch .env teszt-elozmeny
+touch teszt-elozmeny
 
 if ! docker info >/dev/null 2>&1; then
   echo "A felhasználó nem kezelheti a Dockert. A ZimaOS webes termináljában futtasd: sudo usermod -aG docker $(id -un)" >&2
@@ -19,11 +21,16 @@ fi
 
 allapot() {
   for p in eles teszt; do
-    c="kerttervezo-$p-1"
+    c="kerttervezo-$p"
+    megj=""
+    if ! docker inspect "$c" >/dev/null 2>&1 && docker inspect "$c-1" >/dev/null 2>&1; then
+      c="$c-1"
+      megj=", még nem ZimaOS-alkalmazás"
+    fi
     if docker inspect "$c" >/dev/null 2>&1; then
       kep=$(docker inspect -f '{{.Config.Image}}' "$c")
       all=$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$c")
-      echo "$p: ${kep##*:}  ($all)"
+      echo "$p: ${kep##*:}  ($all$megj)"
     else
       echo "$p: nem fut"
     fi
@@ -48,7 +55,7 @@ fi
 if [ "$1" = visszatoltes ]; then
   PELDANY="$2"
   FAJL="${3:-}"
-  KONTENER="kerttervezo-$PELDANY-1"
+  KONTENER="kerttervezo-$PELDANY"
   if ! echo "$FAJL" | grep -Eqx 'garden-[0-9]{8}-[0-9]{6}\.db' || [ ! -f "$DIR/$PELDANY/backups/$FAJL" ]; then
     echo "Nincs ilyen mentés: $FAJL. A listához: npm run zima:mentesek -- $PELDANY" >&2
     exit 1
@@ -58,7 +65,13 @@ if [ "$1" = visszatoltes ]; then
     exit 1
   fi
   KEP=$(docker inspect -f '{{.Config.Image}}' "$KONTENER")
-  docker stop "$KONTENER" >/dev/null
+  casaos-cli app-management stop "$KONTENER" >/dev/null
+  i=0
+  while [ "$(docker inspect -f '{{.State.Running}}' "$KONTENER")" = true ] && [ $i -lt 30 ]; do sleep 2; i=$((i + 1)); done
+  if [ "$(docker inspect -f '{{.State.Running}}' "$KONTENER")" = true ]; then
+    echo "✗ A(z) $PELDANY nem állt le, a visszatöltés elmaradt." >&2
+    exit 1
+  fi
   ido=$(date +%Y%m%d-%H%M%S)
   # A jelenlegi adatbázis nem vész el: garden-visszatoltes-elott-<idő>.db néven marad az adatmappában
   docker run --rm --user root -v "$DIR/$PELDANY:/data" --entrypoint sh "$KEP" -c "
@@ -75,18 +88,16 @@ fi
 
 PELDANY="$1"
 VERZIO="$2"
-KONTENER="kerttervezo-$PELDANY-1"
-VALTOZO=$([ "$PELDANY" = eles ] && echo ELES_VERZIO || echo TESZT_VERZIO)
+APP="kerttervezo-$PELDANY"
+KONTENER="$APP"
+# A korábbi, docker compose-zal futtatott példány konténere (átköltözéskor eltávolítjuk)
+REGI="kerttervezo-$PELDANY-1"
 
 echo "→ Letöltés: $IMAGE:$VERZIO"
 if ! docker pull -q "$IMAGE:$VERZIO" >/dev/null 2>&1; then
   echo "✗ Nincs ilyen verzió: $VERZIO. Verzió a GitHubon egy vX.Y.Z kiadásból (Release) lesz, próba-image egy ág pusholásából (ag-<ágnév>). A futó példány nem változott." >&2
   exit 1
 fi
-
-# Kézi mentés a futó példányról a csere előtt (az indításkori migráció előtt amúgy is készül).
-# Ha ugyanaz az image fut, nincs csere, és felesleges mentés sem kell (az utolsó 30 marad meg).
-fut_image=$(docker inspect -f '{{.Image}}' "$KONTENER" 2>/dev/null || echo)
 uj_image=$(docker image inspect -f '{{.Id}}' "$IMAGE:$VERZIO")
 
 # Élesre csak a teszten már kipróbált image mehet. Az azonosítót nézzük, nem a nevet:
@@ -99,10 +110,24 @@ if [ "$PELDANY" = eles ] && ! grep -q "^$uj_image " teszt-elozmeny; then
   fi
   exit 1
 fi
-if [ "$fut_image" = "$uj_image" ] && [ "$(docker inspect -f '{{.State.Running}}' "$KONTENER")" = true ]; then
+
+# Melyik konténer fut most: a ZimaOS-alkalmazás vagy még a régi
+FUT=""
+docker inspect "$KONTENER" >/dev/null 2>&1 && FUT="$KONTENER"
+[ -z "$FUT" ] && docker inspect "$REGI" >/dev/null 2>&1 && FUT="$REGI"
+fut_image=""
+fut_megy=false
+if [ -n "$FUT" ]; then
+  fut_image=$(docker inspect -f '{{.Image}}' "$FUT")
+  fut_megy=$(docker inspect -f '{{.State.Running}}' "$FUT")
+fi
+
+if [ "$FUT" = "$KONTENER" ] && [ "$fut_image" = "$uj_image" ] && [ "$fut_megy" = true ]; then
   echo "→ Ez a verzió fut már, nincs mit cserélni."
-elif [ -n "$fut_image" ] && [ "$(docker inspect -f '{{.State.Running}}' "$KONTENER")" = true ]; then
-  mentes=$(docker exec "$KONTENER" node -e "fetch('http://localhost:4321/api/backups', { method: 'POST' }).then((r) => r.json()).then((j) => console.log(j.file ?? j.error))" || true)
+elif [ "$fut_megy" = true ] && { [ "$fut_image" != "$uj_image" ] || [ "$FUT" = "$REGI" ]; }; then
+  # Mentés a futó példányról a csere előtt (az indításkori migráció előtt amúgy is készül);
+  # átköltözéskor akkor is, ha a verzió nem változik.
+  mentes=$(docker exec "$FUT" node -e "fetch('http://localhost:4321/api/backups', { method: 'POST' }).then((r) => r.json()).then((j) => console.log(j.file ?? j.error))" || true)
   case "$mentes" in
     garden-*.db) echo "→ Mentés a csere előtt: $mentes" ;;
     *)
@@ -118,35 +143,50 @@ fi
 # Az adatmappa a konténer felhasználójáé legyen (node, 1000)
 docker run --rm --user root -v "$DIR/$PELDANY:/data" --entrypoint chown "$IMAGE:$VERZIO" -R node:node /data
 
-# A verzió beírása a .env-be, a másik példány sora változatlan marad
-grep -v "^$VALTOZO=" .env > .env.uj || true
-echo "$VALTOZO=$VERZIO" >> .env.uj
-mv .env.uj .env
-# Az első indításkor a másik példánynak is kell érték, különben a compose nem indul
-grep -q '^ELES_VERZIO=' .env || echo "ELES_VERZIO=$VERZIO" >> .env
-grep -q '^TESZT_VERZIO=' .env || echo "TESZT_VERZIO=$VERZIO" >> .env
+# A ZimaOS-leírás a verzióval (a kiadas.sh tölti fel a sablont)
+sed "s/__VERZIO__/$VERZIO/" "zimaos-$PELDANY.sablon.yml" > "zimaos-$PELDANY.yml"
 
-echo "→ Indítás: $PELDANY"
-if ! docker compose up -d --no-deps "$PELDANY"; then
-  echo "✗ A(z) $PELDANY nem indítható (lásd fent). A .env már az új verziót tartalmazza; visszaálláshoz add ki az előzőt." >&2
-  exit 1
+if [ "$FUT" = "$REGI" ]; then
+  # Átköltözés: a régi konténer helyére a ZimaOS-alkalmazás kerül, ugyanazzal az adatmappával
+  echo "→ Átköltözés ZimaOS-alkalmazásba: a régi $REGI eltávolítása (az adatok maradnak)"
+  docker stop "$REGI" >/dev/null
+  docker rm "$REGI" >/dev/null
 fi
 
-# Megvárjuk, amíg egészséges (legfeljebb 2 perc)
+if casaos-cli app-management list apps 2>/dev/null | grep -q "^$APP "; then
+  if [ "$fut_image" = "$uj_image" ] && [ "$FUT" = "$KONTENER" ]; then
+    [ "$fut_megy" = true ] || { echo "→ Indítás: $PELDANY"; casaos-cli app-management start "$APP" >/dev/null; }
+  else
+    echo "→ Frissítés: $PELDANY"
+    casaos-cli app-management apply "$APP" -f "zimaos-$PELDANY.yml" >/dev/null
+  fi
+else
+  echo "→ Telepítés ZimaOS-alkalmazásként: $APP"
+  casaos-cli app-management install -f "zimaos-$PELDANY.yml" >/dev/null
+fi
+
+# A régi compose-os futtatás maradékai, ha már egyik példány sem úgy fut
+if ! docker inspect kerttervezo-eles-1 >/dev/null 2>&1 && ! docker inspect kerttervezo-teszt-1 >/dev/null 2>&1; then
+  rm -f .env docker-compose.yml
+  docker network rm kerttervezo_default >/dev/null 2>&1 || true
+fi
+
+# A ZimaOS a háttérben cseréli a konténert: megvárjuk, amíg az új verzió egészséges (legfeljebb 3 perc)
 i=0
-while [ $i -lt 60 ]; do
-  h=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$KONTENER" 2>/dev/null || echo)
-  [ "$h" = healthy ] && break
-  if [ "$(docker inspect -f '{{.State.Restarting}}' "$KONTENER")" = true ] || [ "$h" = unhealthy ]; then
-    i=60
-    break
+h=""
+while [ $i -lt 90 ]; do
+  allas=$(docker inspect -f '{{.Image}} {{.State.Restarting}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$KONTENER" 2>/dev/null || echo)
+  if [ "${allas%% *}" = "$uj_image" ]; then
+    h="${allas##* }"
+    [ "$h" = healthy ] && break
+    case "$allas" in *" true "* | *unhealthy) break ;; esac
   fi
   sleep 2
   i=$((i + 1))
 done
 if [ "$h" != healthy ]; then
   echo "✗ A(z) $PELDANY nem indult el rendben. A napló vége:" >&2
-  docker logs --tail 20 "$KONTENER" >&2
+  docker logs --tail 20 "$KONTENER" >&2 || echo "  (a konténer nem jött létre; nézd meg a ZimaOS felületén)" >&2
   exit 1
 fi
 

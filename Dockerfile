@@ -1,6 +1,6 @@
 # Kerttervező: Docker image a ZimaOS-szerverhez (linux/amd64).
 # Az image csak a kódot és a lefordított felületet tartalmazza; az adatbázis
-# a /data mappába kerül, amelyet a docker-compose.yml csatol a szerver lemezéről.
+# a /data mappába kerül, amelyet a zimaos/*.yml ZimaOS-leírás csatol a szerver lemezéről.
 
 # 1. Építés: függőségek telepítése és a felület lefordítása
 FROM node:24-slim AS build

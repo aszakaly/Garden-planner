@@ -2,6 +2,10 @@
 
 A felületen látható változások, a legújabb elöl. A részletes fejlesztési előzmény a git logban van, a tervezési döntések a [design dokumentumban](docs/specs/2026-09-30-kerttervezo-design.md).
 
+## 2026-11-23 – A ZimaOS kezdőlapján
+
+- **A Kerttervező és a Kerttervező – teszt a ZimaOS saját alkalmazásai lettek:** a ZimaOS kezdőlapján saját ikonnal látszanak, onnan megnyithatók, leállíthatók és elindíthatók, és megjelennek a memória-, CPU- és hálózati statisztikákban. Az adatok és a címek nem változtak.
+
 ## 2026-11-21 – Futtatás ZimaOS-en
 
 - **Az alkalmazás az otthoni ZimaOS-szerveren fut**, egy éles (`:4321`) és egy teszt (`:4322`) példányban, saját adatbázissal. Új verzió előbb a tesztre, majd ugyanaz élesre kerül; az adatbázis tartalma közben megmarad.

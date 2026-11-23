@@ -74,7 +74,9 @@ Az otthoni ZimaOS-szerveren két példány fut ugyanabból a Docker image-ből, 
 | **Éles** | `http://<szerver-ip>:4321` | `/DATA/AppData/kerttervezo/eles` |
 | **Teszt** | `http://<szerver-ip>:4322` | `/DATA/AppData/kerttervezo/teszt` |
 
-A teszten narancs „TESZT” csík jelzi a példányt; a Beállítások alján látszik a futó verzió. A ZimaOS kezdőlapján nem jelennek meg (azt csak a ZimaOS saját alkalmazáskezelője tölti fel): telefonon a Safariban **Megosztás → Főképernyőhöz adás**, mindkét címre külön.
+A teszten narancs „TESZT” csík jelzi a példányt; a Beállítások alján látszik a futó verzió. Mindkettő ZimaOS-alkalmazás („Kerttervező” és „Kerttervező – teszt”): a ZimaOS kezdőlapján látszanak, onnan leállíthatók és elindíthatók, és megjelennek a statisztikákban. A ZimaOS-leírásuk a `zimaos/` mappában van; a verziót a kiadó parancs írja bele, és a ZimaOS saját parancssori eszközével (`casaos-cli`) telepíti vagy frissíti őket. Telefonon a Safariban **Megosztás → Főképernyőhöz adás**, mindkét címre külön.
+
+> A verziót a kiadó paranccsal cseréld, ne a ZimaOS felületén: csak így működnek a védelmek (élesre csak a teszten futott verzió, mentés a csere előtt).
 
 **Első beállítás:** a szerver előkészítése (állandó cím, SSH, kulcs, Docker-jog) a [docs/zimaos-beallitas.md](docs/zimaos-beallitas.md) szerint. A szerver címét a Mac a `scripts/zima/.zima` fájlból olvassa (a git nem követi), pl. `ZIMA_HOST=felhasznalo@192.168.1.50`.
 
