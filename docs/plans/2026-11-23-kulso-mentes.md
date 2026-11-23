@@ -15,7 +15,7 @@
 - A mentést maga a Kerttervező végzi; az állapota a Beállításokban látszik.
 
 **A tervben javasolt (jóváhagyásra):**
-- **Időzítés:** a szerver 03:00-kor (budapesti idő) ment. Induláskor és óránként megnézi, mikor volt az utolsó sikeres napi mentés; ha több mint 24 órája, azonnal pótolja (áramszünet, kikapcsolt gép).
+- **Időzítés:** naptári napra szól, nem órák számára. Induláskor és óránként: ha a helyi idő (Europe/Budapest) már elmúlt 03:00, és a mai napra még nincs napi mentés, most készül egy. Így az áramszünet vagy kikapcsolt gép után is pótol. A 03:00 az óraátállítás napjain is pontosan egyszer van (tavasszal 02:00→03:00, ősszel 03:00→02:00), ezért nem marad ki és nem duplázódik; egységteszt a két átállítási napra (2027-03-28, 2027-10-31).
 - **Beállítás:** a `KERT_KULSO_MENTES` környezeti változó sorolja fel a célokat (`lemez=/masolat/lemez,dropbox=/masolat/dropbox`). Ha nincs megadva (teszt, Mac, e2e), a funkció ki van kapcsolva, és a felületen sem jelenik meg.
 - **Csatolás:** a `zimaos/kerttervezo-eles.yml` két mappát csatol: `/media/sdb2/Kerttervezo-mentes` → `/masolat/lemez` és `/media/dropbox_…/Kerttervezo-mentes` → `/masolat/dropbox`. A Dropbox-mappa pontos nevét a szkript nem a repóból, hanem a szerverről veszi (a `.zima` mellé, helyben), mert a csatolás neve a fiókhoz kötött.
 - **Védelem csatolatlan cél ellen:** minden cél gyökerében egy jelölőfájl (`.kerttervezo-mentes-cel`) van, amelyet a kiadó parancs hoz létre. Ha a fájl nincs ott (pl. a Dropbox nincs bekötve, és a konténer egy üres helyi mappát lát), a mentés arra a célra nem ír, és hibát jelez.
