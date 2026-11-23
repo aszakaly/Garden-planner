@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { FormButton, FormGroup } from '../../components/ui/Form.tsx';
 import { api } from '../../lib/api.ts';
 import { errorMessage } from '../../lib/errors.ts';
-import { useBackups } from '../../lib/queries.ts';
+import { useBackups, type ExternalStatus, type ExternalTargetStatus } from '../../lib/queries.ts';
 import s from './SettingsPage.module.css';
 
 const TABLE_LABEL: Record<string, string> = {
@@ -17,6 +17,22 @@ const TABLE_LABEL: Record<string, string> = {
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('hu-HU', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+/** Ennyi idő után a legutóbbi sikeres külső mentés is hibának számít (a napi mentés elmaradt) */
+const EXTERNAL_STALE_MS = 48 * 60 * 60 * 1000;
+
+const targetLabel = (name: string) => (name === 'lemez' ? 'Lemez' : name === 'dropbox' ? 'Dropbox' : name);
+
+/** Egy külső cél sora: mikor sikerült utoljára, vagy mi a hiba. */
+function externalText(t: ExternalTargetStatus): { ok: boolean; text: string } {
+  const failedLast = t.lastErrorAt && (!t.lastSuccess || t.lastErrorAt > t.lastSuccess);
+  if (failedLast) return { ok: false, text: `✗ ${when(t.lastErrorAt!)}: ${t.lastError ?? 'nem sikerült'}` };
+  if (!t.lastSuccess) return { ok: true, text: 'még nincs' };
+  const stale = Date.now() - new Date(t.lastSuccess).getTime() > EXTERNAL_STALE_MS;
+  return stale
+    ? { ok: false, text: `✗ legutóbb ${when(t.lastSuccess)} – azóta elmaradt` }
+    : { ok: true, text: `✓ ${when(t.lastSuccess)}` };
+}
 
 /** Mentések, JSON export és visszatöltés a Beállításokban. */
 export function DataGroup() {
@@ -42,6 +58,14 @@ export function DataGroup() {
 
   const backupNow = () =>
     run(async () => `Mentés kész: ${(await api.post<{ file: string }>('/backups', {})).file}`);
+
+  const externalNow = () =>
+    run(async () => {
+      const res = await api.post<ExternalStatus>('/backups/external', {});
+      const failed = res.targets.filter((t) => t.lastErrorAt && (!t.lastSuccess || t.lastErrorAt > t.lastSuccess));
+      if (failed.length) throw new Error(`Külső mentés nem sikerült: ${failed.map((t) => `${targetLabel(t.name)} – ${t.lastError}`).join('; ')}`);
+      return `Külső mentés kész: ${res.targets.map((t) => targetLabel(t.name)).join(', ')}`;
+    });
 
   async function importFile(file: File) {
     let data: unknown;
@@ -71,7 +95,9 @@ export function DataGroup() {
       footer={
         <>
           A program induláskor (legfeljebb 6 óránként) magától is ment, és az utolsó 30 mentést őrzi meg
-          {backups?.dir ? ` (helyük: ${backups.dir})` : ''}. A JSON-fájl az összes adatot tartalmazza – ezzel viheted át
+          {backups?.dir ? ` (helyük: ${backups.dir})` : ''}.
+          {backups?.external &&
+            ' Ezen felül naponta hajnali 3 után a külső helyekre is ment (30 napi és 12 havi mentést őriz meg).'} A JSON-fájl az összes adatot tartalmazza – ezzel viheted át
           másik gépre, vagy töltheted vissza egy korábbi állapotot.
         </>
       }
@@ -81,6 +107,16 @@ export function DataGroup() {
         <span className={s.dataValue}>{latest ? `${when(latest.created)} · ${backups!.files.length} mentés` : 'még nincs'}</span>
       </div>
       <FormButton onClick={() => !busy && backupNow()}>Mentés most</FormButton>
+      {backups?.external?.targets.map((t) => {
+        const { ok, text } = externalText(t);
+        return (
+          <div key={t.name} className={s.dataStatus}>
+            <span>Külső mentés – {targetLabel(t.name)}</span>
+            <span className={`${s.dataValue} ${ok ? '' : s.dataError}`}>{text}</span>
+          </div>
+        );
+      })}
+      {backups?.external && <FormButton onClick={() => !busy && externalNow()}>Külső mentés most</FormButton>}
       <FormButton onClick={() => (window.location.href = '/api/export')}>Exportálás JSON-fájlba</FormButton>
       <FormButton onClick={() => !busy && fileInput.current?.click()}>Visszatöltés JSON-fájlból…</FormButton>
       <input

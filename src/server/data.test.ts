@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { openDatabase, type DB } from './db/index.ts';
 import { seedIfEmpty } from './db/seed.ts';
 import { buildApp } from './app.ts';
 import type { ExportFile } from './db/exchange.ts';
+import { TARGET_MARKER } from './db/externalBackup.ts';
 import type { Bed, PlantListItem } from '../shared/types.ts';
 
 let db: DB;
@@ -83,5 +84,41 @@ describe('JSON export és visszatöltés', () => {
     expect(res.statusCode).toBe(201);
     const list = (await app.inject({ url: '/api/backups' })).json();
     expect(list.files[0].name).toBe(res.json().file);
+  });
+});
+
+describe('külső mentés – API', () => {
+  it('beállítás nélkül null az állapot, és a kézi futtatás 501', async () => {
+    const db = openDatabase(':memory:');
+    const app = buildApp({ db, backup: { dir: mkdtempSync(join(tmpdir(), 'kert-api-')), name: 'garden' } });
+    expect((await app.inject({ method: 'GET', url: '/api/backups' })).json().external).toBeNull();
+    expect((await app.inject({ method: 'POST', url: '/api/backups/external' })).statusCode).toBe(501);
+  });
+
+  it('a kézi futtatás ment, és az állapot célonként visszajön', async () => {
+    const work = mkdtempSync(join(tmpdir(), 'kert-api-'));
+    const db = openDatabase(join(work, 'garden.db'));
+    const lemez = join(work, 'lemez');
+    const dropbox = join(work, 'dropbox');
+    mkdirSync(lemez);
+    mkdirSync(dropbox);
+    writeFileSync(join(lemez, TARGET_MARKER), '');
+    const external = {
+      targets: [
+        { name: 'lemez', dir: lemez },
+        { name: 'dropbox', dir: dropbox },
+      ],
+      stateFile: join(work, 'kulso-mentes.json'),
+      workDir: work,
+    };
+    const app = buildApp({ db, backup: { dir: join(work, 'backups'), name: 'garden', external } });
+    const res = await app.inject({ method: 'POST', url: '/api/backups/external' });
+    expect(res.statusCode).toBe(200);
+    const [l, d] = res.json().targets;
+    expect(l).toMatchObject({ name: 'lemez' });
+    expect(l.lastSuccess).toBeTruthy();
+    expect(d).toMatchObject({ name: 'dropbox' });
+    expect(d.lastError).toMatch(/nincs csatolva/);
+    expect((await app.inject({ method: 'GET', url: '/api/backups' })).json().external.targets[0].lastSuccess).toBe(l.lastSuccess);
   });
 });

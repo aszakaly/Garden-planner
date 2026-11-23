@@ -152,9 +152,21 @@ export const useCarryCandidates = (year: number) =>
   useQuery({ queryKey: qk.carryover(year), queryFn: () => api.get<PlantingListItem[]>(`/plan-years/${year}/carryover`) });
 
 /** A mentések listája (a legújabbal kezdve) és a helyük. */
+/** A külső mentés egy céljának állapota (pl. lemez, Dropbox) */
+export interface ExternalTargetStatus {
+  name: string;
+  lastSuccess?: string;
+  lastErrorAt?: string;
+  lastError?: string;
+}
+export interface ExternalStatus {
+  targets: ExternalTargetStatus[];
+}
 export interface BackupList {
   dir: string | null;
   files: { name: string; size: number; created: string }[];
+  /** null, ha a külső mentés ebben a környezetben nincs beállítva */
+  external: ExternalStatus | null;
 }
 export const useBackups = () => useQuery({ queryKey: qk.backups, queryFn: () => api.get<BackupList>('/backups') });
 

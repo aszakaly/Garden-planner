@@ -4,6 +4,7 @@ import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDatabase } from './db/index.ts';
 import { backupDatabase } from './db/backup.ts';
+import { parseTargets, runExternalBackup, type ExternalConfig } from './db/externalBackup.ts';
 import { seedIfEmpty } from './db/seed.ts';
 import { buildApp } from './app.ts';
 
@@ -12,7 +13,12 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PORT = Number(process.env.KERT_PORT ?? 4321);
 const DB_PATH = process.env.KERT_DB ?? join(ROOT, 'data', 'garden.db');
 
-const backupConfig = { dir: join(dirname(DB_PATH), 'backups'), name: basename(DB_PATH, '.db') };
+// Külső mentés (csak ahol a KERT_KULSO_MENTES meg van adva, pl. az éles ZimaOS-példányon)
+const externalTargets = parseTargets(process.env.KERT_KULSO_MENTES);
+const external: ExternalConfig | undefined = externalTargets.length
+  ? { targets: externalTargets, stateFile: join(dirname(DB_PATH), 'kulso-mentes.json'), workDir: dirname(DB_PATH) }
+  : undefined;
+const backupConfig = { dir: join(dirname(DB_PATH), 'backups'), name: basename(DB_PATH, '.db'), external };
 // Az adatbázis-szerkezet módosítása (migráció) előtt mindig készül mentés, a 6 órás korláttól függetlenül
 let migrationBackup: string | null = null;
 const db = openDatabase(DB_PATH, {
@@ -54,7 +60,25 @@ console.log(`   Verzió:         ${info.version}${info.environment ? ` (${info.e
 console.log(`   Adatbázis:      ${DB_PATH}`);
 console.log(`   Mentés:         ${backup ?? 'a legutóbbi mentés 6 óránál frissebb, most nem készült új'}`);
 if (seeded) console.log('   Kezdő törzsadatok betöltve (növények, családok, társítások).');
+if (external) console.log(`   Külső mentés:   ${external.targets.map((t) => `${t.name} (${t.dir})`).join(', ')}`);
 console.log('');
+
+if (external) {
+  // Induláskor és óránként: ha elmúlt 03:00, és a mai napra még nincs külső mentés, most készül (pótlás is)
+  const tick = () => {
+    try {
+      const state = runExternalBackup(db, external, new Date());
+      for (const t of external.targets) {
+        const s = state[t.name];
+        if (s?.lastErrorAt && (!s.lastSuccess || s.lastErrorAt > s.lastSuccess)) console.error(`Külső mentés (${t.name}): ${s.lastError}`);
+      }
+    } catch (err) {
+      console.error('Külső mentés: nem sikerült', err);
+    }
+  };
+  tick();
+  setInterval(tick, 60 * 60 * 1000).unref();
+}
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, async () => {

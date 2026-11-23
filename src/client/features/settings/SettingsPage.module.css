@@ -81,6 +81,21 @@
   padding: 0 16px;
   font-size: 15px;
 }
+/* A külső mentés sorai gombok után és egymás alatt is elválasztó vonalat kapnak */
+button + .dataStatus,
+.dataStatus + .dataStatus {
+  position: relative;
+}
+button + .dataStatus::before,
+.dataStatus + .dataStatus::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: var(--hairline);
+  background: var(--separator);
+}
 .dataValue {
   color: var(--label-2);
   text-align: right;
