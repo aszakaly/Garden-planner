@@ -60,6 +60,10 @@ if [ "$1" = visszatoltes ]; then
     echo "Nincs ilyen mentés: $FAJL. A listához: npm run zima:mentesek -- $PELDANY" >&2
     exit 1
   fi
+  if docker inspect "$KONTENER-1" >/dev/null 2>&1; then
+    echo "A(z) $PELDANY még a régi módon fut. Előbb költöztesd át egy kiadással (npm run kiadas:$PELDANY -- <a futó verzió>), utána tölts vissza." >&2
+    exit 1
+  fi
   if ! docker inspect "$KONTENER" >/dev/null 2>&1; then
     echo "A(z) $PELDANY példány még nem fut a szerveren, nincs mit visszatölteni. Előbb: npm run kiadas:$PELDANY -- <verzió>" >&2
     exit 1
@@ -111,6 +115,12 @@ if [ "$PELDANY" = eles ] && ! grep -q "^$uj_image " teszt-elozmeny; then
   exit 1
 fi
 
+# A ZimaOS-leírás a verzióval (a kiadas.sh tölti fel a sablont); ha a leírás is változott
+# (pl. ikon, port), azonos verziónál is frissíteni kell
+sed "s/__VERZIO__/$VERZIO/" "zimaos-$PELDANY.sablon.yml" > "zimaos-$PELDANY.uj.yml"
+leiras_valtozott=true
+cmp -s "zimaos-$PELDANY.uj.yml" "zimaos-$PELDANY.yml" 2>/dev/null && leiras_valtozott=false
+
 # Melyik konténer fut most: a ZimaOS-alkalmazás vagy még a régi
 FUT=""
 docker inspect "$KONTENER" >/dev/null 2>&1 && FUT="$KONTENER"
@@ -122,7 +132,7 @@ if [ -n "$FUT" ]; then
   fut_megy=$(docker inspect -f '{{.State.Running}}' "$FUT")
 fi
 
-if [ "$FUT" = "$KONTENER" ] && [ "$fut_image" = "$uj_image" ] && [ "$fut_megy" = true ]; then
+if [ "$FUT" = "$KONTENER" ] && [ "$fut_image" = "$uj_image" ] && [ "$fut_megy" = true ] && [ "$leiras_valtozott" = false ]; then
   echo "→ Ez a verzió fut már, nincs mit cserélni."
 elif [ "$fut_megy" = true ] && { [ "$fut_image" != "$uj_image" ] || [ "$FUT" = "$REGI" ]; }; then
   # Mentés a futó példányról a csere előtt (az indításkori migráció előtt amúgy is készül);
@@ -143,8 +153,6 @@ fi
 # Az adatmappa a konténer felhasználójáé legyen (node, 1000)
 docker run --rm --user root -v "$DIR/$PELDANY:/data" --entrypoint chown "$IMAGE:$VERZIO" -R node:node /data
 
-# A ZimaOS-leírás a verzióval (a kiadas.sh tölti fel a sablont)
-sed "s/__VERZIO__/$VERZIO/" "zimaos-$PELDANY.sablon.yml" > "zimaos-$PELDANY.yml"
 
 if [ "$FUT" = "$REGI" ]; then
   # Átköltözés: a régi konténer helyére a ZimaOS-alkalmazás kerül, ugyanazzal az adatmappával
@@ -153,16 +161,24 @@ if [ "$FUT" = "$REGI" ]; then
   docker rm "$REGI" >/dev/null
 fi
 
+# A csere előtti konténer azonosítója: frissítés után csak az új konténer egészsége számít
+elotte_id=$(docker inspect -f '{{.Id}}' "$KONTENER" 2>/dev/null || echo)
 if casaos-cli app-management list apps 2>/dev/null | grep -q "^$APP "; then
-  if [ "$fut_image" = "$uj_image" ] && [ "$FUT" = "$KONTENER" ]; then
+  if [ "$fut_image" = "$uj_image" ] && [ "$FUT" = "$KONTENER" ] && [ "$leiras_valtozott" = false ]; then
+    # Indításnál ugyanaz a konténer marad
+    elotte_id=""
     [ "$fut_megy" = true ] || { echo "→ Indítás: $PELDANY"; casaos-cli app-management start "$APP" >/dev/null; }
   else
     echo "→ Frissítés: $PELDANY"
-    casaos-cli app-management apply "$APP" -f "zimaos-$PELDANY.yml" >/dev/null
+    casaos-cli app-management apply "$APP" -f "zimaos-$PELDANY.uj.yml" >/dev/null
   fi
 else
   echo "→ Telepítés ZimaOS-alkalmazásként: $APP"
-  casaos-cli app-management install -f "zimaos-$PELDANY.yml" >/dev/null
+  if ! casaos-cli app-management install -f "zimaos-$PELDANY.uj.yml" >/dev/null; then
+    echo "✗ A ZimaOS nem tudta telepíteni a(z) $PELDANY példányt (lásd fent), most nem fut." >&2
+    echo "  Az adatok megvannak ($DIR/$PELDANY). A hiba elhárítása után futtasd újra: npm run kiadas:$PELDANY -- $VERZIO" >&2
+    exit 1
+  fi
 fi
 
 # A régi compose-os futtatás maradékai, ha már egyik példány sem úgy fut
@@ -176,7 +192,8 @@ i=0
 h=""
 while [ $i -lt 90 ]; do
   allas=$(docker inspect -f '{{.Image}} {{.State.Restarting}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$KONTENER" 2>/dev/null || echo)
-  if [ "${allas%% *}" = "$uj_image" ]; then
+  most_id=$(docker inspect -f '{{.Id}}' "$KONTENER" 2>/dev/null || echo)
+  if [ "${allas%% *}" = "$uj_image" ] && { [ -z "$elotte_id" ] || [ "$most_id" != "$elotte_id" ]; }; then
     h="${allas##* }"
     [ "$h" = healthy ] && break
     case "$allas" in *" true "* | *unhealthy) break ;; esac
@@ -190,6 +207,8 @@ if [ "$h" != healthy ]; then
   exit 1
 fi
 
+# A sikeresen alkalmazott leírás: a következő kiadás ehhez méri, változott-e
+mv "zimaos-$PELDANY.uj.yml" "zimaos-$PELDANY.yml"
 if [ "$PELDANY" = teszt ] && ! grep -q "^$uj_image " teszt-elozmeny; then
   echo "$uj_image $VERZIO" >> teszt-elozmeny
 fi

@@ -45,16 +45,16 @@ A kulcs átmásolása a szerverre (egyszer kéri a ZimaOS-jelszavadat; az első 
 ssh-copy-id FELHASZNALO@IP
 ```
 
-Próba (most már jelszó nélkül kell működnie, és kiírja a Docker verzióit):
+Próba (most már jelszó nélkül kell működnie, és kiírja a Docker verzióját és a ZimaOS alkalmazásait):
 
 ```bash
-ssh FELHASZNALO@IP "docker --version; docker compose version"
+ssh FELHASZNALO@IP "docker --version; casaos-cli app-management list apps"
 ```
 
 Ha a próba „permission denied” hibát ad a Dockerre, próbáld meg így is:
 
 ```bash
-ssh FELHASZNALO@IP "sudo docker --version; sudo docker compose version"
+ssh FELHASZNALO@IP "sudo docker --version"
 ```
 
 ## 4. GitHub: jogosultság a munkafolyamathoz

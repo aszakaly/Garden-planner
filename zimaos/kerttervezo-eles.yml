@@ -33,7 +33,7 @@ x-casaos:
   category: Utilities
   author: aszakaly
   developer: aszakaly
-  icon: https://raw.githubusercontent.com/aszakaly/Garden-planner/main/src/client/public/icon-192.png
+  icon: https://raw.githubusercontent.com/aszakaly/Garden-planner/c9adfecd7424efcd84b2910798a6beed1add8f5e/src/client/public/icon-192.png
   tagline:
     en_us: Kert- és veteményes-tervező
   description:
