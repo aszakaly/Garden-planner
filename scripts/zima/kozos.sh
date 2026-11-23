@@ -1,5 +1,8 @@
 # A kiadó parancsok közös része: a szerver címe a helyi, git alá nem kerülő scripts/zima/.zima fájlból.
-# Tartalma egy sor, pl.: ZIMA_HOST=felhasznalo@192.168.1.50
+# Tartalma, pl.:
+#   ZIMA_HOST=felhasznalo@192.168.1.50
+#   ZIMA_LEMEZ=/media/sdb2                   (a külső mentés lemeze a szerveren)
+#   ZIMA_DROPBOX=/media/dropbox_<azonosító>  (a ZimaOS-be bekötött Dropbox)
 set -eu
 cd "$(dirname "$0")/../.."
 if [ ! -f scripts/zima/.zima ]; then

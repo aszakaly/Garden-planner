@@ -12,6 +12,6 @@ if [ -z "$VERZIO" ]; then
 fi
 VERZIO="${VERZIO#v}"
 scp -q "zimaos/kerttervezo-$PELDANY.yml" "$ZIMA_HOST:/DATA/AppData/kerttervezo/zimaos-$PELDANY.sablon.yml"
-ssh "$ZIMA_HOST" sh -s -- "$PELDANY" "$VERZIO" < scripts/zima/szerver.sh
+ssh "$ZIMA_HOST" sh -s -- "$PELDANY" "$VERZIO" "${ZIMA_LEMEZ:-}" "${ZIMA_DROPBOX:-}" < scripts/zima/szerver.sh
 PORT=$([ "$PELDANY" = eles ] && echo 4321 || echo 4322)
 echo "  Cím: http://${ZIMA_HOST#*@}:$PORT"

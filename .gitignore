@@ -13,3 +13,4 @@ playwright-report/
 .vite/
 scripts/.cache/
 scripts/zima/.zima
+data/*.json
