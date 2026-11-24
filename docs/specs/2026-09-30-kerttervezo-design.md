@@ -351,3 +351,14 @@ Az MVP lezárása után hozzáadott funkciók döntései. A fenti terv változat
 - A felületen látszik, melyik verzió fut, és a teszt példány összetéveszthetetlenül jelölt.
 - A Macen a fejlesztés és az indító változatlan marad.
 - *(2026-11-23)* A két példány ZimaOS-alkalmazás: a kezdőlapon látszik, onnan leállítható, és megjelenik a statisztikákban. A verziót továbbra is a kiadó parancs cseréli, a védelmekkel együtt.
+
+### Külső mentés: 4 TB-os lemez és Dropbox (2026-11-23)
+**Cél:** az éles adatok egy lemezhibát, és a szerver teljes elvesztését (lopás, tűz) is túléljék. Eddig a mentések ugyanazon az SSD-n voltak, mint az adatbázis.
+
+**Követelmények:**
+- Az éles példány naponta egyszer, éjszaka mentést készít magáról, és két helyre másolja: a szerver 4 TB-os lemezére és a ZimaOS-be bekötött Dropboxba. Ha a szerver a mentés idején ki volt kapcsolva, a következő indításkor pótolja.
+- Megőrzés a két helyen: az utolsó 30 nap minden napja, és egy évre visszamenőleg havonta egy mentés.
+- A teszt példányról nem készül külső másolat.
+- Rendszergazdai lépés nem kell: a mentést maga a Kerttervező végzi.
+- A Beállításokban látszik, mikor sikerült utoljára a külső mentés, célonként; ha valamelyik cél nem elérhető vagy hibás, az is látszik. Elérhetetlen célnál a mentés nem íródhat máshová (pl. a csatolatlan Dropbox helyére az SSD-re).
+- Egy külső mentésből a meglévő visszatöltési úton lehet visszaállni.

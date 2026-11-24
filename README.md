@@ -78,7 +78,7 @@ A teszten narancs „TESZT” csík jelzi a példányt; a Beállítások alján 
 
 > A verziót a kiadó paranccsal cseréld, ne a ZimaOS felületén: csak így működnek a védelmek (élesre csak a teszten futott verzió, mentés a csere előtt). A ZimaOS felületén módosított beállításokat (pl. memóriakorlát) a következő kiadás felülírja a `zimaos/*.yml` tartalmával; ami tartósan kell, az oda kerüljön.
 
-**Első beállítás:** a szerver előkészítése (állandó cím, SSH, kulcs, Docker-jog) a [docs/zimaos-beallitas.md](docs/zimaos-beallitas.md) szerint. A szerver címét a Mac a `scripts/zima/.zima` fájlból olvassa (a git nem követi), pl. `ZIMA_HOST=felhasznalo@192.168.1.50`.
+**Első beállítás:** a szerver előkészítése (állandó cím, SSH, kulcs, Docker-jog) a [docs/zimaos-beallitas.md](docs/zimaos-beallitas.md) szerint. A szerver címét a Mac a `scripts/zima/.zima` fájlból olvassa (a git nem követi), pl. `ZIMA_HOST=felhasznalo@192.168.1.50`; ugyanitt a külső mentés két csatolási pontja: `ZIMA_LEMEZ=/media/sdb2` és `ZIMA_DROPBOX=/media/dropbox_<azonosító>`.
 
 **Új verzió kiadása:**
 
@@ -96,7 +96,9 @@ npm run zima:visszatoltes -- eles <fájl>   # egy mentés visszatöltése (a pé
 
 **Visszaállás az előző verzióra:** `npm run kiadas:eles -- <előző verzió>`. Ha az újabb verzió már átalakította az adatbázist (migráció), a régebbi nem indul el, és ezt jelzi; ilyenkor előbb a migráció előtti mentést kell visszatölteni (`zima:mentesek`, majd `zima:visszatoltes`), utána jöhet a kiadás. A visszatöltés előtti adatbázis `garden-visszatoltes-elott-<idő>.db` néven megmarad az adatmappában.
 
-> A mentések ugyanazon a lemezen vannak, mint az adatbázis. Lemezhiba ellen érdemes a `/DATA/AppData/kerttervezo` mappát a ZimaOS mentésével máshová is menteni, vagy időnként JSON-exportot készíteni.
+**Külső mentés (csak az éles):** naponta, hajnali 3 után (ha a szerver akkor ki volt kapcsolva, a bekapcsolás után) másolat készül a 4 TB-os lemezre és a Dropboxba, mindkettőn a `Kerttervezo-mentes/` mappába: `napi/garden-ÉÉÉÉHHNN.db` (az utolsó 30 nap) és `havi/garden-ÉÉÉÉHH.db` (az utolsó 12 hónap). Az időzítés naptári napra szól, így óraátállításkor sem marad ki és nem duplázódik. Egy célra csak akkor ír, ha ott megvan a `.kerttervezo-mentes-cel` jelölőfájl (ezt a kiadó parancs hozza létre); így egy le nem csatolt Dropbox helyett sem a szerver saját lemezére menti. Az állapota célonként a Beállítások → Mentés és adatok alatt látszik, ott *Külső mentés most* gombbal azonnal is indítható.
+
+Visszatöltés a lemezen lévő külső mentésből: `npm run zima:mentesek -- eles` a `napi/` és `havi/` fájlokat is listázza, és `npm run zima:visszatoltes -- eles napi/garden-20261124.db` visszatölti. A Dropboxban lévő másolatot kézzel kell visszatenni: töltsd le, és a ZimaOS Fájlok alkalmazásával másold a lemez `Kerttervezo-mentes/napi/` mappájába, utána a fenti paranccsal tölthető vissza.
 
 ## Fejlesztés
 

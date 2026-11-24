@@ -1,5 +1,6 @@
 # A Kerttervező éles példánya ZimaOS-alkalmazásként (a kezdőlapon is látszik).
-# A kiadó parancs (npm run kiadas:eles) a __VERZIO__ helyére írja a verziót, és a
+# A kiadó parancs (npm run kiadas:eles) a __VERZIO__ helyére írja a verziót, a __LEMEZ__ és
+# __DROPBOX__ helyére a külső mentés csatolási pontjait (a helyi scripts/zima/.zima-ból), és a
 # casaos-cli-vel telepíti vagy frissíti. Az adatok a szerver lemezén maradnak.
 name: kerttervezo-eles
 services:
@@ -13,10 +14,19 @@ services:
         protocol: tcp
     environment:
       TZ: Europe/Budapest
+      KERT_KULSO_MENTES: lemez=__LEMEZ__/Kerttervezo-mentes,dropbox=__DROPBOX__/Kerttervezo-mentes
     volumes:
       - type: bind
         source: /DATA/AppData/kerttervezo/eles
         target: /data
+      # A /media mindig létezik; a lemez és a Dropbox ez alá csatolódik. Ha valamelyik nincs bekötve
+      # (vagy később kapcsolódik), a példány ettől még elindul: a célt a jelölőfájl hiánya jelzi.
+      # Az rslave miatt a konténer indulása után bekötött Dropboxot is látja.
+      - type: bind
+        source: /media
+        target: /media
+        bind:
+          propagation: rslave
     x-casaos:
       ports:
         - container: '4321'
@@ -26,6 +36,9 @@ services:
         - container: /data
           description:
             en_us: Adatbázis és mentések
+        - container: /media
+          description:
+            en_us: Külső mentés (4 TB-os lemez és Dropbox)
 x-casaos:
   architectures:
     - amd64

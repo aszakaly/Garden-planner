@@ -3,8 +3,9 @@
 # ZimaOS kezdőlapján is látszanak. Argumentumok:
 #   eles|teszt <verzió>             kiadás
 #   allapot                         a két példány verziója és állapota
-#   mentesek eles|teszt             a legutóbbi mentések
-#   visszatoltes eles|teszt <fájl>  egy mentés visszatöltése (a példány leállítva marad)
+#   mentesek eles|teszt [lemez]               a legutóbbi mentések (az élesnél a lemezen lévő külsők is)
+#   visszatoltes eles|teszt <fájl> [lemez]    egy mentés visszatöltése (a példány leállítva marad);
+#                                             a fájl lehet napi/… vagy havi/… is a lemezen lévő külső mentésből
 set -eu
 DIR=/DATA/AppData/kerttervezo
 IMAGE=ghcr.io/aszakaly/garden-planner
@@ -49,6 +50,12 @@ fi
 if [ "$1" = mentesek ]; then
   echo "A(z) $2 legutóbbi mentései (a legújabb elöl):"
   ls -1t "$DIR/$2/backups" | head -15
+  KULSO_DIR="${3:-}/Kerttervezo-mentes"
+  if [ "$2" = eles ] && [ -n "${3:-}" ] && [ -d "$KULSO_DIR/napi" ]; then
+    echo
+    echo "Külső mentések a lemezen (visszatöltéshez a teljes név kell, pl. napi/garden-20261123.db):"
+    (cd "$KULSO_DIR" && ls -1r napi/ | head -10 | sed 's|^|napi/|'; ls -1r havi/ | sed 's|^|havi/|')
+  fi
   exit 0
 fi
 
@@ -56,7 +63,13 @@ if [ "$1" = visszatoltes ]; then
   PELDANY="$2"
   FAJL="${3:-}"
   KONTENER="kerttervezo-$PELDANY"
-  if ! echo "$FAJL" | grep -Eqx 'garden-[0-9]{8}-[0-9]{6}\.db' || [ ! -f "$DIR/$PELDANY/backups/$FAJL" ]; then
+  # Forrás: a példány saját mentése, vagy (az élesnél) a lemezen lévő külső mentés
+  if echo "$FAJL" | grep -Eqx '(napi/garden-[0-9]{8}|havi/garden-[0-9]{6})\.db' && [ "$PELDANY" = eles ] && [ -n "${4:-}" ]; then
+    FORRAS_DIR="$4/Kerttervezo-mentes"
+  else
+    FORRAS_DIR="$DIR/$PELDANY/backups"
+  fi
+  if ! echo "$FAJL" | grep -Eqx 'garden-[0-9]{8}-[0-9]{6}\.db|napi/garden-[0-9]{8}\.db|havi/garden-[0-9]{6}\.db' || [ ! -f "$FORRAS_DIR/$FAJL" ]; then
     echo "Nincs ilyen mentés: $FAJL. A listához: npm run zima:mentesek -- $PELDANY" >&2
     exit 1
   fi
@@ -78,11 +91,11 @@ if [ "$1" = visszatoltes ]; then
   fi
   ido=$(date +%Y%m%d-%H%M%S)
   # A jelenlegi adatbázis nem vész el: garden-visszatoltes-elott-<idő>.db néven marad az adatmappában
-  docker run --rm --user root -v "$DIR/$PELDANY:/data" --entrypoint sh "$KEP" -c "
+  docker run --rm --user root -v "$DIR/$PELDANY:/data" -v "$FORRAS_DIR:/forras:ro" --entrypoint sh "$KEP" -c "
     set -e
     cd /data
     for k in '' -wal -shm; do if [ -f garden.db\$k ]; then mv garden.db\$k garden-visszatoltes-elott-$ido.db\$k; fi; done
-    cp backups/$FAJL garden.db
+    cp /forras/$FAJL garden.db
     chown node:node garden.db"
   echo "✓ Visszatöltve: $FAJL. A korábbi adatbázis: $PELDANY/garden-visszatoltes-elott-$ido.db"
   echo "  A(z) $PELDANY most le van állítva. Indítsd el azzal a verzióval, amelyikkel a mentés készült:"
@@ -117,7 +130,34 @@ fi
 
 # A ZimaOS-leírás a verzióval (a kiadas.sh tölti fel a sablont); ha a leírás is változott
 # (pl. ikon, port), azonos verziónál is frissíteni kell
-sed "s/__VERZIO__/$VERZIO/" "zimaos-$PELDANY.sablon.yml" > "zimaos-$PELDANY.uj.yml"
+LEMEZ="${3:-}"
+DROPBOX="${4:-}"
+for jel in LEMEZ DROPBOX; do
+  if grep -q "__${jel}__" "zimaos-$PELDANY.sablon.yml" && [ -z "$(eval echo \$$jel)" ]; then
+    echo "✗ A(z) $PELDANY leírása külső mentést használ, de a scripts/zima/.zima-ban nincs megadva a ZIMA_$jel." >&2
+    exit 1
+  fi
+done
+sed -e "s/__VERZIO__/$VERZIO/" -e "s|__LEMEZ__|$LEMEZ|" -e "s|__DROPBOX__|$DROPBOX|" "zimaos-$PELDANY.sablon.yml" > "zimaos-$PELDANY.uj.yml"
+
+# A külső mentés célmappái: csak valóban csatolt lemezen/Dropboxon jön létre a mappa és a jelölőfájl,
+# különben a konténer a csatolatlan pont alatti üres helyi mappába (az SSD-re) mentene
+celok=$(sed -n 's|^ *KERT_KULSO_MENTES: *||p' "zimaos-$PELDANY.uj.yml" | tr ',' '\n' | sed 's|^[^=]*=||')
+for alap in $LEMEZ $DROPBOX; do
+  for cel in $(echo "$celok" | grep "^$alap/" || true); do
+    if ! mountpoint -q "$alap"; then
+      echo "⚠ A(z) $alap nincs csatolva: a(z) $cel cél most nem készül el, a Beállításokban hibaként látszik." >&2
+      continue
+    fi
+    # Mappa és jelölőfájl a konténer jogaival: a konténer a saját felhasználójával (node, 1000) ír.
+    # A Dropbox rclone-csatolásán a tulajdonos nem állítható, ott a chown hibája nem számít.
+    docker run --rm --user root -v "$alap:/alap" --entrypoint sh "$IMAGE:$VERZIO" -c "
+      set -e
+      mkdir -p '/alap/${cel#"$alap"/}'
+      touch '/alap/${cel#"$alap"/}/.kerttervezo-mentes-cel'
+      chown -R node:node '/alap/${cel#"$alap"/}' 2>/dev/null || true"
+  done
+done
 leiras_valtozott=true
 cmp -s "zimaos-$PELDANY.uj.yml" "zimaos-$PELDANY.yml" 2>/dev/null && leiras_valtozott=false
 
@@ -197,6 +237,10 @@ while [ $i -lt 90 ]; do
     h="${allas##* }"
     [ "$h" = healthy ] && break
     case "$allas" in *" true "* | *unhealthy) break ;; esac
+  elif [ -n "$elotte_id" ] && [ "$most_id" = "$elotte_id" ] && [ $i -ge 10 ] && [ "${allas%% *}" = "$uj_image" ] && [ "${allas##* }" = healthy ]; then
+    # 20 másodperc után is a régi, egészséges konténer fut: a ZimaOS szerint a változás nem kívánt újraindítást
+    h=healthy
+    break
   fi
   sleep 2
   i=$((i + 1))

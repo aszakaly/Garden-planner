@@ -2,6 +2,11 @@
 
 A felületen látható változások, a legújabb elöl. A részletes fejlesztési előzmény a git logban van, a tervezési döntések a [design dokumentumban](docs/specs/2026-09-30-kerttervezo-design.md).
 
+## 2026-11-24 – Külső mentés
+
+- **Napi mentés a szerveren kívülre:** az éles példány naponta, hajnali 3 után a 4 TB-os lemezre és a Dropboxba is ment (30 napi és 12 havi másolat).
+- **A Beállítások → Mentés és adatok alatt** célonként látszik az utolsó külső mentés ideje vagy hibája, és a *Külső mentés most* gombbal azonnal indítható.
+
 ## 2026-11-23 – A ZimaOS kezdőlapján
 
 - **A Kerttervező és a Kerttervező – teszt a ZimaOS saját alkalmazásai lettek:** a ZimaOS kezdőlapján saját ikonnal látszanak, onnan megnyithatók, leállíthatók és elindíthatók, és megjelennek a memória-, CPU- és hálózati statisztikákban. Az adatok és a címek nem változtak.
