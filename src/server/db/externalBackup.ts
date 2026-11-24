@@ -86,8 +86,13 @@ export function readState(stateFile: string): ExternalState {
 /** Írás ideiglenes néven, majd átnevezés: félbemaradt fájl nem marad a célon. */
 function copyAtomic(from: string, to: string) {
   const tmp = `${to}.tmp`;
-  copyFileSync(from, tmp);
-  renameSync(tmp, to);
+  try {
+    copyFileSync(from, tmp);
+    renameSync(tmp, to);
+  } catch (err) {
+    rmSync(tmp, { force: true });
+    throw err;
+  }
 }
 
 /** A mintára illő fájlok közül a legújabb `keep` marad; más fájlhoz nem nyúl. */
